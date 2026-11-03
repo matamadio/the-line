@@ -1,0 +1,24 @@
+name: Playtest feedback
+description: How it played, or numbers you tuned in the editors
+labels: [playtest]
+body:
+  - type: textarea
+    id: feel
+    attributes:
+      label: How did it play?
+      description: What felt unfair, confusing or great? How far did you get?
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device, and keyboard or touch
+      placeholder: "Android phone, touch"
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Tuned numbers (optional)
+      description: >-
+        From the difficulty editor (Copy JSON) or the animation lab (Copy changed values, or Save to anim.json
+        on the hosted version). Say which one, and what you were going for.
+      render: json

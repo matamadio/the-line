@@ -1,0 +1,23 @@
+name: Bug
+description: Something is broken
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: And what did you expect instead? A screenshot or clip helps.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we see it happen?
+      placeholder: "Level 3, standing under the line when a Worm arrives..."
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: "Windows, Edge / iPhone 15, Safari"
+    validations:
+      required: true

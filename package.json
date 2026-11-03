@@ -1,0 +1,28 @@
+{
+  "name": "the-line",
+  "description": "The Line: a game drawn in glowing vector strokes, where everything is part of the line.",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "vite --open",
+    "dev": "vite",
+    "lab": "vite --open /lab.html",
+    "difficulty": "vite --open /difficulty.html",
+    "phone": "vite --host",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview --open",
+    "typecheck": "tsc && tsc -p tsconfig.node.json",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run test"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.8.3",
+    "vite": "6.4.5",
+    "vitest": "5.1.0"
+  }
+}

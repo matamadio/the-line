@@ -1,0 +1,52 @@
+/* What the difficulty editor and the animation lab have in common: the game on the
+   left, a bar under it and a panel of controls on the right. */
+
+:root {
+  --bg: #05030f; --panel: #0e0b22; --line: #2a2450; --text: #e9e3ff; --dim: #9a91c4;
+  --accent: #ffd23a; --changed: #ff9f43; --curve: #6fe3ff;
+  --side-width: 360px; --view-height: 50vh;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 13px/1.35 system-ui, -apple-system, Segoe UI, sans-serif; }
+body { display: grid; grid-template-columns: 1fr var(--side-width); grid-template-rows: 1fr auto; height: 100vh; }
+#view { grid-column: 1; grid-row: 1; width: 100%; height: 100%; display: block; min-height: 0; }
+#bar { grid-column: 1; grid-row: 2; padding: 8px 12px; border-top: 1px solid var(--line); background: var(--panel);
+  display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+#side { grid-column: 2; grid-row: 1 / 3; overflow-y: auto; padding: 10px 12px 40px; border-left: 1px solid var(--line); background: var(--panel); }
+#state { width: 100%; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+h1 { font: 15px Audiowide, sans-serif; color: var(--accent); letter-spacing: 0.04em; }
+h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+a { color: var(--curve); }
+kbd { background: #1b1640; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-size: 11px; }
+
+button { background: #1b1640; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px;
+  font: inherit; cursor: pointer; }
+button:hover { border-color: var(--dim); }
+button.on { background: #3a2f00; border-color: var(--accent); color: var(--accent); }
+button.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+
+.group { display: inline-flex; gap: 3px; align-items: center; }
+.row { display: flex; gap: 6px; margin-top: 8px; }
+.help { color: var(--dim); margin: 6px 0; }
+
+/* A number with a slider. Orange once it differs from what is saved. */
+.knob { display: grid; grid-template-columns: 1fr 64px; gap: 2px 8px; align-items: center; padding: 3px 4px; border-radius: 5px; }
+.knob span { grid-column: 1 / 3; color: var(--dim); }
+.knob.changed span { color: var(--changed); }
+.knob.changed span::after { content: ' •'; }
+.knob input[type=range] { width: 100%; accent-color: var(--accent); }
+.knob input[type=number] { width: 64px; background: #07051a; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px; font: inherit; }
+.knob:hover { background: #15113a; }
+
+#toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); background: var(--accent); color: #000;
+  padding: 6px 12px; border-radius: 6px; font-weight: 600; z-index: 2; }
+
+@media (max-width: 760px) {
+  body { grid-template-columns: 1fr; grid-template-rows: var(--view-height) auto 1fr; height: auto; min-height: 100vh; }
+  #view { height: var(--view-height); }
+  #bar { grid-row: 2; }
+  #side { grid-column: 1; grid-row: 3; border-left: 0; }
+}

@@ -1,0 +1,3754 @@
+======================================================================
+FRAME Intro e menu (708x800)
+
+#0
+  IF System.CompareGlobalValue (8) (<> 10)
+  IF System.NotAlways 
+    DO System.ActivateGroup {"ptr": 17486, "id": 9}
+
+#1
+  IF System.CompareGlobalValue (8) (10)
+  IF System.NotAlways 
+    DO Game.CenterDisplay @(550,145)
+    DO Sfumatore 2.Destroy 
+    DO Bepposoft linea.Destroy 
+    DO Bepposoft.Destroy 
+    DO Loading.Destroy 
+    DO The Line titolo.StartAnimation 
+    DO Lineattiva.Show 
+    DO Sbrilluccico.Destroy 
+    DO Continues.StartAnimation 
+    DO Continues.Show 
+    DO Continues.ForceSpeed (100)
+    DO The Line titolo.ForceAnimation 12
+    DO DMC2 Object.ExtAct37 
+    DO DMC2 Object.ExtAct1 ('Beppo - All improvviso l incoscienza.mp3')
+    DO DMC2 Object.ExtAct2 (10)
+    DO DMC2 Object.ExtAct8 (50)
+
+#2
+  IF Game.StartOfFrame 
+    DO System.SetGlobalValue (16) (1)
+    DO Bepposoft.StopAnimation 
+    DO Bepposoft.Hide 
+    DO Registry object.ExtAct2 
+    DO Registry object.ExtAct4 ('Software\\Software\\God\\')
+    DO Registry object.ExtAct5 ('Switch')
+    DO System.SetGlobalValue (10) (Registry object.ExtAct1)
+    DO The Line titolo.StopAnimation 
+    DO Lineatore.Hide 
+    DO Sbrilluccico.Hide 
+    DO Lineattiva.Hide 
+    DO Continues.Hide 
+    DO Continues.StopAnimation 
+    DO Extra1.Hide 
+    DO Extra2.Hide 
+    DO Extra3.Hide 
+    DO Extra4.Hide 
+    DO Extra5.Hide 
+    DO Extra7.Hide 
+    DO Extra1.DisableFlag (0)
+    DO Bepposoft linea.Stop 
+    DO Extra6.Hide 
+    DO Extra6.DisableFlag (0)
+    DO Surfista.Hide 
+    DO Game.CenterDisplay @(0,700)
+
+#3
+  IF System.NewGroup {"flags": 3, "id": 1, "name": "Intro"}
+    DO System.Skip 
+
+#4
+  IF System.NotAlways 
+    DO Bepposoft linea.Start 
+
+#5
+  IF Bepposoft linea.PathFinished 
+    DO Bepposoft.Show 
+    DO Bepposoft.StartAnimation 
+    DO Bepposoft linea.Destroy 
+
+#6
+  IF Timer.TimerEquals {"ms": 8000, "loops": 0}
+    DO The Line titolo.StartAnimation 
+
+#7
+  IF Timer.TimerGreater {"ms": 8000, "loops": 0}
+  IF Timer.TimerLess {"ms": 8640, "loops": 0}
+  IF Timer.Every {"ms": 10}
+    DO Game.CenterDisplayX (TimerHundreds Multiply 10)
+
+#8
+  IF Timer.Every {"ms": 10}
+  IF The Line titolo.AnimationFrame (> 10)
+    DO Start wave.AddToAlterable 0 (1)
+
+#9
+  IF Start wave.CompareAlterableValue 0 (< 150)
+    DO Game.CenterDisplayY (Start wave.AlterableValue[0])
+
+#10
+  IF Start wave.CompareAlterableValue 0 (>= 150)
+  IF Timer.Every {"ms": 10}
+    DO Sfumatore 2.SetY (Sfumatore 2.YPosition Plus 2)
+
+#11
+  IF Sfumatore 2.CompareY (> 240)
+    DO Sfumatore 2.Destroy 
+    DO Bepposoft linea.Destroy 
+    DO Copriscritta.Destroy 
+    DO Bepposoft.Destroy 
+
+#12
+  IF Timer.Every {"ms": 10}
+  IF The Line titolo.AnimationFinished 0
+    DO Lineatore.SetX (Lineatore.XPosition Plus 10)
+    DO Lineatore.PasteActive 4
+    DO Sbrilluccico.Show 
+
+#13
+  IF Lineatore.OutsidePlayfield 
+    DO Sbrilluccico.Destroy 
+    DO Lineattiva.Show 
+    DO Lineatore.Destroy 
+
+#14
+  IF Lineatore.InsidePlayfield 
+    DO Sbrilluccico.SetPosition @(15,0 rel Lineatore)
+
+#15
+  IF Lineatore.CompareX (> Continues.XPosition)
+    DO Continues.Show 
+    DO Continues.StartAnimation 
+
+#16
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#17
+  IF System.NewGroup {"flags": 2, "id": 2, "name": "Menu"}
+    DO System.Skip 
+
+#18
+  IF System.GroupActivated {"ptr": 5474, "id": 3}
+    DO Effetto linesaver.ExtAct0 
+    DO Effetto linesaver.ExtAct1 @(0,0 rel Linesaver) (Random 10000 EndParenthesis)
+    DO Effetto linesaver.ExtAct15 (8)
+
+#19
+  IF Menu.CompareCounter (1)
+  IF Sfumatore 2.AllDestroyed 
+  IF System.NotAlways 
+    DO Wavell selector.Destroy 
+    DO Create.CreateObject Wavell selector @(427,139)
+
+#20
+  IF Menu.CompareCounter (2)
+  IF System.NotAlways 
+    DO Wavell selector.Destroy 
+    DO Create.CreateObject Wavell selector @(427,170)
+
+#21
+  IF Menu.CompareCounter (3)
+  IF System.NotAlways 
+    DO Wavell selector.Destroy 
+    DO Create.CreateObject Wavell selector @(427,201)
+
+#22
+  IF Menu.CompareCounter (4)
+  IF System.NotAlways 
+    DO Wavell selector.Destroy 
+    DO Create.CreateObject Wavell selector @(433,232)
+
+#23
+  IF Player.PlayerKeyPressed 2
+  IF Sfumatore 2.AllDestroyed 
+  IF NOT Wavell selector.AnimationPlaying 6
+  IF Extra.FlagOff (2)
+    DO Menu.AddCounterValue (1)
+
+#24
+  IF Player.PlayerKeyPressed 1
+  IF Sfumatore 2.AllDestroyed 
+  IF NOT Wavell selector.AnimationPlaying 6
+  IF Extra.FlagOff (2)
+    DO Menu.SubtractCounterValue (1)
+
+#25
+  IF Menu.CompareCounter (1)
+  IF Player.PlayerKeyPressed 16
+  IF Wavell selector.AnimationFinished 0
+    DO Wavell selector.ForceAnimation 6
+
+#26
+  IF Menu.CompareCounter (2)
+  IF Player.PlayerKeyPressed 16
+  IF Wavell selector.AnimationFinished 0
+    DO Wavell selector.ForceAnimation 6
+
+#27
+  IF Menu.CompareCounter (3)
+  IF Player.PlayerKeyPressed 16
+  IF Wavell selector.AnimationFinished 0
+    DO Wavell selector.ForceAnimation 6
+
+#28
+  IF Menu.CompareCounter (4)
+  IF Player.PlayerKeyPressed 16
+  IF Wavell selector.AnimationFinished 0
+    DO Wavell selector.ForceAnimation 6
+
+#29
+  IF Wavell selector.AnimationPlaying 6
+  IF Wavell selector.AnimationFrame (> 4)
+  IF Wavell selector.AnimationFrame (< 15)
+  IF Menu.CompareCounter (1)
+  IF Timer.Every {"ms": 10}
+    DO Start wave.SetX (Start wave.XPosition Minus 1)
+    DO Start wave.AddToAlterable 0 (1)
+
+#30
+  IF Wavell selector.AnimationPlaying 6
+  IF Wavell selector.AnimationFrame (> 15)
+  IF Menu.CompareCounter (1)
+  IF Start wave.CompareAlterableValue 0 (> 0)
+  IF Timer.Every {"ms": 10}
+    DO Start wave.SetX (Start wave.XPosition Plus 1)
+    DO Start wave.AddToAlterable 1 (1)
+    DO Start wave.SubtractFromAlterable 0 (1)
+
+#31
+  IF Start wave.CompareAlterableValue 1 (4)
+    DO System.ActivateGroup {"ptr": 11254, "id": 5}
+    DO System.DeactivateGroup {"ptr": -3698, "id": 1}
+    DO System.DeactivateGroup {"ptr": -2474, "id": 2}
+    DO System.DeactivateGroup {"ptr": 3134, "id": 3}
+    DO System.DeactivateGroup {"ptr": 10624, "id": 4}
+    DO Extra object.Hide 
+    DO Non servo ma servo.SetAlterableValue 0 (450)
+    DO Surfista.Hide 
+
+#32
+  IF Wavell selector.AnimationPlaying 6
+  IF Wavell selector.AnimationFrame (> 4)
+  IF Wavell selector.AnimationFrame (< 15)
+  IF Menu.CompareCounter (2)
+  IF Timer.Every {"ms": 10}
+    DO Credits.SetX (Credits.XPosition Minus 1)
+    DO Credits.AddToAlterable 0 (1)
+
+#33
+  IF Wavell selector.AnimationPlaying 6
+  IF Wavell selector.AnimationFrame (> 15)
+  IF Menu.CompareCounter (2)
+  IF Credits.CompareAlterableValue 0 (> 0)
+  IF Timer.Every {"ms": 10}
+    DO Credits.SetX (Credits.XPosition Plus 1)
+    DO Credits.AddToAlterable 1 (1)
+    DO Credits.SubtractFromAlterable 0 (1)
+
+#34
+  IF Credits.CompareAlterableValue 1 (4)
+    DO Game.CenterDisplay @(0,300)
+    DO Credits.EnableFlag (1)
+
+#35
+  IF Player.PlayerKeyPressed 32
+  IF Credits.FlagOn (1)
+  IF Extra object.FlagOff (1)
+    DO Game.CenterDisplay @(550,145)
+    DO Credits.DisableFlag (1)
+    DO Credits.SetAlterableValue 1 (0)
+    DO Wavell selector.ForceAnimation 0
+    DO Speaker.PlaySample {"handle": 11, "flags": 0, "name": "linesaver"}
+
+#36
+  IF Wavell selector.AnimationPlaying 6
+  IF Wavell selector.AnimationFrame (> 4)
+  IF Wavell selector.AnimationFrame (< 15)
+  IF Menu.CompareCounter (3)
+  IF Timer.Every {"ms": 10}
+    DO Extra.SetX (Extra.XPosition Minus 1)
+    DO Extra.AddToAlterable 0 (1)
+
+#37
+  IF Wavell selector.AnimationPlaying 6
+  IF Wavell selector.AnimationFrame (> 15)
+  IF Menu.CompareCounter (3)
+  IF Extra.CompareAlterableValue 0 (> 0)
+  IF Timer.Every {"ms": 10}
+    DO Extra.SetX (Extra.XPosition Plus 1)
+    DO Extra.AddToAlterable 1 (1)
+    DO Extra.SubtractFromAlterable 0 (1)
+
+#38
+  IF Extra.CompareAlterableValue 1 (4)
+    DO Game.CenterDisplay @(0,500)
+    DO Extra.EnableFlag (1)
+    DO System.ActivateGroup {"ptr": 1230, "id": 3}
+
+#39
+  IF Player.PlayerKeyPressed 32
+  IF Extra.FlagOn (1)
+  IF Extra object.FlagOff (1)
+    DO Game.CenterDisplay @(160,700)
+    DO Wavell selector.ForceAnimation 0
+    DO Extra.DisableFlag (1)
+    DO Extra.SetAlterableValue 1 (0)
+    DO System.DeactivateGroup {"ptr": 948, "id": 3}
+    DO Extra.DisableFlag (2)
+    DO Linesaver.SetPosition @(0,800)
+    DO Linesaver.SetAlterableValue 0 (0)
+    DO Speaker.PlaySample {"handle": 11, "flags": 0, "name": "linesaver"}
+
+#40
+  IF Wavell selector.AnimationPlaying 6
+  IF Wavell selector.AnimationFrame (> 4)
+  IF Wavell selector.AnimationFrame (< 15)
+  IF Menu.CompareCounter (4)
+  IF Timer.Every {"ms": 10}
+    DO Quit.SetX (Quit.XPosition Minus 1)
+    DO Quit.AddToAlterable 0 (1)
+
+#41
+  IF Wavell selector.AnimationPlaying 6
+  IF Wavell selector.AnimationFrame (> 15)
+  IF Menu.CompareCounter (4)
+  IF Quit.CompareAlterableValue 0 (> 0)
+  IF Timer.Every {"ms": 10}
+    DO Quit.SetX (Quit.XPosition Plus 3)
+    DO Quit.AddToAlterable 1 (1)
+    DO Quit.SubtractFromAlterable 0 (1)
+
+#42
+  IF Quit.CompareAlterableValue 1 (4)
+    DO Window control.ExtAct8 
+    DO Game.EndApplication 
+    DO DMC2 Object.ExtAct3 
+    DO DMC2 Object.ExtAct4 
+
+#43
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#44
+  IF System.NewGroup {"flags": 3, "id": 3, "name": "Extras"}
+    DO System.Skip 
+
+#45
+  IF System.NotAlways 
+    DO Extra.EnableFlag (2)
+    DO Registry object.ExtAct2 
+    DO Registry object.ExtAct4 ('Software\\Software\\God\\')
+    DO Registry object.ExtAct5 ('Max Score')
+    DO Best score.SetCounterValue (Registry object.ExtAct1)
+
+#46
+  IF Player.PlayerKeyPressed 2
+  IF Extra.FlagOn (2)
+  IF Extra object.FlagOff (1)
+  IF Extras.CompareCounter (< 7)
+  IF Extras.CompareCounter (<= Parenthesis Best score.CounterValue Minus 100 EndParenthesis Divide 100)
+    DO Extras.AddCounterValue (1)
+    DO Speaker.PlaySample {"handle": 9, "flags": 0, "name": "bolla"}
+
+#47
+  IF Player.PlayerKeyPressed 1
+  IF Extra.FlagOn (2)
+  IF Extra object.FlagOff (1)
+  IF Extras.CompareCounter (> 1)
+    DO Extras.SubtractCounterValue (1)
+    DO Speaker.PlaySample {"handle": 9, "flags": 0, "name": "bolla"}
+
+#48
+  IF Best score.CompareCounter (< 100)
+  IF System.NotAlways 
+    DO Extra1.Destroy 
+    DO Extra2.Destroy 
+    DO Extra3.Destroy 
+    DO Extra4.Destroy 
+    DO Extra5.Destroy 
+    DO Extra6.Destroy 
+    DO Extra7.Destroy 
+
+#49
+  IF Best score.CompareCounter (> 100)
+  IF System.NotAlways 
+    DO Extra1.Show 
+
+#50
+  IF Best score.CompareCounter (> 200)
+  IF System.NotAlways 
+    DO Extra2.Show 
+
+#51
+  IF Best score.CompareCounter (> 300)
+  IF System.NotAlways 
+    DO Extra3.Show 
+
+#52
+  IF Best score.CompareCounter (> 400)
+  IF System.NotAlways 
+    DO Extra4.Show 
+
+#53
+  IF Best score.CompareCounter (> 500)
+  IF System.NotAlways 
+    DO Extra5.Show 
+
+#54
+  IF Best score.CompareCounter (> 600)
+  IF System.NotAlways 
+    DO Extra6.Show 
+
+#55
+  IF Best score.CompareCounter (> 1000)
+  IF System.NotAlways 
+    DO Extra7.Show 
+
+#56
+  IF Extras.CompareCounter (0)
+  IF System.NotAlways 
+    DO Linesaver.SetPosition @(-162,524)
+
+#57
+  IF Extras.CompareCounter (1)
+  IF Best score.CompareCounter (> 100)
+  IF Timer.Every {"ms": 50}
+    DO Linesaver.SetPosition @(-75,0 rel Extra1)
+    DO Extra1.SetDirection (Extra1.GetDirection Plus 10)
+    DO Extra2.SetDirection 1
+
+#58
+  IF Extras.CompareCounter (2)
+  IF Best score.CompareCounter (> 200)
+  IF Timer.Every {"ms": 50}
+    DO Linesaver.SetPosition @(-75,0 rel Extra2)
+    DO Extra2.SetDirection (Extra2.GetDirection Plus 10)
+    DO Extra3.SetDirection 1
+
+#59
+  IF Extras.CompareCounter (3)
+  IF Best score.CompareCounter (> 300)
+  IF Timer.Every {"ms": 50}
+    DO Linesaver.SetPosition @(-75,0 rel Extra3)
+    DO Extra3.SetDirection (Extra3.GetDirection Plus 10)
+    DO Extra2.SetDirection 1
+    DO Extra4.SetDirection 1
+
+#60
+  IF Extras.CompareCounter (4)
+  IF Best score.CompareCounter (> 400)
+  IF Timer.Every {"ms": 50}
+    DO Linesaver.SetPosition @(-75,0 rel Extra4)
+    DO Extra4.SetDirection (Extra4.GetDirection Plus 10)
+    DO Extra3.SetDirection 1
+    DO Extra5.SetDirection 1
+
+#61
+  IF Extras.CompareCounter (5)
+  IF Best score.CompareCounter (> 500)
+  IF Timer.Every {"ms": 50}
+    DO Linesaver.SetPosition @(-75,0 rel Extra5)
+    DO Extra5.SetDirection (Extra5.GetDirection Plus 10)
+    DO Extra4.SetDirection 1
+
+#62
+  IF Extras.CompareCounter (6)
+  IF Best score.CompareCounter (> 600)
+  IF Timer.Every {"ms": 50}
+    DO Linesaver.SetPosition @(-75,0 rel Extra6)
+    DO Extra6.SetDirection (Extra6.GetDirection Plus 10)
+    DO Extra5.SetDirection 1
+    DO Extra7.SetDirection 1
+
+#63
+  IF Extras.CompareCounter (7)
+  IF Best score.CompareCounter (> 1000)
+  IF Timer.Every {"ms": 50}
+    DO Linesaver.SetPosition @(-78,0 rel Extra7)
+    DO Extra7.SetDirection (Extra7.GetDirection Plus 10)
+
+#64
+  IF Extras.CompareCounter (<> 1)
+  IF Extra1.FlagOn (0)
+  IF System.NotAlways 
+    DO Extra1.SetDirection 65536
+
+#65
+  IF Extras.CompareCounter (<> 1)
+  IF Extra1.FlagOff (0)
+  IF System.NotAlways 
+    DO Extra1.SetDirection 1
+
+#66
+  IF Extras.CompareCounter (<> 6)
+  IF Extra6.FlagOn (0)
+  IF System.NotAlways 
+    DO Extra6.SetDirection 65536
+
+#67
+  IF Extras.CompareCounter (<> 6)
+  IF Extra6.FlagOff (0)
+  IF System.NotAlways 
+    DO Extra6.SetDirection 1
+
+#68
+  IF Player.PlayerKeyPressed 16
+  IF Extras.CompareCounter (1)
+  IF Best score.CompareCounter (> 100)
+  IF Extra1.FlagOff (1)
+  IF Extra object.FlagOff (1)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+    DO Extra1.EnableFlag (0)
+    DO System.SetGlobalValue (16) (2)
+    DO Extra6.DisableFlag (0)
+    DO Extra6.SetDirection 1
+
+#69
+  IF Extra1.FlagOn (0)
+  IF Timer.Every {"ms": 1000}
+    DO Extra1.EnableFlag (1)
+
+#70
+  IF Player.PlayerKeyPressed 16
+  IF Extras.CompareCounter (1)
+  IF Best score.CompareCounter (> 100)
+  IF Extra1.FlagOn (1)
+  IF Extra object.FlagOff (1)
+    DO Speaker.PlaySample {"handle": 2, "flags": 0, "name": "colpisce"}
+    DO System.SetGlobalValue (16) (1)
+    DO Extra1.DisableFlag (0)
+
+#71
+  IF Extra1.FlagOff (0)
+  IF Timer.Every {"ms": 1000}
+    DO Extra1.DisableFlag (1)
+
+#72
+  IF Player.PlayerKeyPressed 16
+  IF Extras.CompareCounter (2)
+  IF Best score.CompareCounter (> 200)
+  IF Extra object.FlagOff (1)
+    DO Game.CenterDisplayX (480)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+    DO Extra object.SetDirection 256
+    DO Extra object.EnableFlag (1)
+
+#73
+  IF Player.PlayerKeyPressed 16
+  IF Extras.CompareCounter (3)
+  IF Best score.CompareCounter (> 300)
+  IF Extra object.FlagOff (1)
+    DO Game.CenterDisplayX (480)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+    DO Extra object.SetDirection 1
+    DO Extra object.EnableFlag (1)
+
+#74
+  IF Player.PlayerKeyPressed 16
+  IF Extras.CompareCounter (4)
+  IF Best score.CompareCounter (> 400)
+  IF Extra object.FlagOff (1)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+    DO Extra object.SetDirection 16777216
+    DO Extra object.EnableFlag (1)
+    DO Game.CenterDisplayX (480)
+
+#75
+  IF Player.PlayerKeyPressed 16
+  IF Extras.CompareCounter (5)
+  IF Best score.CompareCounter (> 500)
+  IF Extra object.FlagOff (1)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+    DO Game.CenterDisplayX (480)
+    DO Extra object.SetDirection 1048576
+    DO Extra object.EnableFlag (1)
+    DO Surfista.Show 
+
+#76
+  IF Player.PlayerKeyPressed 16
+  IF Extras.CompareCounter (6)
+  IF Best score.CompareCounter (> 600)
+  IF Extra6.FlagOff (1)
+  IF Extra object.FlagOff (1)
+    DO System.SetGlobalValue (16) (3)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+    DO Extra6.EnableFlag (0)
+    DO Extra1.DisableFlag (0)
+    DO Extra1.SetDirection 1
+
+#77
+  IF Extra6.FlagOn (0)
+  IF Timer.Every {"ms": 1000}
+    DO Extra6.EnableFlag (1)
+
+#78
+  IF Player.PlayerKeyPressed 16
+  IF Extras.CompareCounter (6)
+  IF Best score.CompareCounter (> 600)
+  IF Extra6.FlagOn (1)
+  IF Extra object.FlagOff (1)
+    DO System.SetGlobalValue (16) (1)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+    DO Extra6.DisableFlag (0)
+
+#79
+  IF Extra6.FlagOff (0)
+  IF Timer.Every {"ms": 1000}
+    DO Extra6.DisableFlag (1)
+
+#80
+  IF Player.PlayerKeyPressed 16
+  IF Best score.CompareCounter (> 1000)
+  IF Extras.CompareCounter (7)
+  IF Extra object.FlagOff (1)
+    DO Game.CenterDisplayX (480)
+    DO Extra object.SetDirection 65536
+    DO Extra object.EnableFlag (1)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+
+#81
+  IF Player.PlayerKeyPressed 32
+  IF Extra object.FlagOn (1)
+    DO Game.CenterDisplayX (0)
+    DO Extra object.DisableFlag (1)
+    DO Speaker.PlaySample {"handle": 11, "flags": 0, "name": "linesaver"}
+    DO Surfista.Hide 
+
+#82
+  IF Keyboard.KeyPressed {"vk": 82}
+    DO Registry object.ExtAct7 (0)
+    DO Best score.SetCounterValue (0)
+    DO Speaker.PlaySample {"handle": 3, "flags": 0, "name": "snawave sparisce"}
+    DO Extras.SetCounterValue (0)
+
+#83
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#84
+  IF System.NewGroup {"flags": 2, "id": 4, "name": "Debug scrolling bullet"}
+    DO System.Skip 
+
+#85
+  IF Game.StartOfFrame 
+    DO Linesaver.SetAlterableValue 0 (2080)
+
+#86
+  IF NOT System.GroupActivated {"ptr": -7736, "id": 3}
+    DO Effetto linesaver.ExtAct0 
+
+#87
+  IF Linesaver.CompareAlterableValue 0 (0)
+  IF Timer.Every {"ms": 200}
+    DO Linesaver.AddToAlterable 0 (1)
+
+#88
+  IF Linesaver.CompareAlterableValue 0 (1)
+    DO Game.CenterDisplay @(550,145)
+    DO Linesaver.SetAlterableValue 0 (2080)
+
+#89
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#90
+  IF System.NewGroup {"flags": 3, "id": 5, "name": "Info"}
+    DO System.Skip 
+
+#91
+  IF Timer.Every {"ms": 10}
+  IF Non servo ma servo.CompareAlterableValue 0 (< 700)
+    DO Non servo ma servo.AddToAlterable 0 (10)
+
+#92
+  IF Non servo ma servo.CompareAlterableValue 0 (> 450)
+    DO Game.CenterDisplayY (Non servo ma servo.AlterableValue[0])
+    DO Game.CenterDisplayX (480)
+
+#93
+  IF Player.PlayerKeyPressed 16
+    DO DMC2 Object.ExtAct3 
+    DO DMC2 Object.ExtAct4 
+    DO Game.NextFrame 
+
+#94
+  IF Player.PlayerKeyPressed 32
+    DO DMC2 Object.ExtAct3 
+    DO DMC2 Object.ExtAct4 
+    DO Game.NextFrame 
+
+#95
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#96
+  IF System.NewGroup {"flags": 2, "id": 6, "name": "Effetti sonori"}
+    DO System.Skip 
+
+#97
+  IF Wavell selector.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 5, "flags": 0, "name": "rovescia in su"}
+
+#98
+  IF System.NotAlways 
+  IF Wavell selector.AnimationPlaying 6
+    DO Speaker.PlaySample {"handle": 2, "flags": 0, "name": "colpisce"}
+
+#99
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#100
+  IF System.NewGroup {"flags": 2, "id": 8, "name": "Set key"}
+    DO System.Skip 
+
+#101
+  IF System.CompareGlobalValue (11) (2)
+    DO System.DeactivateGroup {"ptr": -208, "id": 8}
+
+#102
+  IF System.CompareGlobalValue (10) (2)
+    DO System.DeactivateGroup {"ptr": -298, "id": 8}
+
+#103
+  IF Timer.TimerEquals {"ms": 1000, "loops": 0}
+    DO Registry object.ExtAct2 
+    DO Registry object.ExtAct4 ('Software\\Software\\God\\')
+    DO Registry object.ExtAct5 ('Max Score')
+    DO Registry object.ExtAct7 (0)
+
+#104
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#105
+  IF System.NewGroup {"flags": 3, "id": 9, "name": "Loading"}
+    DO System.Skip 
+
+#106
+  IF System.NotAlways 
+    DO Game.CenterDisplay @(0,700)
+
+#107
+  IF Timer.TimerEquals {"ms": 5000, "loops": 0}
+    DO System.ActivateGroup {"ptr": -16742, "id": 1}
+    DO Loading.Destroy 
+    DO DMC2 Object.ExtAct37 
+    DO DMC2 Object.ExtAct1 ('Beppo - All improvviso l incoscienza.mp3')
+    DO DMC2 Object.ExtAct2 (10)
+    DO DMC2 Object.ExtAct8 (40)
+
+#108
+  IF Timer.TimerEquals {"ms": 4200, "loops": 0}
+    DO Game.CenterDisplayY (0)
+
+#109
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#110
+  IF System.NewGroup {"flags": 2, "id": 1, "name": "Screen size"}
+    DO System.Skip 
+
+#111
+  IF Keyboard.KeyPressed {"vk": 106}
+    DO Window control.ExtAct3 (640)
+    DO Window control.ExtAct4 (400)
+    DO Window control.ExtAct0 (Parenthesis Window control.ExtAct4 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct2 Divide 2 EndParenthesis)
+    DO Window control.ExtAct1 (Parenthesis Window control.ExtAct5 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct3 Divide 2 EndParenthesis)
+    DO Window Shape.ExtAct0 
+    DO Window Shape.ExtAct1 (32) (32)
+
+#112
+  IF Keyboard.KeyPressed {"vk": 111}
+    DO Window control.ExtAct3 (320)
+    DO Window control.ExtAct4 (200)
+    DO Window control.ExtAct0 (Parenthesis Window control.ExtAct4 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct2 Divide 2 EndParenthesis)
+    DO Window control.ExtAct1 (Parenthesis Window control.ExtAct5 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct3 Divide 2 EndParenthesis)
+    DO Window Shape.ExtAct0 
+    DO Window Shape.ExtAct1 (32) (32)
+
+#113
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#114
+  IF System.NewGroup {"flags": 0, "id": 0, "name": "Volume"}
+    DO System.Skip 
+
+#115
+  IF Keyboard.KeyPressed {"vk": 107}
+    DO DMC2 Object.ExtAct8 (DMC2 Object.ExtAct3 Plus 10)
+
+#116
+  IF Keyboard.KeyPressed {"vk": 109}
+    DO DMC2 Object.ExtAct8 (DMC2 Object.ExtAct3 Minus 10)
+
+#117
+  IF System.GroupEnd 
+    DO System.Skip 
+======================================================================
+FRAME Game (330x210)
+
+#0
+  IF System.NewGroup {"flags": 2, "id": 9, "name": "Music selection & Extra modes"}
+    DO System.Skip 
+
+#1
+  IF System.CompareGlobalValue (16) (2)
+  IF System.NotAlways 
+    DO System.ActivateGroup {"ptr": 51934, "id": 14}
+    DO Speaker.PlayLoopingMusic {"handle": 2, "flags": 0, "name": "praiseyou"} (1000)
+    DO DMC2 Object.ExtAct38 
+    DO DMC2 Object.Destroy 
+
+#2
+  IF System.CompareGlobalValue (16) (3)
+  IF System.NotAlways 
+    DO System.ActivateGroup {"ptr": 52072, "id": 17}
+
+#3
+  IF Game.StartOfFrame 
+  IF System.CompareGlobalValue (16) (<> 2)
+  IF System.NotAlways 
+    DO System.SetGlobalValue (15) (Random 3 EndParenthesis)
+
+#4
+  IF System.CompareGlobalValue (15) (0)
+  IF System.NotAlways 
+    DO DMC2 Object.ExtAct1 ('Beppo - Gorgheggiando varecchina.mp3')
+    DO DMC2 Object.ExtAct2 (1)
+    DO System.SetGlobalValue (15) (0)
+
+#5
+  IF System.CompareGlobalValue (15) (1)
+  IF System.NotAlways 
+    DO DMC2 Object.ExtAct1 ('Beppo - Inno alla Nutella.mp3')
+    DO DMC2 Object.ExtAct2 (1)
+    DO System.SetGlobalValue (15) (1)
+
+#6
+  IF System.CompareGlobalValue (15) (2)
+  IF System.NotAlways 
+    DO DMC2 Object.ExtAct1 ('Beppo - Perchè siamo tutti un po imbecilli.mp3')
+    DO DMC2 Object.ExtAct2 (1)
+    DO System.SetGlobalValue (15) (2)
+
+#7
+  IF System.CompareGlobalValue (15) (0)
+  IF Timer.Every {"ms": 102000}
+  IF System.NotAlways 
+    DO DMC2 Object.ExtAct3 
+    DO DMC2 Object.ExtAct4 
+    DO DMC2 Object.ExtAct1 ('Beppo - Inno alla Nutella.mp3')
+    DO DMC2 Object.ExtAct2 (1)
+    DO System.SetGlobalValue (15) (1)
+
+#8
+  IF System.CompareGlobalValue (15) (1)
+  IF Timer.Every {"ms": 155000}
+  IF System.NotAlways 
+    DO DMC2 Object.ExtAct3 
+    DO DMC2 Object.ExtAct4 
+    DO DMC2 Object.ExtAct1 ('Beppo - Perchè siamo tutti un po imbecilli.mp3')
+    DO DMC2 Object.ExtAct2 (1)
+    DO System.SetGlobalValue (15) (2)
+
+#9
+  IF System.CompareGlobalValue (15) (2)
+  IF Timer.Every {"ms": 152000}
+  IF System.NotAlways 
+    DO DMC2 Object.ExtAct3 
+    DO DMC2 Object.ExtAct4 
+    DO DMC2 Object.ExtAct1 ('Beppo - Gorgheggiando varecchina.mp3')
+    DO DMC2 Object.ExtAct2 (1)
+    DO System.SetGlobalValue (15) (0)
+
+#10
+  IF Game.EndOfApplication 
+    DO DMC2 Object.ExtAct3 
+    DO DMC2 Object.ExtAct4 
+    DO DMC2 Object.ExtAct38 
+
+#11
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#12
+  IF Game.StartOfFrame 
+    DO Wavell.ForceAnimation 3
+    DO The end of the line.DisableFlag (10000)
+    DO Line reflux.Destroy 
+    DO The end of the line.SetX (0)
+    DO System.SetGlobalValue (2) (0)
+    DO Crea bolla.Hide 
+    DO Crea bolla.SetAlterableValue 0 (0)
+    DO Game.CenterDisplay @(165,105)
+    DO Wavell.DisableFlag (888)
+
+#13
+  IF Timer.TimerEquals {"ms": 1000, "loops": 0}
+    DO DMC2 Object.ExtAct8 (50)
+
+#14
+  IF System.NewGroup {"flags": 2, "id": 3, "name": "Main events"}
+    DO System.Skip 
+
+#15
+  IF Wavell.AnimationFinished 3
+  IF System.NotAlways 
+    DO System.ActivateGroup {"ptr": 4744, "id": 2}
+    DO Wavell.DisableFlag (2)
+    DO Snawave e Snashark.DisableFlag (400)
+    DO Wavell.DisableFlag (3)
+    DO System.DeactivateGroup {"ptr": 7196, "id": 15}
+    DO Player.RestoreControls 
+    DO Wavell.DisableFlag (456)
+    DO Wavell.DisableFlag (235)
+
+#16
+  IF Wavell.AnimationPlaying 3
+  IF Wavell.AnimationFrame (> 1)
+    DO Wavell.Show 
+    DO Wavell.DisableFlag (3)
+    DO Bullet dalla linea.ExtAct0 
+    DO Effetto acidoworm.ExtAct0 
+
+#17
+  IF Wavell.AnimationPlaying 4
+  IF System.NotAlways 
+    DO System.DeactivateGroup {"ptr": 4284, "id": 2}
+    DO Vita.SubtractCounterValue (1)
+
+#18
+  IF Wavell.AnimationPlaying 12
+  IF System.NotAlways 
+    DO Vita.SubtractCounterValue (1)
+    DO System.DeactivateGroup {"ptr": 4120, "id": 2}
+
+#19
+  IF Snawave e Snashark.AnimationPlaying 6
+  IF System.NotAlways 
+    DO Vita.SubtractCounterValue (1)
+
+#20
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (>= 25)
+  IF Wavell.FacingInDirection 1
+  IF System.NotAlways 
+    DO Vita.SubtractCounterValue (1)
+
+#21
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.FacingInDirection 65536
+  IF System.NotAlways 
+    DO Vita.SubtractCounterValue (1)
+
+#22
+  IF Keyboard.KeyPressed {"vk": 27}
+    DO Wavell.ForceAnimation 4
+    DO Wavell.SetDirection 1
+
+#23
+  IF Wavell.AnimationFinished 4
+  IF Vita.CompareCounter (> 0)
+    DO Wavell.ForceAnimation 3
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO Wavell.StartAnimation 
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Hide 
+    DO Annuncia wavehole.Destroy 
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+
+#24
+  IF Wavell.AnimationFinished 4
+  IF Vita.CompareCounter (0)
+    DO Game.JumpToFrame 1
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Hide 
+    DO Annuncia wavehole.Destroy 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+
+#25
+  IF Wavell.AnimationFinished 12
+  IF Vita.CompareCounter (> 0)
+    DO The end of the line.SetX (-60)
+    DO The end of the line.DisableFlag (1)
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO Wavell.ForceAnimation 3
+    DO Wavell.StartAnimation 
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Hide 
+    DO Annuncia wavehole.Destroy 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+
+#26
+  IF Wavell.AnimationFinished 12
+  IF Vita.CompareCounter (0)
+    DO The end of the line.DisableFlag (1)
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO Game.JumpToFrame 1
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Hide 
+    DO Annuncia wavehole.Destroy 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+
+#27
+  IF Snawave e Snashark.AnimationFinished 6
+  IF Vita.CompareCounter (> 0)
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO Wavell.ForceAnimation 3
+    DO Wavell.StartAnimation 
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Hide 
+    DO Annuncia wavehole.Destroy 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+
+#28
+  IF Snawave e Snashark.AnimationFinished 6
+  IF Vita.CompareCounter (0)
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO Game.JumpToFrame 1
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Hide 
+    DO Annuncia wavehole.Destroy 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+
+#29
+  IF Wavell.AnimationFinished 9
+  IF Vita.CompareCounter (> 0)
+    DO Wavell.ForceAnimation 3
+    DO Wavell.StartAnimation 
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO The end of the line.SetX (-60)
+    DO Wavell.SetY (117)
+    DO Wavell.SetX (157)
+    DO Wavell.SetDirection 1
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Hide 
+    DO Annuncia wavehole.Destroy 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+
+#30
+  IF Wavell.AnimationFinished 9
+  IF Vita.CompareCounter (0)
+    DO Game.JumpToFrame 1
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Hide 
+    DO Annuncia wavehole.Destroy 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+
+#31
+  IF Keyboard.KeyPressed {"vk": 32}
+  IF Level.CompareCounter (< 2)
+  IF System.Once 
+    DO String.Show 
+    DO Wavell.EnableFlag (28)
+
+#32
+  IF Timer.Every {"ms": 3000}
+  IF Wavell.FlagOn (28)
+    DO String.Destroy 
+
+#33
+  IF Level.CompareCounter (>= 10)
+  IF Wavell.AnimationPlaying 0
+  IF Wavell.AnimationFrame (> 3)
+  IF Wavell.FlagOff (28)
+  IF System.NotAlways 
+    DO Snawave e Snashark.Destroy 
+    DO Line reflux.Destroy 
+    DO Linesaver.Destroy 
+    DO Crea bolla.Destroy 
+    DO Bolla.Destroy 
+    DO Wormwave.Destroy 
+    DO Bonus.Destroy 
+    DO Blur Wavell.Destroy 
+    DO Annuncia wavehole.Destroy 
+    DO Backwave.Destroy 
+    DO System.ActivateGroup {"ptr": 46548, "id": 19}
+    DO System.DeactivateGroup {"ptr": -4152, "id": 3}
+    DO System.DeactivateGroup {"ptr": 788, "id": 2}
+    DO System.DeactivateGroup {"ptr": 3336, "id": 15}
+    DO System.DeactivateGroup {"ptr": 7140, "id": 16}
+    DO System.DeactivateGroup {"ptr": 15428, "id": 4}
+    DO System.DeactivateGroup {"ptr": 26268, "id": 6}
+    DO System.DeactivateGroup {"ptr": 29954, "id": 10}
+    DO System.DeactivateGroup {"ptr": 32718, "id": 7}
+    DO System.DeactivateGroup {"ptr": 39296, "id": 5}
+    DO System.DeactivateGroup {"ptr": 44942, "id": 13}
+    DO Wavehole.Destroy 
+
+#34
+  IF Level.CompareCounter (>= 10)
+  IF Wavell.AnimationPlaying 1
+  IF Wavell.AnimationFrame (> 3)
+  IF Wavell.FlagOff (28)
+  IF System.NotAlways 
+    DO Snawave e Snashark.Destroy 
+    DO Line reflux.Destroy 
+    DO Linesaver.Destroy 
+    DO Crea bolla.Destroy 
+    DO Bolla.Destroy 
+    DO Wormwave.Destroy 
+    DO Bonus.Destroy 
+    DO Blur Wavell.Destroy 
+    DO System.ActivateGroup {"ptr": 46022, "id": 19}
+    DO System.DeactivateGroup {"ptr": -4678, "id": 3}
+    DO System.DeactivateGroup {"ptr": 262, "id": 2}
+    DO System.DeactivateGroup {"ptr": 2810, "id": 15}
+    DO System.DeactivateGroup {"ptr": 6614, "id": 16}
+    DO System.DeactivateGroup {"ptr": 14902, "id": 4}
+    DO System.DeactivateGroup {"ptr": 25742, "id": 6}
+    DO System.DeactivateGroup {"ptr": 29428, "id": 10}
+    DO System.DeactivateGroup {"ptr": 32192, "id": 7}
+    DO System.DeactivateGroup {"ptr": 38770, "id": 5}
+    DO System.DeactivateGroup {"ptr": 44416, "id": 13}
+    DO Annuncia wavehole.Destroy 
+    DO Backwave.Destroy 
+    DO Wavehole.Destroy 
+
+#35
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#36
+  IF System.NewGroup {"flags": 3, "id": 2, "name": "Controls"}
+    DO System.Skip 
+
+#37
+  IF Player.PlayerKeyDown 8
+  IF NOT Player.PlayerKeyDown 4
+  IF Wavell.FlagOff (2)
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 1
+    DO Wavell.SetDirection 1
+
+#38
+  IF Player.PlayerKeyDown 4
+  IF NOT Player.PlayerKeyDown 8
+  IF Wavell.FlagOff (2)
+  IF Wavell.FlagOff (465)
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 1
+    DO Wavell.SetDirection 65536
+
+#39
+  IF Player.PlayerKeyDown 8
+  IF Player.PlayerKeyDown 4
+  IF Wavell.FlagOff (2)
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 0
+
+#40
+  IF NOT Player.PlayerKeyDown 8
+  IF NOT Player.PlayerKeyDown 4
+  IF Wavell.FlagOff (2)
+  IF NOT Wavell.AnimationPlaying 14
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 0
+
+#41
+  IF Player.PlayerKeyPressed 16
+  IF Wavell.FlagOff (2)
+    DO Wavell.ForceAnimation 6
+    DO Wavell.EnableFlag (2)
+    DO Wavell.DisableFlag (3)
+
+#42
+  IF Wavell.AnimationFinished 6
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (2)
+
+#43
+  IF Player.PlayerKeyPressed 2
+  IF Wavell.FlagOff (2)
+    DO Wavell.ForceAnimation 8
+    DO Wavell.EnableFlag (2)
+
+#44
+  IF Player.PlayerKeyDown 2
+  IF Wavell.AnimationFrame (> 13)
+  IF Wavell.AnimationPlaying 8
+    DO Wavell.ForceAnimation 11
+    DO Wavell.EnableFlag (2)
+    DO Wavell.StopAnimation 
+
+#45
+  IF NOT Player.PlayerKeyDown 2
+  IF Wavell.AnimationPlaying 11
+    DO Wavell.ForceAnimation 11
+    DO Wavell.StartAnimation 
+
+#46
+  IF Wavell.AnimationFinished 8
+    DO Wavell.ForceAnimation 11
+    DO Wavell.StartAnimation 
+
+#47
+  IF Wavell.AnimationPlaying 8
+  IF Wavell.AnimationFrame (>= 9)
+  IF System.NotAlways 
+    DO Wavell.EnableFlag (3)
+
+#48
+  IF Wavell.AnimationPlaying 11
+  IF Wavell.AnimationFrame (> 13)
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (2)
+    DO Wavell.DisableFlag (3)
+
+#49
+  IF Player.PlayerKeyPressed 1
+  IF Wavell.FlagOff (2)
+    DO Wavell.ForceAnimation 7
+    DO System.ActivateGroup {"ptr": 354, "id": 15}
+    DO System.DeactivateGroup {"ptr": -2238, "id": 2}
+    DO Wavell.DisableFlag (235)
+
+#50
+  IF Wavell.AnimationPlaying 0
+  IF Wavell.AnimationFrame (>= 2)
+  IF Wavell.FlagOff (456)
+  IF System.NotAlways 
+    DO Player.RestoreControls 
+    DO Wavell.DisableFlag (2)
+    DO Wavell.DisableFlag (235)
+    DO Wavell.DisableFlag (720)
+
+#51
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#52
+  IF System.NewGroup {"flags": 3, "id": 15, "name": "Volavolavolavolaaaa"}
+    DO System.Skip 
+
+#53
+  IF Wavell.AnimationFinished 7
+    DO Wavell.ForceAnimation 9
+    DO Wavell.SetDirection 1
+
+#54
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (< 4)
+    DO Wavell.SetY (Wavell.YPosition Minus 1)
+
+#55
+  IF Player.PlayerKeyDown 1
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (<= 24)
+  IF Wavell.FacingInDirection 1
+  IF Timer.Every {"ms": 20}
+    DO Wavell.SetY (Wavell.YPosition Minus 1)
+
+#56
+  IF Player.PlayerKeyDown 2
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (<= 24)
+  IF Wavell.FacingInDirection 1
+  IF Timer.Every {"ms": 20}
+    DO Wavell.SetY (Wavell.YPosition Plus 1)
+
+#57
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (<= 24)
+  IF Wavell.CompareY (116)
+  IF Player.PlayerKeyDown 2
+  IF The end of the line.CompareX (< Wavell.XPosition Minus 10)
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 5
+    DO Wavell.SetY (117)
+
+#58
+  IF Wavell.AnimationFinished 5
+  IF NOT System.GroupActivated {"ptr": 41962, "id": 19}
+    DO System.ActivateGroup {"ptr": -3776, "id": 2}
+    DO System.DeactivateGroup {"ptr": -1228, "id": 15}
+
+#59
+  IF Wavell.AnimationFinished 5
+  IF System.GroupActivated {"ptr": 41830, "id": 19}
+    DO System.ActivateGroup {"ptr": 50342, "id": 20}
+    DO System.DeactivateGroup {"ptr": -1360, "id": 15}
+
+#60
+  IF Player.PlayerKeyDown 8
+  IF Wavell.AnimationFrame (<= 24)
+  IF Timer.Every {"ms": 100}
+    DO System.SetGlobalValue (1) (2)
+    DO Bullet dalla testa.ExtAct21 (-10)
+    DO Bullet dagli angoli.ExtAct21 (-60)
+    DO Effetto bolla.ExtAct21 (-40)
+    DO Effetto acidoworm.ExtAct21 (-10)
+
+#61
+  IF Player.PlayerKeyDown 4
+  IF Wavell.AnimationFrame (<= 24)
+  IF Timer.Every {"ms": 100}
+    DO System.SetGlobalValue (1) (-2)
+    DO Bullet dalla testa.ExtAct21 (10)
+    DO Bullet dagli angoli.ExtAct21 (60)
+    DO Effetto bolla.ExtAct21 (40)
+    DO Effetto acidoworm.ExtAct21 (10)
+
+#62
+  IF NOT Player.PlayerKeyDown 8
+  IF NOT Player.PlayerKeyDown 4
+    DO System.SetGlobalValue (1) (0)
+    DO Bullet dalla testa.ExtAct21 (0)
+    DO Bullet dagli angoli.ExtAct21 (0)
+    DO Effetto bolla.ExtAct21 (0)
+    DO Effetto acidoworm.ExtAct21 (0)
+
+#63
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (25)
+  IF System.NotAlways 
+    DO Bullet dalla testa.ExtAct21 (0)
+    DO Bullet dagli angoli.ExtAct21 (0)
+    DO System.SetGlobalValue (1) (0)
+    DO Effetto bolla.ExtAct21 (0)
+    DO Effetto acidoworm.ExtAct21 (0)
+
+#64
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (<= 24)
+  IF Wavell.OnCollision <Snawave e Snashark>
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 5
+    DO Wavell.ForceAnimation 9
+    DO Wavell.StartAnimation 
+    DO Wavell.SetDirection 65536
+
+#65
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (<= 24)
+  IF Wavell.OnCollision <Line reflux>
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 5
+    DO Wavell.ForceAnimation 9
+    DO Wavell.StartAnimation 
+    DO Wavell.SetDirection 65536
+    DO Energy Wavell.SubtractCounterValue (1)
+
+#66
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (<= 24)
+  IF Effetto bolla.ExtCond0 
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 5
+    DO Wavell.ForceAnimation 9
+    DO Wavell.StartAnimation 
+    DO Wavell.SetDirection 65536
+
+#67
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (<= 24)
+  IF Wavell.OnCollision <Wormwave>
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 5
+    DO Wavell.ForceAnimation 9
+    DO Wavell.StartAnimation 
+    DO Wavell.SetDirection 65536
+
+#68
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (<= 24)
+  IF Wavell.OnCollision <Onda Flatter>
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 5
+    DO Wavell.ForceAnimation 9
+    DO Wavell.StartAnimation 
+    DO Wavell.SetDirection 65536
+
+#69
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#70
+  IF System.NewGroup {"flags": 2, "id": 16, "name": "Suppapowa!!"}
+    DO System.Skip 
+
+#71
+  IF Timer.Every {"ms": 45000}
+  IF System.NotAlways 
+    DO Crea bolla.SetAlterableValue 1 (Random 2 EndParenthesis)
+    DO Create.CreateObject Bonus @(290,117)
+    DO Speaker.PlaySample {"handle": 20, "flags": 0, "name": "bonus"}
+
+#72
+  IF Crea bolla.CompareAlterableValue 1 (0)
+  IF System.NotAlways 
+    DO Bonus.SetDirection 1
+    DO Bonus.SetAlterableValue 0 (1)
+
+#73
+  IF Crea bolla.CompareAlterableValue 1 (1)
+  IF System.NotAlways 
+    DO Bonus.SetDirection 65536
+    DO Bonus.SetAlterableValue 0 (2)
+
+#74
+  IF Timer.Every {"ms": 10}
+    DO Bonus.SetX (Bonus.XPosition Minus GlobalValueExpression 1 EndParenthesis)
+
+#75
+  IF Bonus.AnimationFinished 0
+    DO Bonus.Destroy 
+
+#76
+  IF Snawave e Snashark.CompareX (< Bonus.XPosition Plus 20)
+  IF System.NotAlways 
+    DO Bonus.Destroy 
+
+#77
+  IF Wormwave.CompareX (< Bonus.XPosition Plus 20)
+  IF System.NotAlways 
+    DO Bonus.Destroy 
+
+#78
+  IF Bonus.IsOverlapping <Bolla>
+  IF System.NotAlways 
+    DO Bolla.Hide 
+    DO Bolla.Destroy 
+
+#79
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.OnCollision <Bonus>
+  IF System.NotAlways 
+    DO Bonus.Destroy 
+
+#80
+  IF Wavell.AnimationPlaying 6
+  IF Wavell.AnimationFrame (> 4)
+  IF System.NotAlways 
+    DO Bonus.Destroy 
+
+#81
+  IF Bonus.CompareX (<= Wavell.XPosition Plus 15)
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 6
+  IF NOT Wavell.AnimationPlaying 7
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF Bonus.CompareAlterableValue 0 (<> 2)
+  IF Bonus.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Bonus.ForceAnimation 8
+    DO Bonus.SetCounterValue (1)
+
+#82
+  IF Bonus.CompareX (<= Wavell.XPosition Plus 15)
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 6
+  IF NOT Wavell.AnimationPlaying 7
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF Bonus.CompareAlterableValue 0 (2)
+  IF Bonus.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Bonus.ForceAnimation 8
+    DO Bonus.SetCounterValue (2)
+
+#83
+  IF Bonus.AnimationFinished 8
+  IF System.NotAlways 
+    DO Bonus.Hide 
+    DO Bonus.Destroy 
+
+#84
+  IF Player.PlayerKeyPressed 32
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 5
+  IF NOT Wavell.AnimationPlaying 6
+  IF NOT Wavell.AnimationPlaying 7
+  IF NOT Wavell.AnimationPlaying 8
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 11
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF NOT Wavell.AnimationPlaying 14
+  IF NOT Wavell.AnimationPlaying 15
+  IF Bonus.CompareCounter (1)
+  IF System.NotAlways 
+    DO Player.IgnoreControls 
+    DO Wavell.ForceAnimation 14
+    DO Wavell.EnableFlag (720)
+    DO Line reflux.Destroy 
+    DO Linesaver.Destroy 
+    DO Bolla.Destroy 
+    DO Wormwave.Destroy 
+    DO Snawave e Snashark.Destroy 
+    DO Bolla piccola.Hide 
+    DO Bolla verde.Hide 
+    DO Bolla rossa.Hide 
+    DO Bonus.SetCounterValue (0)
+    DO System.ActivateGroup {"ptr": 34552, "id": 13}
+    DO Bonus.Destroy 
+    DO Annuncia wavehole.Destroy 
+    DO Wavehole.Destroy 
+    DO Backwave.Destroy 
+
+#85
+  IF Wavell.FlagOn (720)
+  IF Wavell.AnimationFrame (> 6)
+  IF Timer.Every {"ms": 20}
+    DO Effetto linesaver.ExtAct1 @(20,-20 rel Wavell) (Random 10000 EndParenthesis)
+    DO Effetto linesaver.ExtAct1 @(-20,-20 rel Wavell) (Random 10000 EndParenthesis)
+    DO Effetto linesaver.ExtAct11 (0)
+    DO Effetto linesaver.ExtAct12 (0)
+    DO Effetto linesaver.ExtAct13 (255)
+    DO Effetto linesaver.ExtAct15 (8)
+    DO Line reflux.Destroy 
+    DO Linesaver.Destroy 
+    DO Bolla.Destroy 
+    DO Bullet dalla linea.ExtAct0 
+    DO Snawave e Snashark.Destroy 
+    DO Bonus.Destroy 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Destroy 
+    DO Wavehole.Destroy 
+    DO Backwave.Destroy 
+
+#86
+  IF Wavell.FlagOn (720)
+  IF Wavell.AnimationFrame (> 8)
+  IF Timer.Every {"ms": 200}
+    DO Create.CreateObject Megonda @(-15,0 rel Wavell)
+    DO Create.CreateObject Megonda @(15,0 rel Wavell)
+    DO Megonda.BringToBack 
+
+#87
+  IF NOT Wavell.AnimationPlaying 14
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (720)
+    DO Player.RestoreControls 
+    DO Bolla piccola.Show 
+    DO Bolla verde.Show 
+    DO Bolla rossa.Show 
+    DO System.DeactivateGroup {"ptr": 33624, "id": 13}
+    DO Game.CenterDisplay @(165,105)
+
+#88
+  IF Megonda.CompareX (Wavell.XPosition Minus 15)
+  IF Megonda.PickRandom 
+  IF System.NotAlways 
+    DO Megonda.SetDirection 65536
+
+#89
+  IF Megonda.OnCollision <The end of the line>
+  IF System.NotAlways 
+    DO The end of the line.SetX (-90)
+
+#90
+  IF Megonda.OutsidePlayfield 
+    DO Megonda.Destroy 
+
+#91
+  IF Player.PlayerKeyPressed 32
+  IF Wavell.AnimationPlaying 0
+  IF Bonus.CompareCounter (2)
+  IF System.NotAlways 
+    DO Wavell.EnableFlag (122)
+    DO Bonus.SetCounterValue (0)
+    DO Speaker.PlaySample {"handle": 14, "flags": 0, "name": "speed"}
+
+#92
+  IF Player.PlayerKeyPressed 32
+  IF Wavell.AnimationPlaying 1
+  IF Bonus.CompareCounter (2)
+  IF System.NotAlways 
+    DO Bonus.SetCounterValue (0)
+    DO Wavell.EnableFlag (122)
+    DO Speaker.PlaySample {"handle": 14, "flags": 0, "name": "speed"}
+
+#93
+  IF Timer.Every {"ms": 20000}
+  IF Wavell.FlagOn (122)
+    DO Wavell.DisableFlag (122)
+
+#94
+  IF Wavell.FlagOn (122)
+  IF Wavell.AnimationPlaying 2
+  IF Wavell.FacingInDirection 1
+  IF Timer.Every {"ms": 100}
+    DO Create.CreateObject Blur Wavell @(-5,0 rel Wavell)
+    DO Blur Wavell.SetDirection 1
+    DO System.SetGlobalValue (1) (3)
+    DO Blur Wavell.BringToBack 
+
+#95
+  IF Wavell.FlagOn (122)
+  IF Wavell.AnimationPlaying 2
+  IF Wavell.FacingInDirection 1
+  IF Timer.Every {"ms": 10}
+    DO Snawave e Snashark.SetX (Snawave e Snashark.XPosition Minus 1)
+    DO Line reflux.SetX (Line reflux.XPosition Minus 1)
+    DO Bolla.SetX (Bolla.XPosition Minus 1)
+    DO Wormwave.SetX (Wormwave.XPosition Minus 1)
+    DO Bonus.SetX (Bonus.XPosition Minus 1)
+    DO Effetto bolla.ExtAct21 (-60)
+    DO Linesaver.SetX (Linesaver.XPosition Minus 1)
+    DO The end of the line.SetX (The end of the line.XPosition Minus 2)
+    DO Bullet dalla testa.ExtAct21 (-7)
+    DO Bullet dagli angoli.ExtAct21 (-60)
+    DO Bullet dalla linea.ExtAct0 
+    DO Bullet dalla linea.ExtAct21 (-40)
+    DO Wavehole.SetX (Wavehole.XPosition Minus 1)
+    DO Backwave.SetX (Backwave.XPosition Minus 1)
+    DO Effetto acidoworm.ExtAct21 (-10)
+
+#96
+  IF Wavell.FlagOn (122)
+  IF Wavell.AnimationPlaying 2
+  IF Wavell.FacingInDirection 65536
+  IF Timer.Every {"ms": 100}
+    DO Create.CreateObject Blur Wavell @(5,0 rel Wavell)
+    DO Blur Wavell.SetDirection 65536
+    DO System.SetGlobalValue (1) (-3)
+    DO Blur Wavell.BringToBack 
+
+#97
+  IF Wavell.FlagOn (122)
+  IF Wavell.AnimationPlaying 2
+  IF Wavell.FacingInDirection 65536
+  IF Timer.Every {"ms": 10}
+    DO Snawave e Snashark.SetX (Snawave e Snashark.XPosition Plus 2)
+    DO Line reflux.SetX (Line reflux.XPosition Plus 2)
+    DO Bolla.SetX (Bolla.XPosition Plus 2)
+    DO Wormwave.SetX (Wormwave.XPosition Plus 2)
+    DO Bonus.SetX (Bonus.XPosition Plus 2)
+    DO Effetto bolla.ExtAct21 (60)
+    DO Linesaver.SetX (Linesaver.XPosition Plus 2)
+    DO The end of the line.SetX (The end of the line.XPosition Plus 2)
+    DO Bullet dalla testa.ExtAct21 (7)
+    DO Bullet dagli angoli.ExtAct21 (60)
+    DO Wavehole.SetX (Wavehole.XPosition Plus 2)
+    DO Backwave.SetX (Backwave.XPosition Plus 2)
+    DO Effetto acidoworm.ExtAct21 (10)
+
+#98
+  IF Blur Wavell.AnimationPlaying 0
+  IF Timer.Every {"ms": 10}
+    DO Blur Wavell.SetX (Blur Wavell.XPosition Minus GlobalValueExpression 1 EndParenthesis)
+
+#99
+  IF Blur Wavell.AnimationFinished 0
+    DO Blur Wavell.Destroy 
+
+#100
+  IF Wavell.AnimationPlaying 0
+  IF System.NotAlways 
+    DO System.SetGlobalValue (1) (0)
+    DO Effetto bolla.ExtAct21 (0)
+    DO Bullet dagli angoli.ExtAct21 (0)
+    DO Bullet dalla linea.ExtAct21 (0)
+    DO Bullet dalla testa.ExtAct21 (0)
+    DO Effetto acidoworm.ExtAct21 (0)
+
+#101
+  IF Wavell.AnimationPlaying 1
+  IF Wavell.FlagOn (122)
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 2
+
+#102
+  IF Wavell.AnimationPlaying 2
+  IF Wavell.FlagOff (122)
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 1
+
+#103
+  IF Wavell.AnimationPlaying 0
+  IF Wavell.AnimationFrame (>= 2)
+  IF Wavell.FlagOff (456)
+  IF System.NotAlways 
+    DO Player.RestoreControls 
+    DO Wavell.DisableFlag (2)
+    DO Wavell.DisableFlag (235)
+    DO Wavell.DisableFlag (720)
+
+#104
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#105
+  IF System.NewGroup {"flags": 2, "id": 4, "name": "Mostri"}
+    DO System.Skip 
+
+#106
+  IF Player.PlayerKeyDown 8
+  IF NOT Wavell.AnimationPlaying 9
+  IF Timer.Every {"ms": 100}
+    DO System.SetGlobalValue (1) (1)
+    DO Bullet dalla testa.ExtAct21 (-3)
+    DO Bullet dagli angoli.ExtAct21 (-30)
+    DO Effetto bolla.ExtAct21 (-20)
+    DO Effetto acidoworm.ExtAct21 (-5)
+
+#107
+  IF Player.PlayerKeyDown 4
+  IF NOT Wavell.AnimationPlaying 9
+  IF Wavell.FlagOff (465)
+  IF Timer.Every {"ms": 100}
+    DO System.SetGlobalValue (1) (-1)
+    DO Bullet dalla testa.ExtAct21 (3)
+    DO Bullet dagli angoli.ExtAct21 (30)
+    DO Effetto bolla.ExtAct21 (20)
+    DO Effetto acidoworm.ExtAct21 (5)
+
+#108
+  IF NOT Wavell.AnimationPlaying 2
+  IF NOT Wavell.AnimationPlaying 1
+  IF NOT Wavell.AnimationPlaying 9
+    DO System.SetGlobalValue (1) (0)
+    DO Bullet dalla testa.ExtAct21 (0)
+    DO Bullet dagli angoli.ExtAct21 (0)
+    DO Effetto bolla.ExtAct21 (0)
+    DO Effetto acidoworm.ExtAct21 (0)
+
+#109
+  IF Player.PlayerKeyDown 8
+  IF Timer.Every {"ms": 1000}
+    DO System.AddGlobalValue (2) (1)
+
+#110
+  IF System.CompareGlobalValue (2) (Parenthesis 20 Minus Level.CounterValue EndParenthesis)
+  IF Level.CompareCounter (< 10)
+    DO Create.CreateObject Snawave e Snashark @(395,117)
+    DO System.SetGlobalValue (2) (0)
+    DO Snawave e Snashark.BringToBack 
+
+#111
+  IF System.CompareGlobalValue (2) (Parenthesis 10 EndParenthesis)
+  IF Level.CompareCounter (>= 10)
+    DO Create.CreateObject Snawave e Snashark @(395,117)
+    DO System.SetGlobalValue (2) (0)
+    DO Snawave e Snashark.BringToBack 
+
+#112
+  IF Timer.Every {"ms": 10}
+  IF NOT Snawave e Snashark.AnimationPlaying 4
+    DO Snawave e Snashark.SetX (Snawave e Snashark.XPosition Minus 1 Minus GlobalValueExpression 1 EndParenthesis)
+
+#113
+  IF Snawave e Snashark.NumberOfObjects (> 0)
+  IF Level.CompareCounter (> 5)
+  IF System.NotAlways 
+    DO Snawave e Snashark.SetDirection 65537
+
+#114
+  IF Wavell.AnimationPlaying 6
+  IF Wavell.AnimationFrame (> 4)
+  IF Snawave e Snashark.CompareX (> Wavell.XPosition)
+  IF System.NotAlways 
+    DO Snawave e Snashark.Destroy 
+    DO Score.AddCounterValue (4)
+
+#115
+  IF Snawave e Snashark.CompareX (< Wavell.XPosition Plus 20)
+  IF Snawave e Snashark.CompareX (> Wavell.XPosition)
+  IF NOT Wavell.AnimationPlaying 11
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 3
+  IF Snawave e Snashark.FlagOff (400)
+  IF System.NotAlways 
+    DO Snawave e Snashark.ForceAnimation 6
+    DO Wavell.EnableFlag (2)
+    DO Wavell.ForceAnimation 0
+    DO Snawave e Snashark.BringToFront 
+    DO Player.IgnoreControls 
+    DO Blur Wavell.Hide 
+    DO Blur Wavell.Destroy 
+    DO Wavell.EnableFlag (456)
+    DO Wormwave.Destroy 
+    DO Wavehole.Destroy 
+    DO Annuncia wavehole.Destroy 
+
+#116
+  IF Snawave e Snashark.CompareX (< Wavell.XPosition Plus 30)
+  IF Wavell.AnimationPlaying 12
+  IF System.NotAlways 
+    DO Snawave e Snashark.EnableFlag (400)
+
+#117
+  IF Snawave e Snashark.CompareX (< Wavell.XPosition Plus 30)
+  IF Snawave e Snashark.CompareX (> Wavell.XPosition)
+  IF Wavell.AnimationPlaying 11
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 6
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 3
+  IF System.NotAlways 
+    DO System.DeactivateGroup {"ptr": -17962, "id": 2}
+    DO Wavell.EnableFlag (2)
+    DO Wavell.StartAnimation 
+    DO Wavell.ForceAnimation 13
+
+#118
+  IF Snawave e Snashark.CompareX (< Wavell.XPosition Plus 30)
+  IF Snawave e Snashark.CompareX (> Wavell.XPosition)
+  IF Wavell.AnimationPlaying 8
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 6
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 3
+  IF System.NotAlways 
+    DO Wavell.EnableFlag (2)
+    DO Wavell.StartAnimation 
+    DO System.DeactivateGroup {"ptr": -18478, "id": 2}
+    DO Wavell.ForceAnimation 13
+
+#119
+  IF Snawave e Snashark.AnimationPlaying 6
+  IF Snawave e Snashark.FacingInDirection 1
+  IF Snawave e Snashark.AnimationFrame (> 18)
+    DO Wavell.Hide 
+
+#120
+  IF Snawave e Snashark.AnimationPlaying 6
+  IF Snawave e Snashark.FacingInDirection 65536
+  IF Snawave e Snashark.AnimationFrame (> 12)
+    DO Wavell.Hide 
+
+#121
+  IF Player.PlayerKeyDown 8
+  IF Timer.Every {"ms": 1000}
+    DO System.AddGlobalValue (3) (1)
+    DO System.AddGlobalValue (4) (1)
+
+#122
+  IF System.CompareGlobalValue (3) (Parenthesis 16 Minus Level.CounterValue EndParenthesis)
+  IF Level.CompareCounter (< 10)
+    DO Create.CreateObject Wormwave @(395,117)
+    DO Wormwave.BringToBack 
+    DO System.SetGlobalValue (3) (0)
+    DO Speaker.PlaySample {"handle": 16, "flags": 0, "name": "wormwave"}
+
+#123
+  IF System.CompareGlobalValue (3) (Parenthesis 10 EndParenthesis)
+  IF Level.CompareCounter (>= 10)
+    DO Create.CreateObject Wormwave @(395,117)
+    DO Wormwave.BringToBack 
+    DO System.SetGlobalValue (3) (0)
+    DO Speaker.PlaySample {"handle": 16, "flags": 0, "name": "wormwave"}
+
+#124
+  IF Wormwave.IsOverlapping <Snawave e Snashark>
+    DO Wormwave.Hide 
+    DO Wormwave.Destroy 
+
+#125
+  IF Timer.Every {"ms": 10}
+  IF NOT Wormwave.AnimationPlaying 4
+  IF NOT Wormwave.AnimationPlaying 6
+    DO Wormwave.SetX (Wormwave.XPosition Minus 2 Minus GlobalValueExpression 1 EndParenthesis)
+
+#126
+  IF Wavell.AnimationPlaying 6
+  IF Wavell.AnimationFrame (> 4)
+  IF Wormwave.CompareX (> Wavell.XPosition)
+  IF System.NotAlways 
+    DO Score.AddCounterValue (1)
+    DO Wormwave.Destroy 
+    DO Wormwave.DisableFlag (5)
+
+#127
+  IF Wormwave.AnimationFinished 6
+    DO Wormwave.Destroy 
+
+#128
+  IF Wavell.AnimationPlaying 12
+  IF System.NotAlways 
+    DO Wormwave.Destroy 
+
+#129
+  IF Wormwave.CompareX (< Wavell.XPosition Plus 30)
+  IF Wormwave.CompareX (> Wavell.XPosition)
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 3
+  IF Wormwave.FlagOff (400)
+  IF System.NotAlways 
+    DO Wormwave.ForceAnimation 6
+    DO Wormwave.BringToFront 
+    DO Wormwave.EnableFlag (5)
+    DO Speaker.PlaySample {"handle": 17, "flags": 0, "name": "sputa"}
+
+#130
+  IF Wormwave.CompareX (< Wavell.XPosition Plus 30)
+  IF Wavell.AnimationPlaying 12
+  IF System.NotAlways 
+    DO Wormwave.EnableFlag (400)
+
+#131
+  IF Wormwave.FlagOn (5)
+  IF Wormwave.AnimationPlaying 6
+  IF Wormwave.AnimationFrame (< 9)
+    DO Effetto acidoworm.ExtAct0 
+    DO Effetto acidoworm.ExtAct1 @(-5,-15 rel Wormwave) (1800)
+    DO Effetto acidoworm.ExtAct2 <Wavell>
+
+#132
+  IF Wormwave.AnimationPlaying 6
+  IF Wavell.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 15
+    DO Player.IgnoreControls 
+
+#133
+  IF Wormwave.AnimationPlaying 6
+  IF Wavell.AnimationPlaying 1
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 15
+    DO Player.IgnoreControls 
+
+#134
+  IF Wormwave.AnimationPlaying 6
+  IF Wavell.AnimationPlaying 2
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 15
+    DO Player.IgnoreControls 
+
+#135
+  IF Wavell.AnimationPlaying 15
+    DO Effetto acidoworm.ExtAct0 
+
+#136
+  IF Wavell.AnimationPlaying 15
+  IF Timer.Every {"ms": 120}
+    DO The end of the line.SetX (The end of the line.XPosition Plus 1)
+
+#137
+  IF Wavell.AnimationFinished 15
+  IF System.NotAlways 
+    DO Player.RestoreControls 
+
+#138
+  IF Snawave e Snashark.NumberOfObjects (0)
+  IF Wormwave.NumberOfObjects (0)
+  IF Bolla.NumberOfObjects (0)
+  IF The end of the line.OutsidePlayfield 
+  IF System.CompareGlobalValue (4) (>= 20 Minus Level.CounterValue)
+  IF Level.CompareCounter (> 4)
+  IF System.NotAlways 
+    DO Create.CreateObject Annuncia wavehole @(0,117)
+    DO Create.CreateObject Annuncia wavehole @(380,117)
+    DO System.SetGlobalValue (4) (0)
+    DO Annuncia wavehole.BringToBack 
+    DO Speaker.PlaySample {"handle": 23, "flags": 0, "name": "creawavehole"}
+
+#139
+  IF Annuncia wavehole.CompareX (< 5)
+  IF System.NotAlways 
+    DO Annuncia wavehole.SetDirection 1
+
+#140
+  IF Annuncia wavehole.CompareX (> 370)
+  IF System.NotAlways 
+    DO Annuncia wavehole.SetDirection 65536
+    DO Annuncia wavehole.SetX (320)
+
+#141
+  IF Annuncia wavehole.OnCollision <Annuncia wavehole>
+  IF System.NotAlways 
+    DO Annuncia wavehole.Destroy 
+    DO Create.CreateObject Wavehole @(156,117)
+    DO Wavehole.BringToBack 
+    DO Speaker.PlaySample {"handle": 22, "flags": 0, "name": "wavehole"}
+
+#142
+  IF Wavehole.AnimationPlaying 0
+  IF Wavehole.AnimationFrame (< 11)
+    DO Effetto acidoworm.ExtAct0 
+    DO Effetto acidoworm.ExtAct1 @(0,0 rel Wavehole) (900)
+
+#143
+  IF Wavell.AnimationFrame (> 4)
+  IF Wavell.AnimationPlaying 7
+  IF System.NotAlways 
+    DO Wavell.EnableFlag (235)
+
+#144
+  IF Wavell.IsOverlapping <Wavehole>
+  IF Wavehole.AnimationFrame (> 4)
+  IF Wavell.FlagOff (235)
+  IF NOT Wavell.AnimationPlaying 4
+    DO Player.IgnoreControls 
+    DO Wavell.ForceAnimation 4
+    DO Wavell.SetDirection 1
+
+#145
+  IF Timer.Every {"ms": 10}
+  IF NOT Wavell.IsOverlapping <Wavehole>
+    DO Wavehole.SetX (Wavehole.XPosition Minus GlobalValueExpression 1 EndParenthesis)
+
+#146
+  IF Wavehole.AnimationFinished 0
+  IF System.NotAlways 
+    DO Wavehole.Destroy 
+
+#147
+  IF Annuncia wavehole.CompareX (Wavell.XPosition Plus 25)
+  IF Wavell.FlagOn (2)
+  IF System.NotAlways 
+    DO Player.IgnoreControls 
+    DO Wavell.ForceAnimation 11
+    DO Wavell.StartAnimation 
+
+#148
+  IF Wavehole.CompareX (< Wavell.XPosition Minus 10)
+  IF NOT Wavell.AnimationPlaying 4
+  IF System.NotAlways 
+    DO Score.AddCounterValue (8)
+
+#149
+  IF Timer.Every {"ms": 20000}
+    DO Wavell.ToggleFlag (888)
+
+#150
+  IF Wavell.AnimationPlaying 1
+  IF Wavell.FacingInDirection 65536
+  IF The end of the line.CompareX (< 30)
+  IF Level.CompareCounter (> 2)
+  IF Wavell.FlagOn (888)
+  IF Backwave.NumberOfObjects (0)
+  IF System.NotAlways 
+    DO Create.CreateObject Backwave @(140,117)
+    DO Backwave.BringToBack 
+    DO Wavell.DisableFlag (888)
+
+#151
+  IF Backwave.NumberOfObjects (> 0)
+  IF Timer.Every {"ms": 10}
+    DO Backwave.SetX (Backwave.XPosition Minus GlobalValueExpression 1 EndParenthesis)
+
+#152
+  IF Backwave.AnimationPlaying 0
+  IF Backwave.AnimationFrame (>= 7)
+    DO Effetto acidoworm.ExtAct0 
+    DO Effetto acidoworm.ExtAct1 @(0,0 rel Backwave) (-900)
+
+#153
+  IF Backwave.AnimationFinished 0
+    DO Backwave.Destroy 
+
+#154
+  IF Backwave.CompareX (> Wavell.XPosition Minus 30)
+  IF Backwave.CompareX (< Wavell.XPosition Minus 10)
+  IF Wavell.CompareY (117)
+  IF System.NotAlways 
+    DO Wavell.EnableFlag (465)
+    DO Wavell.ForceAnimation 0
+
+#155
+  IF Backwave.NumberOfObjects (0)
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (465)
+
+#156
+  IF Wavell.CompareX (> Backwave.XPosition Plus 10)
+    DO Wavell.DisableFlag (465)
+
+#157
+  IF Wavell.CompareX (< Backwave.XPosition Minus 30)
+    DO Wavell.DisableFlag (465)
+
+#158
+  IF Wavell.AnimationPlaying 0
+  IF Backwave.AnimationFrame (>= 7)
+  IF Backwave.AnimationPlaying 0
+  IF Backwave.CompareX (> Wavell.XPosition Minus 30)
+  IF Backwave.CompareX (< Wavell.XPosition)
+    DO Player.IgnoreControls 
+    DO Wavell.ForceAnimation 15
+
+#159
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#160
+  IF System.NewGroup {"flags": 2, "id": 6, "name": "Line reflux"}
+    DO System.Skip 
+
+#161
+  IF Line reflux.PickRandom 
+  IF System.Always 
+    DO Scia del line reflux.ExtAct0 
+
+#162
+  IF Timer.Every {"ms": 3000}
+    DO The end of the line.SetAlterableValue 1 (Random 100 EndParenthesis)
+
+#163
+  IF Snawave e Snashark.CompareX (> 300)
+  IF System.NotAlways 
+    DO Wavell.EnableFlag (2080)
+
+#164
+  IF Snawave e Snashark.CompareX (< 300)
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (2080)
+
+#165
+  IF Snawave e Snashark.NumberOfObjects (0)
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (2080)
+
+#166
+  IF The end of the line.CompareAlterableValue 1 (< 13 Plus Parenthesis Parenthesis Level.CounterValue EndParenthesis Multiply 2 EndParenthesis)
+  IF Timer.TimerGreater {"ms": 5000, "loops": 0}
+  IF Line reflux.NumberOfObjects (0)
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF Wavell.FlagOff (2080)
+  IF System.NotAlways 
+    DO Create.CreateObject Line reflux @(149,-123)
+    DO Line reflux.BringToBack 
+    DO The end of the line.SetAlterableValue 1 (100)
+
+#167
+  IF Line reflux.CompareY (-123)
+  IF System.NotAlways 
+    DO Line reflux.SetAlterableValue 0 (Random 4 EndParenthesis)
+
+#168
+  IF Line reflux.CompareAlterableValue 0 (0)
+  IF System.NotAlways 
+    DO Line reflux.SetPosition @(-10,100)
+    DO Line reflux.Start 
+    DO Line reflux.SetDirection 1
+    DO Line reflux.SetAlterableValue 1 (1)
+
+#169
+  IF Line reflux.CompareAlterableValue 0 (1)
+  IF System.NotAlways 
+    DO Line reflux.SetPosition @(-10,126)
+    DO Line reflux.Start 
+    DO Line reflux.SetDirection 1
+    DO Line reflux.SetAlterableValue 1 (1)
+
+#170
+  IF Line reflux.CompareAlterableValue 0 (2)
+  IF System.NotAlways 
+    DO Line reflux.SetPosition @(330,100)
+    DO Line reflux.Start 
+    DO Line reflux.SetDirection 65536
+    DO Line reflux.SetAlterableValue 1 (2)
+
+#171
+  IF Line reflux.CompareAlterableValue 0 (3)
+  IF System.NotAlways 
+    DO Line reflux.SetPosition @(330,126)
+    DO Line reflux.Start 
+    DO Line reflux.SetDirection 65536
+    DO Line reflux.SetAlterableValue 1 (2)
+
+#172
+  IF Line reflux.CompareY (> 30)
+    DO Scia del line reflux.ExtAct7 (50)
+    DO Scia del line reflux.ExtAct15 (8)
+
+#173
+  IF Line reflux.CompareY (< 30)
+    DO Line reflux.Destroy 
+
+#174
+  IF Line reflux.CompareX (< -20)
+    DO Line reflux.Destroy 
+
+#175
+  IF Line reflux.CompareX (> 340)
+    DO Line reflux.Destroy 
+
+#176
+  IF Line reflux.CompareAlterableValue 1 (1)
+    DO Scia del line reflux.ExtAct1 @(0,0 rel Line reflux) (0)
+
+#177
+  IF Line reflux.CompareAlterableValue 1 (2)
+    DO Scia del line reflux.ExtAct1 @(0,0 rel Line reflux) (1800)
+
+#178
+  IF Line reflux.OnCollision <Wavell>
+  IF Wavell.FlagOff (3)
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF NOT Wavell.AnimationPlaying 9
+    DO Wavell.ForceAnimation 4
+    DO Wavell.ForceDirection 1
+    DO Snawave e Snashark.Destroy 
+    DO Wormwave.Destroy 
+    DO Annuncia wavehole.Destroy 
+    DO Wavehole.Destroy 
+    DO Bonus.Destroy 
+
+#179
+  IF Line reflux.OnCollision <Wavell>
+  IF Wavell.FlagOn (3)
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF NOT Wavell.AnimationPlaying 9
+    DO Wavell.ForceAnimation 4
+    DO Wavell.ForceDirection 16777216
+    DO Wavell.StartAnimation 
+    DO Snawave e Snashark.Destroy 
+    DO Wormwave.Destroy 
+    DO Wavehole.Destroy 
+    DO Annuncia wavehole.Destroy 
+    DO Bonus.Destroy 
+
+#180
+  IF Wavell.CompareX (< Line reflux.XPosition Plus 5)
+  IF NOT Wavell.AnimationPlaying 4
+  IF Line reflux.FacingInDirection 1
+  IF System.NotAlways 
+    DO Score.AddCounterValue (6)
+
+#181
+  IF Line reflux.CompareX (< Wavell.XPosition Minus 5)
+  IF NOT Wavell.AnimationPlaying 4
+  IF Line reflux.FacingInDirection 65536
+  IF System.NotAlways 
+    DO Score.AddCounterValue (6)
+
+#182
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#183
+  IF System.NewGroup {"flags": 2, "id": 10, "name": "Bolla"}
+    DO System.Skip 
+
+#184
+  IF Crea bolla.CompareX (> Wavell.XPosition Plus 50)
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF NOT Crea bolla.IsOverlapping <The end of the line>
+  IF Crea bolla.FlagOn (0)
+  IF Crea bolla.CompareAlterableValue 0 (<= 0)
+  IF Timer.Every {"ms": 3000}
+  IF System.NotAlways 
+    DO Create.CreateObject Bolla @(0,0 rel Crea bolla)
+    DO Crea bolla.DisableFlag (0)
+    DO Crea bolla.SetAlterableValue 0 (3)
+
+#185
+  IF Crea bolla.CompareX (< Wavell.XPosition Minus 50)
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF NOT Crea bolla.IsOverlapping <The end of the line>
+  IF Crea bolla.FlagOn (0)
+  IF Crea bolla.CompareAlterableValue 0 (<= 0)
+  IF Timer.Every {"ms": 3000}
+  IF System.NotAlways 
+    DO Create.CreateObject Bolla @(0,0 rel Crea bolla)
+    DO Crea bolla.DisableFlag (0)
+    DO Crea bolla.SetAlterableValue 0 (3)
+
+#186
+  IF Timer.Every {"ms": 1000}
+  IF Crea bolla.CompareAlterableValue 0 (>= 0)
+    DO Crea bolla.SubtractFromAlterable 0 (1)
+
+#187
+  IF Bolla.NumberOfObjects (> 0)
+  IF Timer.Every {"ms": 10}
+    DO Bolla.SetX (Bolla.XPosition Minus GlobalValueExpression 1 EndParenthesis)
+
+#188
+  IF Bolla.AnimationFinished 0
+    DO Bolla.Destroy 
+
+#189
+  IF Crea bolla.CompareX (> Snawave e Snashark.XPosition Plus 10)
+    DO Crea bolla.EnableFlag (0)
+
+#190
+  IF Crea bolla.CompareX (< Snawave e Snashark.XPosition Minus 30)
+    DO Crea bolla.EnableFlag (0)
+
+#191
+  IF Crea bolla.CompareX (> Snawave e Snashark.XPosition Minus 30)
+  IF Crea bolla.CompareX (< Snawave e Snashark.XPosition Plus 10)
+    DO Crea bolla.DisableFlag (0)
+
+#192
+  IF Effetto bolla.ExtCond0 
+  IF Bolla.AnimationFrame (<= 18)
+  IF Wavell.FlagOff (3)
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 13
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 8
+  IF NOT Wavell.AnimationPlaying 14
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 0
+    DO Wavell.ForceAnimation 15
+    DO Wavell.StartAnimation 
+    DO Player.IgnoreControls 
+
+#193
+  IF Bolla.IsOverlapping <Snawave e Snashark>
+  IF System.NotAlways 
+    DO Bolla.Destroy 
+
+#194
+  IF Bolla.IsOverlapping <Wormwave>
+  IF System.NotAlways 
+    DO Bolla.Destroy 
+
+#195
+  IF Bolla.IsOverlapping <Wavehole>
+  IF System.NotAlways 
+    DO Bolla.Hide 
+    DO Bolla.Destroy 
+
+#196
+  IF Bolla.IsOverlapping <Backwave>
+  IF System.NotAlways 
+    DO Bolla.Hide 
+    DO Bolla.Destroy 
+
+#197
+  IF Bolla.IsOverlapping <Bonus>
+  IF System.NotAlways 
+    DO Bolla.Hide 
+    DO Bolla.Destroy 
+
+#198
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#199
+  IF System.NewGroup {"flags": 2, "id": 7, "name": "Linesaver"}
+    DO System.Skip 
+
+#200
+  IF Timer.Every {"ms": 1000}
+    DO The end of the line.SetAlterableValue 0 (Random 100 EndParenthesis)
+
+#201
+  IF The end of the line.CompareAlterableValue 0 (< 50)
+  IF Timer.TimerGreater {"ms": 5000, "loops": 0}
+  IF System.NotAlways 
+    DO Create.CreateObject Linesaver @(160,-60)
+    DO Linesaver.BringToBack 
+
+#202
+  IF Linesaver.CompareY (< -20)
+  IF System.NotAlways 
+    DO Linesaver.SetAlterableValue 0 (Random 4 EndParenthesis)
+
+#203
+  IF Linesaver.CompareAlterableValue 0 (0)
+  IF System.NotAlways 
+    DO Linesaver.SetPosition @(10,10)
+    DO Linesaver.SetDirection 268435456
+
+#204
+  IF Linesaver.CompareAlterableValue 0 (1)
+  IF System.NotAlways 
+    DO Linesaver.SetPosition @(10,190)
+    DO Linesaver.SetDirection 16
+
+#205
+  IF Linesaver.CompareAlterableValue 0 (2)
+  IF System.NotAlways 
+    DO Linesaver.SetPosition @(310,10)
+    DO Linesaver.SetDirection 1048576
+
+#206
+  IF Linesaver.CompareAlterableValue 0 (3)
+  IF System.NotAlways 
+    DO Linesaver.SetPosition @(310,190)
+    DO Linesaver.SetDirection 4096
+
+#207
+  IF Timer.Every {"ms": 1000}
+  IF Bolla piccola.PickRandom 
+    DO Linesaver.LookAt @(0,0 rel Bolla piccola)
+
+#208
+  IF Timer.Every {"ms": 10}
+  IF Linesaver.CompareX (> 20)
+  IF Linesaver.CompareX (< 300)
+  IF Linesaver.CompareY (> 20)
+  IF Linesaver.CompareY (< 100)
+    DO Linesaver.SetDirection (Linesaver.GetDirection Plus Random 3 EndParenthesis)
+    DO Linesaver.SetY (Linesaver.YPosition Plus 1)
+
+#209
+  IF Timer.Every {"ms": 10}
+  IF Linesaver.CompareX (> 20)
+  IF Linesaver.CompareX (< 300)
+  IF Linesaver.CompareY (>= 130)
+  IF Linesaver.CompareY (< 180)
+    DO Linesaver.SetDirection (Linesaver.GetDirection Plus Random 3 EndParenthesis)
+    DO Linesaver.SetY (Linesaver.YPosition Minus 1)
+
+#210
+  IF Timer.Every {"ms": 10}
+    DO Linesaver.SetX (Linesaver.XPosition Minus GlobalValueExpression 1 EndParenthesis)
+
+#211
+  IF Timer.Every {"ms": 1000}
+    DO Linesaver.AddToAlterable 1 (1)
+
+#212
+  IF Linesaver.CompareAlterableValue 1 (10)
+    DO Linesaver.Destroy 
+
+#213
+  IF Linesaver.OnCollision <Wavell>
+    DO Linesaver.Destroy 
+    DO Score.AddCounterValue (10)
+
+#214
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#215
+  IF System.NewGroup {"flags": 2, "id": 8, "name": "Punti"}
+    DO System.Skip 
+
+#216
+  IF Score.CompareCounter (> 100 Multiply Level.CounterValue)
+  IF System.NotAlways 
+    DO Level.AddCounterValue (1)
+    DO Level.ForceAnimation 6
+    DO System.ActivateGroup {"ptr": 9984, "id": 13}
+
+#217
+  IF Level.AnimationFinished 6
+    DO Level.ForceAnimation 0
+    DO Bullet suppapowa.ExtAct1 @(60,-57) (0)
+    DO Bullet suppapowa.ExtAct3 (1)
+    DO Bullet suppapowa.ExtAct4 (500)
+    DO Bullet suppapowa.ExtAct6 (50)
+    DO Bullet suppapowa.ExtAct23 (3)
+    DO Bullet suppapowa.ExtAct15 (1)
+    DO System.DeactivateGroup {"ptr": 9632, "id": 13}
+    DO Game.CenterDisplay @(165,105)
+
+#218
+  IF Level.AnimationPlaying 6
+    DO Bullet suppapowa.ExtAct1 @(160,100) (1200)
+    DO Bullet suppapowa.ExtAct0 
+    DO Bullet suppapowa.ExtAct3 (1)
+    DO Bullet suppapowa.ExtAct4 (1)
+    DO Bullet suppapowa.ExtAct6 (5)
+    DO Bullet suppapowa.ExtAct23 (3)
+    DO Bullet suppapowa.ExtAct15 (6)
+
+#219
+  IF Level.CompareCounter (3)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#220
+  IF Level.CompareCounter (6)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#221
+  IF Level.CompareCounter (9)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#222
+  IF Level.CompareCounter (12)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#223
+  IF Level.CompareCounter (15)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#224
+  IF Level.CompareCounter (18)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#225
+  IF Level.CompareCounter (21)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#226
+  IF Level.CompareCounter (24)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#227
+  IF Level.CompareCounter (27)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#228
+  IF Level.CompareCounter (30)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#229
+  IF Level.CompareCounter (33)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#230
+  IF Level.CompareCounter (36)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#231
+  IF Level.CompareCounter (39)
+  IF System.NotAlways 
+    DO Vita.AddCounterValue (1)
+
+#232
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#233
+  IF System.NewGroup {"flags": 2, "id": 1, "name": "Visual effects"}
+    DO System.Skip 
+
+#234
+  IF Bolla piccola.LeavingPlayfield 15
+    DO Bolla piccola.Bounce 
+
+#235
+  IF Bolla verde.LeavingPlayfield 15
+    DO Bolla verde.Bounce 
+
+#236
+  IF Bolla rossa.LeavingPlayfield 15
+    DO Bolla rossa.Bounce 
+
+#237
+  IF System.Always 
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 9
+  IF Wavell.ObjectVisible 
+    DO Bullet dalla testa.ExtAct1 @(0,0 rel Wavell) (1000)
+    DO Bullet dalla testa.ExtAct0 
+
+#238
+  IF System.Always 
+  IF Wavell.AnimationPlaying 12
+    DO Bullet dalla testa.ExtAct0 
+
+#239
+  IF System.Always 
+  IF Wavell.ObjectInvisible 
+    DO Bullet dalla testa.ExtAct0 
+
+#240
+  IF System.GroupActivated {"ptr": -34382, "id": 15}
+    DO Bullet dalla testa.ExtAct0 
+
+#241
+  IF The end of the line.CompareX (> 0)
+  IF The end of the line.FlagOff (1)
+    DO Bullet dalla linea.ExtAct0 
+    DO Bullet dalla linea.ExtAct1 @(0,0 rel The end of the line) (1900)
+
+#242
+  IF The end of the line.CompareX (> 0)
+  IF The end of the line.FlagOn (1)
+    DO Bullet dalla linea.ExtAct0 
+
+#243
+  IF System.Always 
+  IF The end of the line.FlagOff (10000)
+    DO Bullet dagli angoli.ExtAct0 
+    DO Bullet dagli angoli.ExtAct1 @(5,205) (4000)
+    DO Bullet dagli angoli.ExtAct1 @(325,205) (1300)
+    DO Bullet dagli angoli.ExtAct1 @(325,5) (2200)
+    DO Bullet dagli angoli.ExtAct1 @(5,5) (3200)
+    DO Bullet dagli angoli.ExtAct15 (8)
+    DO Bullet dagli angoli.ExtAct5 (5)
+    DO Bullet dagli angoli.ExtAct8 (50)
+
+#244
+  IF The end of the line.FlagOn (10000)
+    DO Bullet dagli angoli.ExtAct0 
+    DO Bullet dagli angoli.ExtAct17 (100) (100)
+
+#245
+  IF Timer.Every {"ms": 1000}
+    DO The end of the line.SetAlterableValue 2 (Random 100 EndParenthesis)
+
+#246
+  IF The end of the line.CompareAlterableValue 2 (< 10)
+  IF Timer.TimerGreater {"ms": 5000, "loops": 0}
+    DO The end of the line.EnableFlag (10000)
+
+#247
+  IF Timer.Every {"ms": 1000}
+  IF The end of the line.FlagOn (10000)
+    DO The end of the line.DisableFlag (10000)
+
+#248
+  IF Linesaver.PickRandom 
+  IF NOT Wavell.AnimationPlaying 14
+  IF System.Always 
+    DO Effetto linesaver.ExtAct0 
+    DO Effetto linesaver.ExtAct1 @(0,0 rel Linesaver) (Random 10000 EndParenthesis)
+    DO Effetto linesaver.ExtAct15 (8)
+    DO Effetto linesaver.ExtAct11 (255)
+    DO Effetto linesaver.ExtAct12 (255)
+    DO Effetto linesaver.ExtAct13 (0)
+
+#249
+  IF System.Always 
+    DO Effetto linesaver.ExtAct0 
+    DO Effetto bolla.ExtAct0 
+    DO Effetto bolla.ExtAct2 <Wavell>
+    DO Scia del line reflux.ExtAct0 
+    DO Effetto acidoworm.ExtAct0 
+
+#250
+  IF Bolla.AnimationPlaying 0
+  IF Bolla.AnimationFrame (< 5)
+  IF Bolla.PickRandom 
+  IF System.Always 
+    DO Effetto bolla.ExtAct1 @(0,-10 rel Bolla) (500)
+
+#251
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#252
+  IF System.NewGroup {"flags": 2, "id": 5, "name": "The end of the world as we know it"}
+    DO System.Skip 
+
+#253
+  IF Timer.Every {"ms": 50}
+  IF The end of the line.CompareX (> -70)
+  IF The end of the line.CompareX (< 250)
+    DO The end of the line.SetX (The end of the line.XPosition Plus 1 Minus Parenthesis GlobalValueExpression 1 EndParenthesis Multiply 2 EndParenthesis)
+
+#254
+  IF The end of the line.CompareX (<= -70)
+    DO The end of the line.SetX (-60)
+
+#255
+  IF The end of the line.IsOverlapping <Wavell>
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 11
+  IF NOT Wavell.AnimationPlaying 12
+  IF NOT Wavell.AnimationPlaying 9
+    DO Wavell.ForceAnimation 12
+    DO Wavell.ForceDirection 1
+
+#256
+  IF The end of the line.IsOverlapping <Wavell>
+  IF Wavell.AnimationPlaying 11
+  IF NOT Wavell.AnimationPlaying 12
+    DO Wavell.ForceAnimation 12
+    DO Wavell.ForceDirection 16777216
+    DO Wavell.StartAnimation 
+
+#257
+  IF The end of the line.IsOverlapping <Wavell>
+  IF Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 12
+    DO Wavell.ForceAnimation 12
+    DO Wavell.ForceDirection 1
+
+#258
+  IF Wavell.AnimationPlaying 12
+    DO The end of the line.SetX (Wavell.XPosition Plus 8)
+    DO The end of the line.EnableFlag (1)
+
+#259
+  IF Wavell.AnimationPlaying 12
+  IF Wavell.AnimationFrame (> 9)
+    DO The end of the line.SetX (Wavell.XPosition Plus 12)
+
+#260
+  IF Wavell.AnimationFinished 12
+    DO The end of the line.DisableFlag (1)
+
+#261
+  IF The end of the line.OnCollision <Snawave e Snashark>
+  IF NOT Snawave e Snashark.AnimationPlaying 6
+    DO Snawave e Snashark.ForceAnimation 12
+
+#262
+  IF Snawave e Snashark.AnimationPlaying 12
+    DO The end of the line.EnableFlag (1)
+
+#263
+  IF Snawave e Snashark.AnimationFinished 12
+    DO Snawave e Snashark.Hide 
+    DO Snawave e Snashark.Destroy 
+    DO The end of the line.DisableFlag (1)
+
+#264
+  IF The end of the line.OnCollision <Wavehole>
+    DO Wavehole.ForceAnimation 12
+
+#265
+  IF Wavehole.AnimationFinished 12
+    DO Wavehole.Hide 
+    DO Wavehole.Destroy 
+
+#266
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#267
+  IF System.NewGroup {"flags": 2, "id": 11, "name": "Effetti sonori"}
+    DO System.Skip 
+
+#268
+  IF Wavell.AnimationPlaying 3
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 0, "flags": 0, "name": "compare"}
+
+#269
+  IF Wavell.AnimationPlaying 4
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 1, "flags": 0, "name": "sparisce"}
+    DO Wavell.DisableFlag (720)
+
+#270
+  IF Wavell.AnimationPlaying 6
+  IF Wavell.AnimationFrame (> 3)
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 2, "flags": 0, "name": "colpisce"}
+
+#271
+  IF Wavell.AnimationPlaying 6
+  IF Snawave e Snashark.NumberOfObjects (> 0)
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 3, "flags": 0, "name": "snawave sparisce"}
+
+#272
+  IF Wavell.AnimationPlaying 8
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 4, "flags": 0, "name": "rovescia in giu"}
+
+#273
+  IF Wavell.AnimationPlaying 11
+  IF Wavell.AnimationFrame (> 2)
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 5, "flags": 0, "name": "rovescia in su"}
+
+#274
+  IF Wavell.AnimationPlaying 12
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 6, "flags": 0, "name": "offline"}
+
+#275
+  IF Wavell.AnimationPlaying 13
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 7, "flags": 0, "name": "eated"}
+
+#276
+  IF Snawave e Snashark.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+
+#277
+  IF Snawave e Snashark.AnimationPlaying 6
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 7, "flags": 0, "name": "eated"}
+
+#278
+  IF Bolla.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 9, "flags": 0, "name": "bolla"}
+
+#279
+  IF Level.AnimationPlaying 6
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 10, "flags": 0, "name": "levelpass"}
+
+#280
+  IF Line reflux.InsidePlayfield 
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 12, "flags": 0, "name": "reflux"}
+
+#281
+  IF Linesaver.OnCollision <Wavell>
+    DO Speaker.PlaySample {"handle": 11, "flags": 0, "name": "linesaver"}
+
+#282
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (25)
+  IF Wavell.FacingInDirection 1
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 13, "flags": 0, "name": "bollapop"}
+
+#283
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.FacingInDirection 65536
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 13, "flags": 0, "name": "bollapop"}
+
+#284
+  IF Backwave.AnimationFrame (7)
+  IF Backwave.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 17, "flags": 0, "name": "sputa"}
+
+#285
+  IF Snawave e Snashark.FacingInDirection 65536
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 18, "flags": 0, "name": "sharkwave"}
+
+#286
+  IF Snawave e Snashark.FacingInDirection 65536
+  IF Snawave e Snashark.AnimationPlaying 6
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 19, "flags": 0, "name": "morso"}
+
+#287
+  IF Wavell.AnimationPlaying 14
+  IF Wavell.AnimationFrame (5)
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 21, "flags": 0, "name": "nuke"}
+
+#288
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#289
+  IF System.NewGroup {"flags": 3, "id": 13, "name": "Tremors"}
+    DO System.Skip 
+
+#290
+  IF Timer.Every {"ms": 100}
+    DO Game.CenterDisplayX (160 Plus Random 10 EndParenthesis)
+    DO Game.CenterDisplayY (100 Plus Random 10 EndParenthesis)
+
+#291
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#292
+  IF System.NewGroup {"flags": 3, "id": 14, "name": "Psycho"}
+    DO System.Skip 
+
+#293
+  IF System.NotAlways 
+    DO Bolla rossa.Destroy 
+    DO Bolla verde.Destroy 
+    DO Bolla piccola.Hide 
+    DO Create.CreateObject Coloroso @(-5,5)
+    DO Create.CreateObject Coloroso @(165,5)
+    DO Create.CreateObject Coloroso @(335,5)
+
+#294
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#295
+  IF System.NewGroup {"flags": 3, "id": 17, "name": "Inverted"}
+    DO System.Skip 
+
+#296
+  IF System.NotAlways 
+    DO Create.CreateObject Invertitore @(0,0)
+
+#297
+  IF Snawave e Snashark.AnimationPlaying 6
+  IF System.NotAlways 
+    DO Snawave e Snashark.BringToBack 
+    DO Wavell.BringToBack 
+
+#298
+  IF Bolla.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Bolla.BringToBack 
+
+#299
+  IF Bonus.AnimationPlaying 0
+  IF System.NotAlways 
+    DO Bonus.BringToBack 
+
+#300
+  IF Wormwave.AnimationPlaying 6
+  IF System.NotAlways 
+    DO Wormwave.BringToBack 
+
+#301
+  IF Energy Flatter.ObjectVisible 
+  IF System.Once 
+    DO Energy Wavell.SetInkEffect [2, 50]
+    DO Energy Flatter.SetInkEffect [2, 50]
+
+#302
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#303
+  IF System.NewGroup {"flags": 3, "id": 19, "name": "The Flatter"}
+    DO System.Skip 
+
+#304
+  IF System.NotAlways 
+    DO Player.IgnoreControls 
+    DO Wavell.ForceAnimation 0
+    DO Bonus.SetCounterValue (0)
+    DO Bullet dalla testa.ExtAct21 (-7)
+    DO Wavell.DisableFlag (2)
+    DO Wavell.SetDirection 1
+    DO Effetto bolla.ExtAct21 (0)
+    DO Wavell.DisableFlag (63)
+
+#305
+  IF Timer.Every {"ms": 100}
+  IF Wavell.FlagOff (154)
+    DO Bullet dagli angoli.ExtAct3 (Bullet dagli angoli.ExtAct0 Minus 10)
+    DO DMC2 Object.ExtAct8 (DMC2 Object.ExtAct3 Minus 5)
+
+#306
+  IF Timer.Every {"ms": 3000}
+  IF System.Once 
+    DO Wavell.ForceAnimation 1
+    DO Wavell.EnableFlag (154)
+    DO Wavell.SetDirection 1
+
+#307
+  IF Wavell.AnimationPlaying 1
+  IF Timer.Every {"ms": 10}
+    DO The end of the line.SetX (The end of the line.XPosition Minus 1)
+
+#308
+  IF The end of the line.CompareX (>= 20)
+    DO Bullet dalla linea.ExtAct0 
+
+#309
+  IF The end of the line.CompareX (<= -20)
+  IF System.NotAlways 
+    DO Wavell.EnableFlag (776)
+
+#310
+  IF Wavell.FlagOn (776)
+  IF Wavell.AnimationPlaying 1
+  IF Timer.Every {"ms": 50}
+    DO Wavell.SetX (Wavell.XPosition Minus 2)
+    DO Bullet dalla testa.ExtAct21 (-20)
+
+#311
+  IF Wavell.CompareX (<= 24)
+  IF System.Once 
+    DO Wavell.DisableFlag (776)
+    DO Wavell.ForceAnimation 0
+    DO Create.CreateObject The flatter @(221,117)
+    DO System.ActivateGroup {"ptr": -2782, "id": 13}
+    DO Speaker.PlaySample {"handle": 15, "flags": 0, "name": "fnasce"}
+    DO The flatter.BringToBack 
+    DO System.DeactivateGroup {"ptr": -13178, "id": 8}
+    DO DMC2 Object.ExtAct1 ('Beppo - Flat or be flatten.mp3')
+    DO DMC2 Object.ExtAct2 (6)
+    DO DMC2 Object.ExtAct8 (80)
+    DO System.SetGlobalValue (15) (4)
+
+#312
+  IF The flatter.AnimationFinished 3
+    DO System.DeactivateGroup {"ptr": -3142, "id": 13}
+    DO Game.CenterDisplay @(165,105)
+    DO Player.RestoreControls 
+    DO System.ActivateGroup {"ptr": 6706, "id": 20}
+    DO Bullet dalla testa.ExtAct21 (0)
+
+#313
+  IF The flatter.AnimationPlaying 0
+  IF System.Once 
+    DO Create.CreateObject Energy Wavell @(23,22)
+    DO Create.CreateObject Energy Flatter @(297,22)
+
+#314
+  IF Timer.Every {"ms": 3000}
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF Energy Flatter.CompareCounter (<> 0)
+  IF System.NotAlways 
+    DO The flatter.SetAlterableValue 0 (Random 3 EndParenthesis Plus 1)
+
+#315
+  IF The flatter.CompareAlterableValue 0 (0)
+  IF The flatter.AnimationFinished 3
+  IF System.NotAlways 
+    DO The flatter.ForceAnimation 0
+
+#316
+  IF The flatter.CompareAlterableValue 0 (1)
+  IF System.NotAlways 
+    DO The flatter.ForceAnimation 6
+    DO Speaker.PlaySample {"handle": 26, "flags": 0, "name": "freflux"}
+
+#317
+  IF The flatter.CompareAlterableValue 0 (2)
+  IF System.NotAlways 
+    DO The flatter.ForceAnimation 9
+    DO Create.CreateObject Bolla @(200,117)
+    DO Speaker.PlaySample {"handle": 27, "flags": 0, "name": "fmagia"}
+
+#318
+  IF The flatter.CompareAlterableValue 0 (3)
+  IF System.NotAlways 
+    DO The flatter.ForceAnimation 8
+    DO Speaker.PlaySample {"handle": 28, "flags": 0, "name": "fonda"}
+
+#319
+  IF The flatter.AnimationPlaying 6
+  IF The flatter.AnimationFrame (4)
+    DO Create.CreateObject Carica reflux @(12,-21 rel The flatter)
+    DO Carica reflux.BringToBack 
+
+#320
+  IF Carica reflux.AnimationFrame (13)
+  IF System.NotAlways 
+    DO Create.CreateObject Line reflux @(0,0 rel Carica reflux)
+
+#321
+  IF Carica reflux.AnimationFinished 0
+    DO Carica reflux.Destroy 
+
+#322
+  IF Line reflux.NumberOfObjects (1)
+  IF Timer.Every {"ms": 10}
+    DO Scia del line reflux.ExtAct1 @(0,0 rel Line reflux) (1800)
+    DO Scia del line reflux.ExtAct15 (8)
+    DO Line reflux.Start 
+    DO Line reflux.SetDirection 65536
+    DO Line reflux.SetSpeed (70)
+
+#323
+  IF Line reflux.CompareX (< -10)
+    DO Line reflux.Destroy 
+
+#324
+  IF Line reflux.OnCollision <Wavell>
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 9
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 4
+    DO Energy Wavell.SubtractCounterValue (1)
+    DO Wavell.EnableFlag (2)
+
+#325
+  IF The flatter.AnimationPlaying 8
+  IF The flatter.AnimationFrame (4)
+  IF System.NotAlways 
+    DO Create.CreateObject Onda Flatter @(-85,0 rel The flatter)
+    DO Onda Flatter.SetDirection 65536
+    DO Onda Flatter.BringToBack 
+
+#326
+  IF Wavell.AnimationPlaying 6
+  IF Wavell.AnimationFrame (> 3)
+    DO Onda Flatter.SetDirection 1
+
+#327
+  IF Onda Flatter.CompareX (>= 195)
+  IF Onda Flatter.FacingInDirection 1
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 29, "flags": 0, "name": "fcolpito"}
+    DO The flatter.ForceAnimation 10
+    DO Onda Flatter.Destroy 
+    DO Energy Flatter.SubtractCounterValue (1)
+
+#328
+  IF Onda Flatter.OnCollision <Wavell>
+  IF Wavell.FlagOff (2)
+  IF System.GroupActivated {"ptr": 3830, "id": 20}
+    DO Onda Flatter.Destroy 
+    DO Energy Wavell.SubtractCounterValue (1)
+    DO Wavell.ForceAnimation 4
+    DO Wavell.SetDirection 1
+    DO Player.IgnoreControls 
+
+#329
+  IF Onda Flatter.OnCollision <Wavell>
+  IF Wavell.FlagOn (2)
+  IF Wavell.FlagOff (63)
+  IF System.GroupActivated {"ptr": 3576, "id": 20}
+    DO Onda Flatter.Destroy 
+    DO Energy Wavell.SubtractCounterValue (1)
+    DO Wavell.ForceAnimation 4
+    DO Wavell.SetDirection 16777216
+    DO Player.IgnoreControls 
+    DO Wavell.StartAnimation 
+
+#330
+  IF Onda Flatter.OnCollision <Wavell>
+  IF Wavell.FlagOn (2)
+  IF Wavell.FlagOn (63)
+  IF System.GroupActivated {"ptr": 3310, "id": 20}
+    DO Onda Flatter.Destroy 
+    DO Energy Wavell.SubtractCounterValue (1)
+    DO Player.IgnoreControls 
+    DO Wavell.ForceAnimation 4
+    DO Wavell.SetDirection 1
+
+#331
+  IF The flatter.AnimationPlaying 9
+  IF The flatter.AnimationFrame (3)
+  IF System.NotAlways 
+    DO Crea bolle flatter.Hide 
+    DO Crea bolle flatter.SetX (Crea bolle flatter.XPosition Minus 100 Plus Random 100 EndParenthesis)
+    DO Create.CreateObject Crea bolle flatter @(220,117)
+
+#332
+  IF The flatter.AnimationPlaying 9
+  IF The flatter.AnimationFrame (>= 2)
+    DO Effetto bolla.ExtAct1 @(35,-100 rel The flatter) (900)
+    DO Effetto bolla.ExtAct1 @(80,-95 rel The flatter) (900)
+    DO Effetto bolla.ExtAct3 (50)
+    DO Effetto bolla.ExtAct4 (50)
+
+#333
+  IF Timer.Every {"ms": 100}
+  IF NOT Crea bolle flatter.IsOverlapping <Bolla>
+  IF Crea bolle flatter.NoObjectsInZone {"x1": 14, "y1": 72, "x2": 42, "y2": 142}
+  IF NOT Crea bolle flatter.IsOverlapping <Wavell>
+    DO Create.CreateObject Bolla @(0,0 rel Crea bolle flatter)
+
+#334
+  IF Crea bolle flatter.OutsidePlayfield 
+    DO Crea bolle flatter.Destroy 
+
+#335
+  IF Bolla.AnimationPlaying 0
+  IF Bolla.AnimationFrame (< 5)
+  IF Bolla.PickRandom 
+  IF System.Always 
+    DO Effetto bolla.ExtAct1 @(0,-10 rel Bolla) (900)
+    DO Effetto bolla.ExtAct21 (-10)
+    DO Bolla.BringToBack 
+
+#336
+  IF Bolla.AnimationFinished 0
+    DO Bolla.Destroy 
+
+#337
+  IF Effetto bolla.ExtCond0 
+  IF Wavell.FlagOff (3)
+  IF NOT Wavell.AnimationPlaying 15
+  IF NOT Wavell.AnimationPlaying 3
+  IF NOT Wavell.AnimationPlaying 4
+  IF NOT Wavell.AnimationPlaying 9
+  IF NOT Wavell.AnimationPlaying 8
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 0
+    DO Wavell.ForceAnimation 15
+    DO Wavell.StartAnimation 
+    DO Player.IgnoreControls 
+
+#338
+  IF Wavell.AnimationFinished 15
+    DO Player.RestoreControls 
+
+#339
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (>= 30)
+  IF Wavell.FacingInDirection 1
+    DO Wavell.SetPosition @(24,117)
+    DO System.DeactivateGroup {"ptr": -50212, "id": 15}
+    DO System.ActivateGroup {"ptr": 1446, "id": 20}
+    DO Wavell.ForceAnimation 3
+    DO Energy Wavell.SubtractCounterValue (1)
+    DO The flatter.SetAlterableValue 0 (0)
+
+#340
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (>= 6)
+  IF Wavell.FacingInDirection 65536
+    DO Wavell.SetPosition @(24,117)
+    DO Wavell.ForceAnimation 3
+    DO Energy Wavell.SubtractCounterValue (1)
+    DO The flatter.SetAlterableValue 0 (0)
+    DO System.DeactivateGroup {"ptr": -50654, "id": 15}
+    DO System.ActivateGroup {"ptr": 1004, "id": 20}
+
+#341
+  IF Wavell.AnimationFinished 3
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (2)
+    DO Wavell.DisableFlag (3)
+    DO Wavell.SetDirection 1
+    DO Player.RestoreControls 
+
+#342
+  IF Wavell.AnimationFinished 4
+  IF Energy Wavell.CompareCounter (> 0)
+    DO Wavell.ForceAnimation 3
+    DO Player.RestoreControls 
+
+#343
+  IF Wavell.AnimationFinished 4
+  IF Energy Wavell.CompareCounter (0)
+    DO Game.JumpToFrame 1
+
+#344
+  IF Energy Flatter.CompareCounter (0)
+  IF System.NotAlways 
+    DO Speaker.PlaySample {"handle": 30, "flags": 0, "name": "fmuore"}
+    DO The flatter.Destroy 
+
+#345
+  IF Energy Flatter.CompareCounter (0)
+  IF Energy Wavell.CompareCounter (> 0)
+  IF Timer.Every {"ms": 500}
+  IF System.NotAlways 
+    DO Energy Wavell.SubtractCounterValue (1)
+    DO Score.AddCounterValue (100)
+
+#346
+  IF Energy Wavell.CompareCounter (0)
+  IF Energy Flatter.CompareCounter (0)
+  IF System.NotAlways 
+    DO System.ActivateGroup {"ptr": 1754, "id": 18}
+    DO System.DeactivateGroup {"ptr": 72, "id": 20}
+    DO System.DeactivateGroup {"ptr": -8484, "id": 19}
+
+#347
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#348
+  IF System.NewGroup {"flags": 3, "id": 20, "name": "Controlli limitati"}
+    DO System.Skip 
+
+#349
+  IF Player.PlayerKeyPressed 16
+  IF Wavell.FlagOff (2)
+    DO Wavell.ForceAnimation 6
+    DO Wavell.EnableFlag (2)
+    DO Wavell.DisableFlag (3)
+    DO Wavell.EnableFlag (63)
+
+#350
+  IF Wavell.AnimationFinished 6
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (2)
+    DO Wavell.DisableFlag (63)
+
+#351
+  IF Player.PlayerKeyPressed 2
+  IF Wavell.FlagOff (2)
+    DO Wavell.ForceAnimation 8
+    DO Wavell.EnableFlag (2)
+
+#352
+  IF Player.PlayerKeyDown 2
+  IF Wavell.AnimationFrame (> 13)
+  IF Wavell.AnimationPlaying 8
+    DO Wavell.ForceAnimation 11
+    DO Wavell.EnableFlag (2)
+    DO Wavell.StopAnimation 
+
+#353
+  IF NOT Player.PlayerKeyDown 2
+  IF Wavell.AnimationPlaying 11
+    DO Wavell.ForceAnimation 11
+    DO Wavell.StartAnimation 
+
+#354
+  IF Wavell.AnimationFinished 8
+    DO Wavell.ForceAnimation 11
+    DO Wavell.StartAnimation 
+
+#355
+  IF Wavell.AnimationPlaying 8
+  IF Wavell.AnimationFrame (>= 9)
+  IF System.NotAlways 
+    DO Wavell.EnableFlag (3)
+
+#356
+  IF Wavell.AnimationPlaying 11
+  IF Wavell.AnimationFrame (> 13)
+  IF System.NotAlways 
+    DO Wavell.DisableFlag (2)
+    DO Wavell.DisableFlag (3)
+
+#357
+  IF Player.PlayerKeyPressed 1
+  IF Wavell.FlagOff (2)
+    DO Wavell.ForceAnimation 7
+    DO Wavell.DisableFlag (235)
+    DO System.ActivateGroup {"ptr": -53268, "id": 15}
+    DO System.DeactivateGroup {"ptr": -1610, "id": 20}
+
+#358
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#359
+  IF System.NewGroup {"flags": 3, "id": 18, "name": "The end of the line"}
+    DO System.Skip 
+
+#360
+  IF System.NotAlways 
+    DO Player.IgnoreControls 
+    DO Wavell.ForceAnimation 0
+    DO Bonus.SetCounterValue (0)
+    DO Bullet dalla testa.ExtAct21 (-2)
+    DO Energy Flatter.SetCounterValue (4)
+    DO Energy Wavell.SetCounterValue (4)
+
+#361
+  IF System.Always 
+    DO Effetto acidoworm.ExtAct0 
+    DO Effetto bolla.ExtAct0 
+    DO Bullet dalla linea.ExtAct0 
+    DO Bullet dalla testa.ExtAct0 
+
+#362
+  IF Exit the line.CompareX (< 310)
+    DO Effetto linesaver.ExtAct0 
+    DO Effetto linesaver.ExtAct1 @(98,-20 rel Exit the line) (Random 3600 EndParenthesis)
+    DO Bullet suppapowa.ExtAct3 (3)
+    DO Bullet suppapowa.ExtAct4 (1)
+    DO Bullet suppapowa.ExtAct6 (5)
+    DO Bullet suppapowa.ExtAct23 (3)
+    DO Bullet suppapowa.ExtAct15 (6)
+    DO Bullet suppapowa.ExtAct16 (70)
+    DO Bullet suppapowa.ExtAct0 
+    DO Bullet suppapowa.ExtAct1 @(100,-26 rel Exit the line) (1200)
+
+#363
+  IF Timer.Every {"ms": 3000}
+  IF System.Once 
+    DO Wavell.ForceAnimation 1
+    DO Create.CreateObject Exit the line @(360,117)
+    DO Wavell.SetDirection 1
+    DO Exit the line.BringToBack 
+    DO Effetto linesaver.ExtAct7 (50)
+    DO Effetto linesaver.ExtAct15 (8)
+    DO Effetto linesaver.ExtAct14 (20)
+
+#364
+  IF Wavell.AnimationPlaying 1
+  IF Timer.Every {"ms": 10}
+    DO Exit the line.SetX (Exit the line.XPosition Minus 1)
+
+#365
+  IF Wavell.AnimationPlaying 1
+  IF Wavell.CompareX (< 157)
+  IF Timer.Every {"ms": 20}
+    DO Wavell.SetX (Wavell.XPosition Plus 2)
+
+#366
+  IF Timer.Every {"ms": 5000}
+  IF System.Once 
+    DO Speaker.PlaySample {"handle": 25, "flags": 0, "name": "portale"}
+
+#367
+  IF Exit the line.CompareX (<= 175)
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 0
+
+#368
+  IF Timer.Every {"ms": 8000}
+  IF System.Once 
+    DO Create.CreateObject ? @(8,-32 rel Wavell)
+    DO ?.FlashDuring {"ms": 100, "loops": 0}
+    DO ?.BringToBack 
+
+#369
+  IF Timer.Every {"ms": 10000}
+  IF System.Once 
+    DO ?.Destroy 
+    DO The end of the line.SetX (5)
+    DO The end of the line.EnableFlag (54)
+
+#370
+  IF Timer.Every {"ms": 10}
+  IF The end of the line.FlagOn (54)
+    DO The end of the line.SetX (The end of the line.XPosition Plus 1)
+
+#371
+  IF Timer.Every {"ms": 11000}
+  IF System.Once 
+    DO Wavell.ForceAnimation 7
+
+#372
+  IF Wavell.AnimationFinished 7
+  IF System.NotAlways 
+    DO Wavell.ForceAnimation 9
+
+#373
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (< 4)
+    DO Wavell.SetY (Wavell.YPosition Minus 1)
+
+#374
+  IF Wavell.AnimationPlaying 9
+  IF Wavell.AnimationFrame (>= 4)
+    DO Wavell.SetX (Wavell.XPosition Plus 2)
+    DO Wavell.BringToBack 
+
+#375
+  IF Wavell.OutsidePlayfield 
+  IF System.NotAlways 
+    DO Wavell.Destroy 
+    DO The end of the line.DisableFlag (54)
+    DO Exit the line.EnableFlag (4)
+    DO Bolla piccola.Destroy 
+    DO Bolla verde.Destroy 
+    DO Bolla rossa.Destroy 
+    DO Speaker.PlaySample {"handle": 24, "flags": 0, "name": "end"}
+
+#376
+  IF Exit the line.FlagOn (4)
+    DO Effetto linesaver.ExtAct14 (Effetto linesaver.ExtAct9 Plus 10)
+
+#377
+  IF Exit the line.FlagOn (4)
+  IF Timer.Every {"ms": 2000}
+    DO Game.NextFrame 
+
+#378
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#379
+  IF System.NewGroup {"flags": 2, "id": 0, "name": "Cheats"}
+    DO System.Skip 
+
+#380
+  IF Keyboard.MouseClickedInZone {"button": 0, "double": 1} {"x1": 0, "y1": 0, "x2": 18, "y2": 18}
+    DO Score.AddCounterValue (10)
+    DO Bonus.AddCounterValue (1)
+
+#381
+  IF Keyboard.MouseClickedInZone {"button": 0, "double": 1} {"x1": 0, "y1": 192, "x2": 18, "y2": 210}
+    DO Game.RestartFrame 
+
+#382
+  IF Keyboard.MouseClickedInZone {"button": 0, "double": 1} {"x1": 316, "y1": 196, "x2": 332, "y2": 212}
+    DO Score.AddCounterValue (100)
+
+#383
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#384
+  IF System.NewGroup {"flags": 2, "id": 1, "name": "Screen size"}
+    DO System.Skip 
+
+#385
+  IF Keyboard.KeyPressed {"vk": 106}
+    DO Window control.ExtAct3 (640)
+    DO Window control.ExtAct4 (400)
+    DO Window control.ExtAct0 (Parenthesis Window control.ExtAct4 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct2 Divide 2 EndParenthesis)
+    DO Window control.ExtAct1 (Parenthesis Window control.ExtAct5 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct3 Divide 2 EndParenthesis)
+    DO Window Shape.ExtAct0 
+    DO Window Shape.ExtAct1 (32) (32)
+
+#386
+  IF Keyboard.KeyPressed {"vk": 111}
+    DO Window control.ExtAct3 (320)
+    DO Window control.ExtAct4 (200)
+    DO Window control.ExtAct0 (Parenthesis Window control.ExtAct4 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct2 Divide 2 EndParenthesis)
+    DO Window control.ExtAct1 (Parenthesis Window control.ExtAct5 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct3 Divide 2 EndParenthesis)
+    DO Window Shape.ExtAct0 
+    DO Window Shape.ExtAct1 (32) (32)
+
+#387
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#388
+  IF System.NewGroup {"flags": 0, "id": 0, "name": "Volume"}
+    DO System.Skip 
+
+#389
+  IF Keyboard.KeyPressed {"vk": 107}
+    DO DMC2 Object.ExtAct8 (DMC2 Object.ExtAct3 Plus 10)
+
+#390
+  IF Keyboard.KeyPressed {"vk": 109}
+    DO DMC2 Object.ExtAct8 (DMC2 Object.ExtAct3 Minus 10)
+
+#391
+  IF System.GroupEnd 
+    DO System.Skip 
+======================================================================
+FRAME Results (320x200)
+
+#0
+  IF Game.StartOfFrame 
+    DO Ondulatore.Hide 
+    DO Scritte.Hide 
+    DO Submit!.ForceDirection 1
+    DO Submit!.Hide 
+    DO Coprinumero.BringToBack 
+    DO Ok?.Hide 
+    DO Ok?.StopAnimation 
+    DO Submit!.StopAnimation 
+    DO Forget....ForceDirection 1
+    DO Forget....Hide 
+    DO Forget....StopAnimation 
+    DO Best:.Hide 
+    DO New extra!!.Hide 
+    DO New extra!!.StopAnimation 
+    DO String parser 2.ExtAct0 ('')
+    DO System.SetGlobalValue (13) (0)
+    DO System.SetGlobalValue (14) (0)
+    DO System.SetGlobalValue (11) (2)
+    DO Registry object.ExtAct2 
+    DO Registry object.ExtAct4 ('Software\\Software\\God\\')
+    DO Registry object.ExtAct5 ('Switch')
+    DO Registry object.ExtAct7 (2)
+
+#1
+  IF System.Always 
+    DO Sfumabullet.ExtAct0 
+    DO Sfumabullet.ExtAct1 @(160,100) (1200)
+
+#2
+  IF Timer.Every {"ms": 10}
+    DO Sfumabullet.ExtAct3 (Sfumabullet.ExtAct0 Minus 10)
+
+#3
+  IF Timer.TimerEquals {"ms": 2000, "loops": 0}
+    DO Scritte.Show 
+    DO Submit!.Show 
+    DO Nome.ExtAct12 
+    DO Nome.ExtAct23 (10)
+    DO Nome.ExtAct16 
+    DO Coprinumero.Destroy 
+    DO Punti.SetCounterValue (Score.CounterValue)
+    DO Nome.ExtAct4 ('')
+    DO  ....SetString ('Name?')
+    DO Ok?.Show 
+    DO Forget....Show 
+    DO Best:.Show 
+    DO Best:.SetAlterableValue 0 (Punti.CounterValue Divide 100)
+
+#4
+  IF Timer.TimerGreater {"ms": 2000, "loops": 0}
+    DO Effetto onda.ExtAct0 
+    DO Effetto onda.ExtAct1 @(0,0 rel Ondulatore) (0)
+    DO Effetto onda.ExtAct15 (8)
+
+#5
+  IF Timer.TimerGreater {"ms": 2000, "loops": 0}
+  IF Best:.CompareAlterableValue 0 (> Best score.CounterValue Divide 100)
+  IF Best score.CompareCounter (< 1000)
+  IF System.NotAlways 
+    DO New extra!!.Show 
+    DO New extra!!.StartAnimation 
+
+#6
+  IF Nome.ExtCond3 
+    DO  ....SetString (Nome.ExtAct0)
+
+#7
+  IF Nome.ExtCond3 
+  IF System.NotAlways 
+    DO Ok?.StartAnimation 
+
+#8
+  IF Nome.ExtCond3 
+  IF Keyboard.KeyPressed {"vk": 13}
+  IF System.Once 
+    DO System.ActivateGroup {"ptr": 174, "id": 1}
+    DO Nome.ExtAct30 
+    DO Score.SetCounterValue (0)
+    DO Ok?.StopAnimation 
+    DO Submit!.StartAnimation 
+    DO Forget....StartAnimation 
+    DO Speaker.PlaySample {"handle": 0, "flags": 0, "name": "compare"}
+
+#9
+  IF System.NewGroup {"flags": 3, "id": 1, "name": "Menu"}
+    DO System.Skip 
+
+#10
+  IF System.NotAlways 
+    DO System.SetGlobalValue (7) (1)
+
+#11
+  IF System.CompareGlobalValue (7) (1)
+    DO Submit!.ForceDirection 65536
+    DO Forget....ForceDirection 1
+
+#12
+  IF System.CompareGlobalValue (7) (2)
+    DO Submit!.ForceDirection 1
+    DO Forget....ForceDirection 65536
+
+#13
+  IF Player.PlayerKeyPressed 8
+  IF System.CompareGlobalValue (7) (1)
+    DO System.SetGlobalValue (7) (2)
+    DO Speaker.PlaySample {"handle": 11, "flags": 0, "name": "linesaver"}
+
+#14
+  IF Player.PlayerKeyPressed 4
+  IF System.CompareGlobalValue (7) (2)
+    DO System.SetGlobalValue (7) (1)
+    DO Speaker.PlaySample {"handle": 11, "flags": 0, "name": "linesaver"}
+
+#15
+  IF Player.PlayerKeyPressed 16
+  IF System.CompareGlobalValue (7) (1)
+    DO Speaker.PlaySample {"handle": 10, "flags": 0, "name": "levelpass"}
+    DO System.SetGlobalValue (8) (10)
+    DO System.ActivateGroup {"ptr": 812, "id": 3}
+
+#16
+  IF Player.PlayerKeyPressed 16
+  IF System.CompareGlobalValue (7) (2)
+    DO System.SetGlobalValue (8) (10)
+    DO Speaker.PlaySample {"handle": 8, "flags": 0, "name": "snawave"}
+    DO Game.JumpToFrame 2
+
+#17
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#18
+  IF System.NewGroup {"flags": 2, "id": 2, "name": "Gestione savescore"}
+    DO System.Skip 
+
+#19
+  IF Game.StartOfFrame 
+    DO Registry object.ExtAct2 
+    DO Registry object.ExtAct4 ('Software\\Software\\God\\')
+    DO Registry object.ExtAct5 ('Max Score')
+
+#20
+  IF Timer.TimerEquals {"ms": 2000, "loops": 0}
+    DO Best score.SetCounterValue (Registry object.ExtAct1)
+
+#21
+  IF System.GroupActivated {"ptr": -1758, "id": 1}
+  IF Punti.CompareCounter (> Registry object.ExtAct1)
+  IF System.NotAlways 
+    DO Registry object.ExtAct7 (Punti.CounterValue)
+    DO Best score.SetCounterValue (Punti.CounterValue)
+
+#22
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#23
+  IF System.NewGroup {"flags": 3, "id": 3, "name": "Cripta punteggio"}
+    DO System.Skip 
+
+#24
+  IF System.NotAlways 
+  IF System.GroupActivated {"ptr": -170, "id": 3}
+    DO System.SetGlobalValue (13) (Parenthesis Parenthesis Parenthesis Punti.CounterValue Multiply 15 EndParenthesis Plus 2 EndParenthesis Multiply 7 EndParenthesis)
+    DO System.SetGlobalValue (14) (Parenthesis Parenthesis Parenthesis Punti.CounterValue Plus 6 EndParenthesis Multiply 3 EndParenthesis Plus 52 EndParenthesis)
+    DO PowerApp Lite.ExtAct8 ('http://www.clickitaliansoftware.net/hosted/hs/theline2/theline2.asp?User=' Plus Nome.ExtAct0 Plus '&Code=' Plus ToString GlobalValueExpression 13 EndParenthesis EndParenthesis Plus '-' Plus ToString GlobalValueExpression 14 EndParenthesis EndParenthesis)
+
+#25
+  IF Timer.Every {"ms": 2000}
+    DO System.DeactivateGroup {"ptr": -652, "id": 3}
+    DO Game.JumpToFrame 2
+
+#26
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#27
+  IF System.NewGroup {"flags": 2, "id": 1, "name": "Screen size"}
+    DO System.Skip 
+
+#28
+  IF Keyboard.KeyPressed {"vk": 106}
+    DO Window control.ExtAct3 (640)
+    DO Window control.ExtAct4 (400)
+    DO Window control.ExtAct0 (Parenthesis Window control.ExtAct4 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct2 Divide 2 EndParenthesis)
+    DO Window control.ExtAct1 (Parenthesis Window control.ExtAct5 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct3 Divide 2 EndParenthesis)
+    DO Window Shape.ExtAct0 
+    DO Window Shape.ExtAct1 (32) (32)
+
+#29
+  IF Keyboard.KeyPressed {"vk": 111}
+    DO Window control.ExtAct3 (320)
+    DO Window control.ExtAct4 (200)
+    DO Window control.ExtAct0 (Parenthesis Window control.ExtAct4 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct2 Divide 2 EndParenthesis)
+    DO Window control.ExtAct1 (Parenthesis Window control.ExtAct5 Divide 2 EndParenthesis Minus Parenthesis Window control.ExtAct3 Divide 2 EndParenthesis)
+    DO Window Shape.ExtAct0 
+    DO Window Shape.ExtAct1 (32) (32)
+
+#30
+  IF System.GroupEnd 
+    DO System.Skip 
+
+#31
+  IF System.NewGroup {"flags": 0, "id": 0, "name": "Volume"}
+    DO System.Skip 
+
+#32
+  IF System.GroupEnd 
+    DO System.Skip 

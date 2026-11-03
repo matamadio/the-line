@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.svg">
+  <title>Animation lab — The Line</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/editors/editor.css">
+  <style>
+    :root { --side-width: 340px; --view-height: 45vh; }
+    h1 { margin: 2px 0 10px; }
+    h2 { color: var(--dim); margin: 16px 0 6px; }
+    h3 { font-size: 12px; color: var(--accent); margin: 14px 0 4px; font-weight: 600; }
+    #scenes { display: flex; flex-direction: column; gap: 3px; }
+    .scene { text-align: left; }
+    #time { flex: 1 1 260px; min-width: 160px; accent-color: var(--accent); }
+    #clock { font-variant-numeric: tabular-nums; color: var(--dim); min-width: 190px; }
+    #play { min-width: 44px; }
+    .mono { font-variant-numeric: tabular-nums; color: var(--dim); white-space: nowrap; }
+    .keys { display: flex; flex-direction: column; gap: 3px; }
+    select { background: #07051a; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 3px 4px; font: inherit; max-width: 100%; }
+    .knob select { grid-column: 1 / 3; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="bar">
+    <span class="group">
+      <button id="restart" title="Restart (R)">⏮</button>
+      <button id="back10" title="Back 12 frames (Shift+,)">«</button>
+      <button id="back" title="Back one frame (,)">‹</button>
+      <button id="play" title="Play / pause (Space)">❚❚</button>
+      <button id="fwd" title="Forward one frame (.)">›</button>
+      <button id="fwd10" title="Forward 12 frames (Shift+.)">»</button>
+    </span>
+    <input id="time" type="range" min="0" max="1" step="1" value="0" aria-label="Timeline">
+    <span id="clock"></span>
+    <span class="group">Speed
+      <button data-speed="0.05">0.05×</button>
+      <button data-speed="0.1">0.1×</button>
+      <button data-speed="0.25" class="on">0.25×</button>
+      <button data-speed="0.5">0.5×</button>
+      <button data-speed="1">1×</button>
+    </span>
+    <label class="group">Zoom <input id="zoom" type="range" min="1" max="5" step="0.25" value="1.5"></label>
+    <label class="group"><input id="loop" type="checkbox" checked> Loop</label>
+    <div id="state"></div>
+  </div>
+  <aside id="side">
+    <h1>Animation lab</h1>
+    <p class="help"><a href="./difficulty.html">Difficulty editor</a> · <a href="./index.html">the game</a></p>
+    <div class="row"><button id="mode-play" class="on">Play scenes</button><button id="mode-edit">Edit keyframes</button></div>
+    <div id="editor" hidden></div>
+    <div id="playpanel">
+    <p class="help"><kbd>Space</kbd> play/pause · <kbd>,</kbd> <kbd>.</kbd> one frame (<kbd>Shift</kbd>: 12) · <kbd>R</kbd> restart.
+      Changing a number replays the scene to the same moment.</p>
+    <h2>Scenes</h2>
+    <div id="scenes"></div>
+    <p id="freehelp" class="help" hidden>Free play: arrows walk, Down/Up go through the line or float, <kbd>Z</kbd> wipe, <kbd>X</kbd> pull.
+      Everything you do is recorded, so you can scrub back over it. Playing from the middle overwrites the rest.</p>
+    <h2>Numbers</h2>
+    <div class="row"><button id="copy">Copy changed values</button><button id="resetall">Reset all</button></div>
+    <p class="help">Double-click a row to reset it. Changed rows are orange and are kept in this browser.</p>
+    <div id="knobs"></div>
+    </div>
+  </aside>
+  <div id="toast" hidden></div>
+  <script type="module" src="/src/editors/lab/main.ts"></script>
+</body>
+</html>

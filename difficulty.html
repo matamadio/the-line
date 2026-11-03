@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.svg">
+  <title>Difficulty editor — The Line</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/editors/editor.css">
+  <style>
+    :root { --side-width: 380px; }
+    #view { touch-action: none; }
+    #bar { gap: 6px 12px; }
+    h1 { margin: 2px 0 6px; }
+    h2 { color: var(--accent); margin: 18px 0 4px; padding-top: 10px; border-top: 1px solid var(--line); }
+    #level { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+    .ramp { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin: 4px 4px 2px; padding: 4px 6px;
+      border: 1px solid var(--line); border-radius: 6px; background: #07051a; }
+    .ramp svg { width: 100%; height: 34px; display: block; }
+    .ramp .now { font-variant-numeric: tabular-nums; color: var(--curve); white-space: nowrap; text-align: right; font-size: 12px; }
+    .ramp .now small { display: block; color: var(--dim); font-size: 10px; }
+    .row { flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="bar">
+    <span class="group">
+      <button id="restart" title="Start a new game">⏮ Restart</button>
+      <button id="pause" title="Pause / play">❚❚</button>
+    </span>
+    <span class="group">Level
+      <button id="lvdown" title="One level down">−</button>
+      <span id="level">1</span>
+      <button id="lvup" title="One level up">+</button>
+    </span>
+    <span class="group">Speed
+      <button data-speed="0.5">0.5×</button>
+      <button data-speed="1" class="on">1×</button>
+      <button data-speed="2">2×</button>
+      <button data-speed="4">4×</button>
+    </span>
+    <label class="group"><input id="godmode" type="checkbox"> Endless lives</label>
+    <div id="state"></div>
+  </div>
+  <aside id="side">
+    <h1>Difficulty editor</h1>
+    <p class="help">Play on the left (arrows, <kbd>Z</kbd> wipe, <kbd>X</kbd> pull) while you change numbers: they apply at once.
+      Speeds and growth times take effect on the next enemy. Curves show a ramp from level 1 to 15, the dot is the level being played.
+      Also: <a href="./lab.html">animation lab</a> · <a href="./index.html">the game</a>.</p>
+    <div class="row">
+      <button id="save" class="primary" title="Write difficulty.json, which the game ships with">Save to game</button>
+      <button id="copy">Copy JSON</button>
+      <button id="revert" title="Back to what difficulty.json says">Revert to saved</button>
+      <button id="defaults" title="Back to the original game's numbers">Original values</button>
+    </div>
+    <p class="help">Orange rows differ from the saved file. Double-click a row to put it back. Unsaved edits are kept in this browser.</p>
+    <div id="knobs"></div>
+  </aside>
+  <div id="toast" hidden></div>
+  <script type="module" src="/src/editors/difficulty/main.ts"></script>
+</body>
+</html>
