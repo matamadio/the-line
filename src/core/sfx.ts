@@ -1,4 +1,4 @@
-// The original samples through Web Audio, plus the in-game music. Browsers only
+// The original samples and the synthesized tones, through Web Audio. Browsers only
 // allow sound after a tap or key press, so everything starts in unlock().
 
 const SAMPLES = {
@@ -8,10 +8,28 @@ const SAMPLES = {
 } as const;
 export type Sample = keyof typeof SAMPLES;
 
+/** Beats are scheduled this far ahead (s), so a late frame can't make the click stumble. */
+const BEAT_AHEAD = 0.03;
+/** Further than this (s) from where the next beat was due, the click gives up and catches up. */
+const BEAT_SLACK = 0.06;
+
+/** A Sinepede's notes (Hz): a crest is the higher one, a trough a fourth below. */
+const sinePitch = (side: number) => (side > 0 ? 440 : 330);
+const HUM_VOLUME = 0.09;
+
+/** A hard clipping curve for the WaveShaper: sharp corners, like the urchin's outline. */
+const DISTORTION = (() => {
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(((i / (curve.length - 1)) * 2 - 1) * 14);
+  return curve;
+})();
+
 class Sfx {
   private ctx: AudioContext | null = null;
+  private humOsc: OscillatorNode | null = null;
+  private humGain: GainNode | null = null;
   private buffers = new Map<Sample, AudioBuffer>();
-  private musicEl: HTMLAudioElement | null = null;
+  private nextBeat = 0;
   muted = false;
 
   unlock() {
@@ -24,11 +42,6 @@ class Sfx {
         .then((buf) => this.buffers.set(key, buf))
         .catch(() => {});
     }
-    this.musicEl = new Audio('assets/music/varecchina.mp3');
-    this.musicEl.loop = true;
-    this.musicEl.volume = 0.45;
-    this.musicEl.muted = this.muted;
-    void this.musicEl.play().catch(() => {});
   }
 
   play(name: Sample, volume = 1) {
@@ -42,9 +55,137 @@ class Sfx {
     src.start();
   }
 
+  /** One short tone. glide bends it to another pitch by the end; delay places it later. */
+  private tone(freq: number, seconds: number, volume: number, glide = freq, delay = 0) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const at = ctx.currentTime + delay;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.frequency.setValueAtTime(freq, at);
+    osc.frequency.exponentialRampToValueAtTime(glide, at + seconds);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(volume, at + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(at);
+    osc.stop(at + seconds + 0.02);
+  }
+
+  /** A Sinepede announces itself: one pure tone per segment, high for a crest, low for a trough. */
+  call(sides: readonly number[]) {
+    sides.forEach((side, i) => this.tone(sinePitch(side), 0.14, 0.3, sinePitch(side), i * 0.11));
+  }
+
+  /** The right attack: that segment's own note, dropping away to nothing. */
+  cancelled(side: number, last: boolean) {
+    const f = sinePitch(side);
+    this.tone(f * 2, 0.22, 0.35, f);
+    if (last) this.tone(f * 3, 0.3, 0.2, f * 1.5, 0.06);
+  }
+
+  /** The wrong attack: the note bends upward, and the new segment joins in. */
+  /** He grows: a glide upwards, higher for each size. */
+  grew(size: number) {
+    const f = 330 + 110 * size;
+    this.tone(f, 0.14, 0.3, f * 1.5);
+    this.tone(f * 1.5, 0.2, 0.25, f * 2, 0.11);
+  }
+  /** He loses a size: the same glide, falling. */
+  shrank(size: number) {
+    const f = 660 + 110 * size;
+    this.tone(f, 0.32, 0.35, f / 2);
+  }
+  fed(side: number) {
+    const f = sinePitch(side);
+    this.tone(f, 0.2, 0.32, f * 1.5);
+    this.tone(sinePitch(-side), 0.14, 0.25, sinePitch(-side), 0.16);
+  }
+
+  /** The nearest Sinepede's steady tone. side 0: none. near: 0 far away, 1 on top of him. */
+  hum(side: number, near: number) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (!this.humOsc) {
+      if (!side) return;
+      this.humOsc = ctx.createOscillator();
+      this.humGain = ctx.createGain();
+      this.humGain.gain.value = 0;
+      this.humOsc.connect(this.humGain).connect(ctx.destination);
+      this.humOsc.start();
+    }
+    const now = ctx.currentTime, gain = this.humGain!.gain, freq = this.humOsc.frequency;
+    gain.cancelScheduledValues(now);
+    gain.setTargetAtTime(this.muted || !side ? 0 : HUM_VOLUME * near * near, now, 0.04);
+    if (side) { freq.cancelScheduledValues(now); freq.setTargetAtTime(sinePitch(side) / 2, now, 0.03); }
+  }
+
+  /** A low tremble under the line's vibration, before a Sea Urchin comes up. Returns how to cut it off. */
+  rumble(seconds: number): () => void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return () => {};
+    const at = ctx.currentTime;
+    const osc = ctx.createOscillator(), g = ctx.createGain(), wobble = ctx.createOscillator(), depth = ctx.createGain();
+    osc.frequency.value = 58;
+    wobble.frequency.value = 26;
+    depth.gain.value = 0.16;
+    wobble.connect(depth).connect(g.gain);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(0.22, at + seconds);
+    g.gain.setValueAtTime(0, at + seconds);
+    osc.connect(g).connect(ctx.destination);
+    for (const o of [osc, wobble]) { o.start(at); o.stop(at + seconds); }
+    return () => { for (const o of [osc, wobble]) o.stop(); };
+  }
+
+  /** A Sea Urchin: harsh and clipped, higher when it grows and lower when it shrinks. Returns how to cut it off. */
+  crunch(seconds: number, pitch = 1): () => void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return () => {};
+    const at = ctx.currentTime;
+    const a = ctx.createOscillator(), b = ctx.createOscillator(), clip = ctx.createWaveShaper(), tone = ctx.createBiquadFilter(), g = ctx.createGain();
+    a.type = b.type = 'sawtooth';
+    a.frequency.value = 110 * pitch;
+    b.frequency.value = 117 * pitch;
+    clip.curve = DISTORTION;
+    tone.type = 'lowpass';
+    tone.frequency.value = 3200;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.3, at + 0.015);
+    g.gain.setValueAtTime(0.3, at + seconds - 0.08);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+    a.connect(clip);
+    b.connect(clip);
+    clip.connect(tone).connect(g).connect(ctx.destination);
+    for (const o of [a, b]) { o.start(at); o.stop(at + seconds + 0.02); }
+    return () => {
+      const now = ctx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setTargetAtTime(0, now, 0.01);
+      for (const o of [a, b]) o.stop(now + 0.06);
+    };
+  }
+
   toggleMute() {
     this.muted = !this.muted;
-    if (this.musicEl) this.musicEl.muted = this.muted;
+  }
+
+  /**
+   * The metronome click. Frames arrive unevenly, so each click is placed exactly one
+   * beat after the last on the audio clock, as long as the game is roughly there too.
+   */
+  beat(seconds: number, accent: boolean) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const soon = ctx.currentTime + BEAT_AHEAD;
+    const at = Math.abs(this.nextBeat - soon) < BEAT_SLACK ? this.nextBeat : soon;
+    this.nextBeat = at + seconds;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.frequency.value = accent ? 1760 : 1175;
+    g.gain.setValueAtTime(accent ? 0.4 : 0.25, at);
+    g.gain.exponentialRampToValueAtTime(0.001, at + 0.05);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(at);
+    osc.stop(at + 0.06);
   }
 }
 

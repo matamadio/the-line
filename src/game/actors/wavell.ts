@@ -32,8 +32,8 @@ export type Attack = 'wipe' | 'pull';
 
 export type State = 'appear' | 'ground' | 'drag' | 'flip' | 'fly' | 'land' | 'dead';
 /** flatten: met an enemy from the other side of the line, and the two opposite waves cancelled out. */
-export type Death = 'fall' | 'eaten' | 'zap' | 'pop' | 'flatten';
-export type WavellEvent = 'appear' | 'drag' | 'haul' | 'release' | 'flipDown' | 'flipUp' | 'fly' | 'land' | 'step' | 'dizzy';
+export type Death = 'fall' | 'zap' | 'pop' | 'flatten';
+export type WavellEvent = 'appear' | 'drag' | 'haul' | 'release' | 'flipDown' | 'flipUp' | 'fly' | 'land' | 'step' | 'dizzy' | 'grow' | 'shrink';
 
 /** Units per second for each step of `vel` (the original scrolled 1 px every 10 ms). */
 const FLY_TIME = 3.6;
@@ -47,7 +47,7 @@ const REACH_FAR = 47.5;
  * stroke from the left root to the right one, after a moment of shock.
  */
 /** How long a dying knot takes to come undone. */
-const unravel = (d: Death) => ({ fall: TUNE.burnTime, zap: 0.25, pop: 0, eaten: 0, flatten: TUNE.flattenTime })[d];
+const unravel = (d: Death) => ({ fall: TUNE.burnTime, zap: 0.25, pop: 0, flatten: TUNE.flattenTime })[d];
 
 export class Wavell {
   x = 0;
@@ -62,7 +62,7 @@ export class Wavell {
   flip = 0;
   /** 1 on top of the line, -1 hanging under it. */
   side = 1;
-  /** Seconds the dead figure stays visible (unravelling, or in a Snawave's jaws). */
+  /** Seconds the dead figure stays visible (unravelling). */
   linger = 0;
   private phase = 0;
   private time = 0;
@@ -76,6 +76,12 @@ export class Wavell {
   ember: [number, number] | null = null;
   /** Seconds of dizziness left. */
   dizzy = 0;
+  /** How many times he has grown. An enemy's hit takes one of these instead of a life. */
+  size = 0;
+  /** Drawn scale, easing towards his size. */
+  scale = 1;
+  /** Seconds in which enemies can't hurt him, after losing a size. */
+  safe = 0;
   /** A press that came while busy, replayed as soon as he is free. */
   private buffered: 'drag' | 'pull' | 'down' | 'up' | null = null;
   /** Which attack the current 'drag' state is. */
@@ -94,10 +100,15 @@ export class Wavell {
   get alive() { return this.state !== 'dead'; }
   /** Pressed flat by an opposite wave closing in (1: full height); set by the game. */
   squash = 1;
-  get bubbleR() { return lerp(9, 14, clamp(this.t / FLY_TIME, 0, 1)); }
-  get flyLeft() { return FLY_TIME - this.t; }
-  /** Walking speed: dizziness slows him down, recovering as it wears off. */
-  get speedMul() { return this.dizzy > 0 ? lerp(1, 0.35, clamp(this.dizzy / (TUNE.dizzyTime - TUNE.dizzyLock), 0, 1)) : 1; }
+  /** A bigger Wavell makes a bigger bubble, which lasts longer but is easier to hit. */
+  get bubbleR() { return lerp(9, 14, clamp(this.t / this.flyTime, 0, 1)) * this.scale; }
+  get flyTime() { return FLY_TIME * (1 + DIFF.growBubble * this.size); }
+  get flyLeft() { return this.flyTime - this.t; }
+  /** Walking speed: faster for each size; dizziness slows him down, recovering as it wears off. */
+  get speedMul() {
+    const dizzy = this.dizzy > 0 ? lerp(1, 0.35, clamp(this.dizzy / (TUNE.dizzyTime - TUNE.dizzyLock), 0, 1)) : 1;
+    return dizzy * (1 + DIFF.growWalk * this.size);
+  }
   get locked() { return this.dizzy > TUNE.dizzyTime - TUNE.dizzyLock; }
 
   /** Hit by a Bubble Burst's spray. Only works on the line: the bubble flies through it. */
@@ -108,7 +119,32 @@ export class Wavell {
     return true;
   }
 
+  /** Caught a growth bonus. False if he is as big as he gets. */
+  grow() {
+    if (this.size >= DIFF.growMax) return false;
+    this.size++;
+    this.events.push('grow');
+    return true;
+  }
+
+  /**
+   * Hit by an enemy. On the line, a size goes instead of a life, and he is safe for a
+   * moment to get clear. A bubble has no size to give up: it pops. (The end of the
+   * line doesn't come through here: it takes him whatever his size.)
+   */
+  hurt(kind: Death) {
+    if (!this.alive || this.safe > 0) return;
+    if (this.size > 0 && !this.flying) {
+      this.size--;
+      this.safe = DIFF.growSafe;
+      this.events.push('shrink');
+    } else this.kill(kind);
+  }
+
   spawn(x: number) {
+    this.size = 0;
+    this.scale = 1;
+    this.safe = 0;
     this.x = x;
     this.facing = 1;
     this.vel = 0;
@@ -120,13 +156,12 @@ export class Wavell {
     this.events.push('appear');
   }
 
-  /** `linger` overrides how long the figure stays (while a Snawave closes its jaws). */
-  kill(kind: Death, linger = unravel(kind)) {
+  kill(kind: Death) {
     if (this.state === 'dead') return;
     // A bubble caught while the line is still tying it off has no figure left.
-    if (this.state === 'fly') kind = 'pop', linger = 0;
+    if (this.state === 'fly') kind = 'pop';
     this.death = kind;
-    this.linger = linger;
+    this.linger = unravel(kind);
     this.burnt = 0;
     this.crumbs.length = 0;
     this.ember = null;
@@ -147,6 +182,8 @@ export class Wavell {
     this.time += dt;
     this.t += dt;
     this.dizzy = Math.max(0, this.dizzy - dt);
+    this.safe = Math.max(0, this.safe - dt);
+    this.scale += (1 + DIFF.growScale * this.size - this.scale) * Math.min(1, dt * 8);
     const ground = line.sample(this.x);
     // Presses during an animation are kept for a moment, so a quick player never loses one.
     if (this.state !== 'ground' && this.state !== 'fly' && this.state !== 'dead') {
@@ -186,7 +223,7 @@ export class Wavell {
       }
       case 'drag': {
         this.vel = 0;
-        const t = this.t, f = this.facing, s = this.side, clip = this.attack;
+        const t = this.t, f = this.facing, s = this.side, clip = this.attack, sc = this.scale;
         const grab = mark(clip, 'grab'), release = mark(clip, 'release'), haulAt = mark(clip, 'haul');
         // Where the hands hold the line: the pose at the moment he lets go.
         const P = pose(clip, release, this.work, this.from);
@@ -195,10 +232,10 @@ export class Wavell {
           // ahead, like the sprite, while the line under his feet stays put. Under the
           // line everything is mirrored, and the wave goes the way he faces.
           const k = smooth((t - grab) / 0.12);
-          const x0 = this.x + f * P[I.handF];
-          const top = -s * P[I.handF + 1] * k;
-          line.shape(this.x - f * 12, x0 - f * 0.5, () => 0);
-          if (this.attack === 'wipe') line.shape(x0, x0 + f * REACH_FAR, (x) => top * Math.pow(1 - Math.abs(x - x0) / REACH_FAR, 1.25));
+          const x0 = this.x + f * P[I.handF] * sc;
+          const top = -s * P[I.handF + 1] * k * sc;
+          line.shape(this.x - f * 12 * sc, x0 - f * 0.5, () => 0);
+          if (this.attack === 'wipe') line.shape(x0, x0 + f * REACH_FAR, (x) => top * Math.pow(Math.max(0, 1 - Math.abs(x - x0) / REACH_FAR), 1.25));
           else {
             // From the hands down to the line, then taut all the way out.
             line.shape(x0, x0 + f * 14, (x) => top * (1 - Math.abs(x - x0) / 14) ** 2);
@@ -207,7 +244,7 @@ export class Wavell {
         }
         if (this.attack === 'pull' && t > haulAt && t - dt <= haulAt) this.events.push('haul');
         if (t > release && t - dt <= release) {
-          line.shape(this.x - f * 12, this.x + f * (P[I.handF] + REACH_FAR), () => 0);
+          line.shape(this.x - f * 12 * sc, this.x + f * (P[I.handF] * sc + REACH_FAR), () => 0);
           if (this.attack === 'wipe') line.pulse(this.x + f * 20, -TUNE.waveAmp * s, TUNE.waveWidth, f);
           // Let go of a pull: the line springs back a little.
           else line.impulse(this.x + f * 30, 25 * s, 10);
@@ -247,7 +284,7 @@ export class Wavell {
             line.impulse(this.x, 60, 5);
           }
         }
-        if (this.state === 'fly' && this.t >= FLY_TIME) this.kill('pop');
+        if (this.state === 'fly' && this.t >= this.flyTime) this.kill('pop');
         break;
       }
       case 'dead':
@@ -333,7 +370,7 @@ export class Wavell {
     if (this.state === 'appear') grow(clamp(this.t / TUNE.appearTime, 0, 1));
     else if (this.state === 'land') grow(clamp((this.t - TUNE.landDive) / (TUNE.landTime - TUNE.landDive), 0, 1));
     else if (this.state === 'dead' && this.death === 'fall') jit = 0.3;
-    else if (this.state === 'dead' && this.death !== 'eaten') {
+    else if (this.state === 'dead') {
       // The knot comes undone: it sags back into the line and frays.
       const k = clamp(this.t / Math.max(0.01, this.linger), 0, 1);
       sy *= 1 - smooth(k);
@@ -341,10 +378,12 @@ export class Wavell {
       // Cancelled out: pressed flat into the line, no fraying.
       jit = this.death === 'flatten' ? 0 : (this.death === 'zap' ? 2.2 : 0.8) * k;
     }
-    const f = this.facing, x0 = this.x;
+    const f = this.facing, x0 = this.x, scale = this.scale;
     // Dizzy: the whole figure sways from the feet up.
     const sway = this.dizzy > 0 && this.alive ? Math.sin(this.time * 7) * 0.09 * clamp(this.dizzy / 0.8, 0, 1) : 0;
     return (px: number, py: number): [number, number] => {
+      px *= scale;
+      py *= scale;
       const wx = x0 + f * px * sx + sway * py + (jit ? (Math.random() - 0.5) * jit : 0);
       // Low points ride the line under them; higher ones move with the body.
       const h = py * sy, w = clamp(Math.abs(h) / 8, 0, 1);
@@ -493,10 +532,15 @@ export class Wavell {
 
   /** Everything that isn't part of the line: the eyes, or the whole bubble. */
   drawFeatures(neon: Neon, line: SpringLine) {
+    // Just lost a size: he flashes for as long as nothing can hurt him.
+    if (this.safe > 0 && this.alive && Math.floor(this.time * 14) % 2 === 0) {
+      const s = this.stroke(line);
+      if (s) neon.glow(polyPath(s), COLORS.danger, 0.9, 1);
+    }
     if (this.state === 'fly') { if (this.t >= TUNE.takeoff) this.drawBubble(neon); return; }
     if (this.state === 'land' && this.t < TUNE.landDive + 0.08) return;
     if (this.burning) { this.drawBurn(neon, line); if (this.burnt > 0.5) return; }
-    else if (this.state === 'dead' && (this.death === 'pop' || this.t >= this.linger || this.death !== 'eaten')) return;
+    else if (this.state === 'dead') return;
     if (this.state === 'appear' && this.t < TUNE.appearTime * 0.5) return;
     const tf = this.transform(line), H = this.headTf();
     const E = (lx: number, ly: number) => tf(...H(lx, ly));
@@ -540,7 +584,7 @@ export class Wavell {
   }
 
   private drawBubble(neon: Neon) {
-    const f = clamp(this.t / FLY_TIME, 0, 1);
+    const f = clamp(this.t / this.flyTime, 0, 1);
     // Yellow, green, blue, then red and blinking just before it pops (as in the original).
     const hue = f < 0.45 ? lerp(52, 140, f / 0.45) : f < 0.82 ? lerp(140, 235, (f - 0.45) / 0.37) : lerp(235, 360, (f - 0.82) / 0.18);
     const color = `hsl(${hue % 360} 100% 60%)`;

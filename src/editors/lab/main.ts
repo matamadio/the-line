@@ -297,7 +297,8 @@ const ui = (() => {
       playBtn.textContent = playing ? '❚❚' : '▶';
       const W = game.wavell;
       state.textContent = `Wavell: ${W.state}${W.state === 'dead' ? ' (' + W.death + ')' : ''}, t ${W.t.toFixed(2)}`
-        + game.snawaves.map((s) => ` · Snawave: ${s.state} ${s.t.toFixed(2)}`).join('')
+        + game.sinepedes.map((s) => ` · Sinepede: ${s.count} segments`).join('')
+        + game.urchins.map((u) => ` · Urchin: ${u.state} ${u.t.toFixed(2)}`).join('')
         + game.worms.map((w) => ` · Worm: ${w.state} ${w.t.toFixed(2)}`).join('');
   }
 

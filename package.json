@@ -10,6 +10,7 @@
   "scripts": {
     "start": "vite --open",
     "dev": "vite",
+    "beat": "vite --open /?beat",
     "lab": "vite --open /lab.html",
     "difficulty": "vite --open /difficulty.html",
     "phone": "vite --host",

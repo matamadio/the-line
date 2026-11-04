@@ -1,4 +1,4 @@
-// The game's rules and simulation: the line, Wavell, Snawaves, Worms, Bubble Bursts, Backwaves,
+// The game's rules and simulation: the line, Wavell, Sinepedes, Worms, Sea Urchins, Bubble Bursts, Backwaves,
 // line refluxes, sparkles and the end of the line crumbling in from the left. Timings and speeds follow the
 // original's events (see docs/original-events.txt) where there is one. Drawing is in
 // render.ts and hud.ts.
@@ -10,10 +10,14 @@
 // feeds it: it grows, is thrown back, and takes one more right attack per size.
 // Meeting one from the other side of the line, the two cancel and both go flat.
 //
-// Time is the other half: the end of the line crumbles towards him at nearly his
-// walking speed, so every stop costs ground. Sparkles are the bait: they drift
+// His size is his armour: a growth bonus makes him bigger and faster, and an enemy's hit
+// takes a size instead of a life. Not in the bubble, and not at the end of the line.
+//
+// Time is the other half: the end of the line crumbles towards him, faster every
+// level, so every stop costs ground. Sparkles are the bait: they drift
 // about, often behind him or off the line, and catching them means giving ground.
 
+import { BeatClock } from './beat';
 import { Fx } from './fx';
 import { Input, type Controls } from '../core/input';
 import { SpringLine } from './line';
@@ -21,10 +25,11 @@ import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
 import { sfx } from '../core/sfx';
 import { DIFF, at } from '../data/difficulty';
 import { TUNE } from '../data/tune';
-import { SNAWAVE_W, Snawave, biteHit } from './actors/snawave';
+import { SEG_W, Sinepede } from './actors/sinepede';
+import { Urchin } from './actors/urchin';
 import { BUBBLE_GREEN, BubbleBurst } from './actors/bubble';
 import { Wavell, type Attack } from './actors/wavell';
-import { WORM_W, Worm, wormBiteHit } from './actors/worm';
+import { WORM_W, Worm } from './actors/worm';
 import { muteButton } from './hud';
 import { drawGame } from './render';
 
@@ -36,23 +41,34 @@ export interface Pulse { x: number; dir: number; side: number; kind: Attack; spe
 /** A big wave rolling in from behind. Wavell floats over it, or bounces it back by holding the line as it hits. */
 export interface Backwave { x: number; dir: 1 | -1; warn: number; done: boolean }
 export interface Sparkle { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean; p: number }
-export interface Drop { x: number; y: number; vx: number; vy: number; side: number; life: number }
+/** air: it came from a bubble bursting in the air, and pops his bubble too. */
+export interface Drop { x: number; y: number; vx: number; vy: number; side: number; life: number; air: boolean }
+/** A bonus that makes him grow, hovering over one side of the line. */
+export interface Growth { x: number; y: number; side: 1 | -1; life: number; p: number }
 
 const STEP = 1 / 120;
 const STORE = 'the-line-best';
 const BACKWAVE_AMP = 22;
+/** How many drops a bursting bubble sprays, on the line and in the air. */
+const SPRAY = 48;
+const AIR_SPRAY = 28;
+/** How far off the line a growth bonus hovers. */
+const GROWTH_HEIGHT = 16;
 const NO_INPUT: Controls = { left: false, right: false, up: false, down: false, upPressed: false, downPressed: false, dragPressed: false, pullPressed: false };
 
 export class Game {
   readonly line = new SpringLine();
   readonly fx = new Fx();
   readonly wavell = new Wavell();
-  snawaves: Snawave[] = [];
+  readonly beat = new BeatClock();
+  sinepedes: Sinepede[] = [];
+  urchins: Urchin[] = [];
   worms: Worm[] = [];
   backwaves: Backwave[] = [];
   bubbles: BubbleBurst[] = [];
   drops: Drop[] = [];
   sparkles: Sparkle[] = [];
+  growths: Growth[] = [];
   refluxes: Reflux[] = [];
   pulses: Pulse[] = [];
   mode: Mode = 'title';
@@ -64,11 +80,15 @@ export class Game {
   private acc = 0;
   time = 0;
   playTime = 0;
-  private snaClock = 0;
+  private sineClock = 0;
+  private urchinClock = 0;
+  /** Seconds of clear line still owed before the next threat, on the early levels. */
+  private calm = 0;
   private wormClock = 0;
   private backClock = 0;
   private bubbleClock = 0;
   private sparkleClock = 0;
+  private growClock = 0;
   private chain = 0;
   private chainT = 0;
   /** Seconds before the end of the line starts crumbling again after a spawn. */
@@ -104,9 +124,12 @@ export class Game {
     this.lives = DIFF.lives;
     this.level = DIFF.startLevel;
     this.playTime = 0;
-    this.snaClock = at('snaEvery', this.level) - DIFF.snaFirst;
+    this.sineClock = at('sineEvery', this.level) - DIFF.sineFirst;
+    this.urchinClock = 0;
+    this.calm = 0;
     this.refluxClock = 0;
-    this.snawaves = [];
+    this.sinepedes = [];
+    this.urchins = [];
     this.worms = [];
     this.backwaves = [];
     this.wormClock = 0;
@@ -114,12 +137,15 @@ export class Game {
     this.bubbles = [];
     this.drops = [];
     this.sparkles = [];
+    this.growths = [];
+    this.growClock = 0;
     this.bubbleClock = 0;
     this.sparkleClock = 0;
     this.chain = 0;
     this.refluxes = [];
     this.pulses = [];
     this.fx.clear();
+    this.beat.reset(this.level);
     this.wavell.spawn(this.wavell.x);
     this.endX = this.wavell.x - DIFF.endLead;
     this.endGrace = DIFF.endGrace;
@@ -139,13 +165,28 @@ export class Game {
     if (this.mode === 'title' && this.input.anyPressed) this.start();
     else if (this.mode === 'over' && this.overT > 0.8 && this.input.anyPressed) this.start();
     let controls: Controls = this.mode === 'play' ? { ...this.input } : NO_INPUT;
-    this.acc += dt;
+    this.acc += dt * (DIFF.beatOn ? this.beat.speed : 1);
     while (this.acc >= STEP) {
       this.step(STEP, controls);
       controls = { ...controls, upPressed: false, downPressed: false, dragPressed: false, pullPressed: false };
       this.acc -= STEP;
     }
+    this.hum();
     drawGame(this, dt);
+  }
+
+  /** The nearest Sinepede is heard as well as seen: its pure tone swells as it gets close. */
+  private hum() {
+    const W = this.wavell;
+    let near: Sinepede | undefined, best = Infinity;
+    if (this.mode === 'play' && W.alive) {
+      for (const s of this.sinepedes) {
+        const d = Math.abs(s.frontCentre(W.x) - W.x);
+        if (s.harmful && d < best) { best = d; near = s; }
+      }
+    }
+    const f = near?.front(W.x);
+    sfx.hum(f ? f.side : 0, f ? clamp(1 - best / this.neon.viewW, 0, 1) : 0);
   }
 
   // ---------------------------------------------------------------- simulation
@@ -170,9 +211,10 @@ export class Game {
       if (Math.random() < dt * 1.5) L.impulse(n.camX + Math.random() * n.viewW, rand(-50, 50), 5);
       return;
     }
-    if (this.mode === 'over') { this.overT += dt; this.updateSnawaves(dt); return; }
+    if (this.mode === 'over') { this.overT += dt; this.updateSinepedes(dt); this.updateUrchins(dt); return; }
 
     this.playTime += dt;
+    if (DIFF.beatOn) this.stepBeat();
     for (const e of W.events.splice(0)) {
       if (e === 'appear') { sfx.play('appear'); this.fx.burst(W.x, L.sample(W.x), 26, 70, COLORS.wavell, 0, 0.5); }
       else if (e === 'drag') sfx.play('drag', W.attack === 'wipe' ? 1 : 0.7);
@@ -183,9 +225,19 @@ export class Game {
       else if (e === 'fly') this.fx.burst(W.x, W.by, 20, 45, COLORS.wavell, 0, 0.35);
       else if (e === 'land') this.fx.burst(W.x, L.sample(W.x), 14, 50, COLORS.wavell, 60, 0.4);
       else if (e === 'dizzy') sfx.play('offline', 0.6);
+      else if (e === 'grow') {
+        sfx.grew(W.size);
+        this.fx.burst(W.x, L.sample(W.x) - W.side * 14, 24, 60, COLORS.wavell, 0, 0.45);
+        n.shake = Math.max(n.shake, 0.4);
+      } else if (e === 'shrink') {
+        sfx.shrank(W.size);
+        this.fx.burst(W.x, L.sample(W.x) - W.side * 14, 26, 70, COLORS.danger, 60, 0.5);
+        n.shake = Math.max(n.shake, 1);
+        this.teach('shrink', 'YOU LOST A SIZE INSTEAD OF A LIFE', 'YOU LOST A SIZE INSTEAD OF A LIFE');
+      }
     }
 
-    // The end of the line crumbles in at nearly walking speed, faster every level, and
+    // The end of the line crumbles in, faster every level, and
     // a lead can only be built up so far. Stopping for anything costs ground.
     if (this.endGrace > 0) this.endGrace -= dt;
     else if (W.alive && W.state !== 'appear') this.endX += at('endSpeed', this.level) * dt;
@@ -197,10 +249,14 @@ export class Game {
     if (!crumbling && Math.random() < dt * 8) L.impulse(this.endX + rand(8, 30), rand(-30, 30), 3);
     if (W.alive && (W.onLine || W.state === 'appear') && this.endX >= W.x - 5) W.kill('fall');
 
-    this.spawnSnawaves(dt);
+    if (this.threatsAround()) this.calm = DIFF.soloGap;
+    else this.calm = Math.max(0, this.calm - dt);
+    this.spawnSinepedes(dt);
+    this.spawnUrchins(dt);
     this.spawnWorms(dt);
     this.updateBubbles(dt);
     this.updateSparkles(dt);
+    this.updateGrowths(dt);
     // Sparks riding Wavell's waves (the waves themselves are in the line).
     // Sparks ride a wipe's crest.
     for (const p of this.pulses) {
@@ -211,7 +267,8 @@ export class Game {
     this.pulses = this.pulses.filter((p) => !p.spent && p.x < n.camX + n.viewW + 60 && p.x > n.camX - 60);
     // Opposite waves closing in on him press each other flat (see interfere).
     if (W.alive) W.squash = 1;
-    this.updateSnawaves(dt);
+    this.updateSinepedes(dt);
+    this.updateUrchins(dt);
     this.updateWorms(dt);
     this.updateBackwaves(dt);
     this.updateRefluxes(dt);
@@ -228,26 +285,69 @@ export class Game {
     }
   }
 
-  private spawnSnawaves(dt: number) {
+  /** On each beat: a click, and a ripple running out along the line from Wavell. */
+  private stepBeat() {
+    const hit = this.beat.step(this.level);
+    if (!hit) return;
+    sfx.beat(60 / this.beat.bpm, hit === 'bar');
+    const amp = hit === 'bar' ? -2.6 : -1.5;
+    this.line.pulse(this.wavell.x, amp, 12, 1);
+    this.line.pulse(this.wavell.x, amp, 12, -1);
+  }
+
+  /** Is anything out there that he has to deal with? */
+  private threatsAround() {
+    return this.sinepedes.some((s) => s.harmful) || this.worms.some((w) => w.harmful) || this.bubbles.some((b) => b.harmful)
+      || this.urchins.some((u) => u.standing) || this.backwaves.length > 0 || this.refluxes.length > 0;
+  }
+
+  /**
+   * On the early levels threats come one at a time, with a moment of clear line between
+   * them. Their clocks wait meanwhile, so each kind still gets its turn.
+   */
+  private canSpawn() {
+    return this.level > DIFF.soloUntil || (this.calm <= 0 && !this.threatsAround());
+  }
+
+  private spawnSinepedes(dt: number) {
     const W = this.wavell, n = this.neon;
     if (!W.alive || W.state === 'appear') return;
     // The original only counts while you walk right; standing still is punished by the end of the line.
-    if (this.quiet) return;
-    this.snaClock += dt * (W.vel > 0 ? 1 : DIFF.snaIdle);
-    const every = at('snaEvery', this.level);
-    if (this.snaClock >= every) {
-      this.snaClock = 0;
-      this.snawaves.push(new Snawave(n.camX + n.viewW + 30, at('snaSpeed', this.level)));
-      sfx.play('snawave', 0.8);
-      this.teach('snawave', 'SNAWAVE: SWIPE SIDEWAYS when it is close to pull it flat (or TAP from under)', 'SNAWAVE: X when it is close pulls it flat (or Z from under)');
+    if (this.quiet || !this.canSpawn()) return;
+    this.sineClock += dt * (W.vel > 0 ? 1 : DIFF.sineIdle);
+    const every = at('sineEvery', this.level);
+    if (this.sineClock >= every) {
+      this.sineClock = 0;
+      // Half start on a crest (a sine), half on a trough (a cosine). Longer every few levels.
+      const s = new Sinepede(n.camX + n.viewW + 30, at('sineSpeed', this.level), Math.floor(at('sineSegs', this.level)), Math.random() < 0.5 ? 1 : -1);
+      this.sinepedes.push(s);
+      sfx.call(s.sides);
+      this.teach('sinepede', 'SINEPEDE: a crest on your side: SWIPE SIDEWAYS. A trough on the other: TAP', 'SINEPEDE: a crest on your side: X. A trough on the other: Z');
     }
+  }
+
+  private spawnUrchins(dt: number) {
+    const W = this.wavell;
+    if (!this.canSpawn()) return;
+    this.urchinClock += dt;
+    if (!W.alive || W.state === 'appear' || this.quiet || this.playTime < DIFF.urchinFrom) return;
+    if (this.urchinClock < at('urchinEvery', this.level)) return;
+    this.urchinClock = rand(-1, 0);
+    // Far enough ahead to stop or go round in the time the warning gives.
+    const warn = at('urchinWarn', this.level);
+    const x = W.x + W.facing * (warn * 100 + rand(25, 80));
+    if (this.urchins.some((u) => Math.abs(u.x - x) < 40)) return;
+    const u = new Urchin(x, warn, DIFF.urchinHold);
+    u.hush = sfx.rumble(warn);
+    this.urchins.push(u);
+    this.teach('urchin', 'SEA URCHIN: where the line fuzzes, spikes come out. SWIPE SIDEWAYS to pull it flat', 'SEA URCHIN: where the line fuzzes, spikes come out. X pulls it flat');
   }
 
   private spawnWorms(dt: number) {
     const W = this.wavell, n = this.neon;
     if (!W.alive || W.state === 'appear' || this.playTime < DIFF.wormFrom) return;
     // Worms come faster for players who hide under the line.
-    if (this.quiet) return;
+    if (this.quiet || !this.canSpawn()) return;
     this.wormClock += dt * (W.under ? DIFF.wormUnder : 1);
     const every = at('wormEvery', this.level);
     if (this.wormClock >= every) {
@@ -257,28 +357,41 @@ export class Game {
     }
   }
 
-  private updateSnawaves(dt: number) {
+  private updateSinepedes(dt: number) {
     const W = this.wavell, L = this.line, n = this.neon;
-    for (const s of this.snawaves) {
+    const wSide = W.under ? -1 : 1;
+    for (const s of this.sinepedes) {
       s.update(dt);
-      // A moving Snawave is a wave: it lifts the line in front and leaves a trough behind.
-      if (s.state === 'move' || s.state === 'rise') { L.push(s.x - 3, -700, 3); L.push(s.back + 4, 500, 4); }
-      if (this.mode !== 'play') continue;
-      if (s.harmful) s.squash = this.interfere(s.x + SNAWAVE_W / 2, W.under);
-      if ((s.state === 'move' || s.state === 'rise') && W.alive && W.onLine && !W.under && s.x < W.x + 20 && s.x > W.x - 4) {
-        s.bite();
-        W.kill('eaten', biteHit());
-        sfx.play('eaten');
+      if (this.mode !== 'play' || !s.harmful) continue;
+      // The segment closest to him presses down, and is pressed, if it is on the other side.
+      for (const seg of s.segs) seg.press = 1;
+      const f = s.front(W.x);
+      if (f) f.press = this.interfere(s.frontCentre(W.x), f.side !== wSide);
+      if (W.alive && W.onLine && W.safe <= 0) {
+        const met = s.segAt(W.x + 8) ?? s.segAt(W.x - 8);
+        if (met && met.side === wSide) W.hurt('zap');
+        // On the other side there is no way round either: opposite waves cancel.
+        else if (met) { this.cancel(s.frontCentre(W.x)); s.cancel(W.x); }
       }
-      // Walking under it is no way round: his knot and its bump are opposite waves, and they cancel.
-      if ((s.state === 'move' || s.state === 'rise') && W.alive && W.onLine && W.under && s.x < W.x + 8 && s.back > W.x - 2) {
-        this.cancel((s.x + s.back) / 2);
-        s.kill();
-      }
-      if (s.harmful && W.flying && s.touches(L, W.x, W.by, W.bubbleR)) W.kill('pop');
-      if (s.harmful && s.state !== 'bite' && s.x < this.endX + 2) { s.sink(); L.impulse(s.x + 15, 80, 9); }
+      if (W.flying && s.touches(L, W.x, W.by, W.bubbleR)) W.hurt('pop');
+      if (s.x < this.endX + 2) { s.sink(); L.impulse(s.x + SEG_W / 2, 80, 9); }
     }
-    this.snawaves = this.snawaves.filter((s) => s.state !== 'done' && s.back > n.camX - 90);
+    this.sinepedes = this.sinepedes.filter((s) => s.state !== 'done' && s.back > n.camX - 90);
+  }
+
+  private updateUrchins(dt: number) {
+    const W = this.wavell, L = this.line, n = this.neon;
+    for (const u of this.urchins) {
+      u.update(dt);
+      // The fuzz is in its outline. Here the line just shivers a little around it.
+      if (u.state === 'warn' && Math.random() < 0.5) L.impulse(u.x + rand(-9, 9), rand(-14, 14), 3);
+      if (u.justOpened) { u.hush = sfx.crunch(u.hold); n.shake = Math.max(n.shake, 0.4); }
+      if (this.mode !== 'play' || !u.harmful) { if (u.state !== 'done' && u.x < this.endX + 2) u.sink(); continue; }
+      if (W.alive && W.onLine && Math.abs(W.x - u.x) < u.reach) W.hurt('zap');
+      if (W.flying && u.touches(L, W.x, W.by, W.bubbleR)) W.hurt('pop');
+      if (u.x < this.endX + 2) u.sink();
+    }
+    this.urchins = this.urchins.filter((u) => u.state !== 'done' && u.x > n.camX - 60);
   }
 
   private updateWorms(dt: number) {
@@ -289,13 +402,15 @@ export class Game {
       if (w.harmful) L.push(w.x + WORM_W / 2, 350, 5);
       if (this.mode !== 'play') continue;
       if (w.harmful) w.squash = this.interfere(w.x + WORM_W / 2, !W.under);
-      if ((w.state === 'move' || w.state === 'rise') && W.alive && W.onLine && W.under && w.x < W.x + 14 && w.x > W.x - 6) {
+      // On his own side it bites, which leaves him dizzy, and that is the end of it.
+      const crawling = (w.state === 'move' || w.state === 'rise') && W.alive && W.onLine && W.safe <= 0;
+      if (crawling && W.under && w.x < W.x + 14 && w.back > W.x - 6) {
         w.bite();
-        W.kill('eaten', wormBiteHit());
         sfx.play('eaten');
+        if (W.stun()) this.teach('dizzy', 'DIZZY: slow for a moment, and the line keeps coming', 'DIZZY: slow for a moment, and the line keeps coming');
       }
-      // Same over it from on top.
-      if ((w.state === 'move' || w.state === 'rise') && W.alive && W.onLine && !W.under && w.x < W.x + 8 && w.back > W.x - 2) {
+      // From the other side, the two opposite waves cancel. That costs him.
+      if (crawling && !W.under && w.x < W.x + 8 && w.back > W.x - 2) {
         this.cancel((w.x + w.back) / 2);
         w.kill();
       }
@@ -306,8 +421,8 @@ export class Game {
 
   private updateBackwaves(dt: number) {
     const W = this.wavell, L = this.line, n = this.neon;
-    this.backClock += dt;
-    if (!this.quiet && this.backClock > DIFF.backCheck && this.playTime > DIFF.backFrom && W.alive && W.state !== 'appear' && this.backwaves.length === 0 && this.refluxes.length === 0) {
+    if (this.canSpawn()) this.backClock += dt;
+    if (!this.quiet && this.canSpawn() && this.backClock > DIFF.backCheck && this.playTime > DIFF.backFrom && W.alive && W.state !== 'appear' && this.backwaves.length === 0 && this.refluxes.length === 0) {
       this.backClock = 0;
       if (Math.random() < at('backChance', this.level)) {
         this.backwaves.push({ x: n.camX - 10, dir: 1, warn: 1.1, done: false });
@@ -338,7 +453,7 @@ export class Game {
       if (b.x >= W.x) {
         b.done = true;
         if (W.flying) this.addScore(6, W.x, W.by - 18);
-        else if (W.onLine) W.kill('zap');
+        else if (W.onLine) W.hurt('zap');
       }
     }
     this.backwaves = this.backwaves.filter((b) => b.warn > 0 || (b.x < n.camX + n.viewW + 40 && b.x > n.camX - 40));
@@ -346,43 +461,64 @@ export class Game {
 
   private updateBubbles(dt: number) {
     const W = this.wavell, L = this.line, n = this.neon;
-    this.bubbleClock += dt;
+    if (this.canSpawn()) this.bubbleClock += dt;
     const every = at('bubbleEvery', this.level);
-    if (!this.quiet && W.alive && W.state !== 'appear' && this.playTime > DIFF.bubbleFrom && this.bubbleClock > every) {
+    if (!this.quiet && this.canSpawn() && W.alive && W.state !== 'appear' && this.playTime > DIFF.bubbleFrom && this.bubbleClock > every) {
       this.bubbleClock = rand(-1, 0);
       const x = W.x + rand(60, 170);
-      if (!this.bubbles.some((b) => Math.abs(b.x - x) < 30) && !this.snawaves.some((s) => x > s.x - 10 && x < s.back + 10)) {
+      if (!this.bubbles.some((b) => Math.abs(b.x - x) < 30) && !this.sinepedes.some((s) => x > s.x - 10 && x < s.back + 10)) {
         // Mostly on his side, so it is in his way.
         const side = (Math.random() < DIFF.bubbleOwnSide ? W.side : -W.side) as 1 | -1;
-        this.bubbles.push(new BubbleBurst(x, side, at('bubbleGrow', this.level)));
+        const flies = this.level >= DIFF.bubbleFlyLevel && Math.random() < DIFF.bubbleFlyChance;
+        this.bubbles.push(new BubbleBurst(x, side, at('bubbleGrow', this.level), flies ? DIFF.bubbleFlyTime : 0));
         sfx.play('reflux', 0.25);
         this.teach('bubble', 'BUBBLE BURST: SWIPE SIDEWAYS on your side, TAP on the other, or keep away', 'BUBBLE BURST: X on your side, Z on the other, or keep away');
       }
     }
     for (const b of this.bubbles) {
-      b.update(dt);
-      // Crossing its root from the other side cancels it too, and the clash leaves him dizzy.
-      if (b.harmful && W.alive && W.onLine && (W.under ? -1 : 1) !== b.side && Math.abs(b.x - W.x) < 6) {
+      b.update(dt, L);
+      if (b.justDetached) {
+        // It lets go of the line, the way his own bubble does.
+        L.impulse(b.x, b.side * 70, 6);
+        this.fx.burst(b.x, L.sample(b.x), 10, 35, BUBBLE_GREEN, 0, 0.3);
+        sfx.play('pop', 0.3);
+        this.teach('bubbleFly', 'A BUBBLE IN THE AIR: its spray pops your bubble and leaves you dizzy on the line', 'A BUBBLE IN THE AIR: its spray pops your bubble and leaves you dizzy on the line');
+      }
+      if (b.state === 'fly' && W.alive) {
+        // Touching one in the air sets it off, right there.
+        const [cx, cy] = b.centre(L);
+        if (W.flying ? Math.hypot(cx - W.x, cy - W.by) < b.r + W.bubbleR : this.onBody(cx, cy, b.side, b.r)) b.burst();
+      }
+      // Walking into one on the line, from either side, pops it and leaves him dizzy.
+      if (b.harmful && !b.airborne && W.alive && W.onLine && Math.abs(b.x - W.x) < 6) {
         b.pop();
         const [cx, cy] = b.centre(L);
         this.fx.shatter(b.outline(L), BUBBLE_GREEN, 30, 0);
         this.fx.burst(cx, cy, 10, 30, '#ffffff', 0, 0.3);
         L.calm(b.x, 10);
         sfx.play('pop', 0.6);
-        if (W.stun()) this.teach('cancel', 'OPPOSITE WAVES CANCEL: the other side is no way round', 'OPPOSITE WAVES CANCEL: the other side is no way round');
+        if (W.stun()) this.teach('dizzy', 'DIZZY: slow for a moment, and the line keeps coming', 'DIZZY: slow for a moment, and the line keeps coming');
       }
-      if (b.state === 'burst') {
-        // The spray flies out on its own side and falls back to the line.
+      if (b.justBurst) {
         const [cx, cy] = b.centre(L);
-        for (let i = 0; i < 16; i++) {
-          const a = rand(0.15, Math.PI - 0.15), sp = rand(55, 120);
-          this.drops.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: -b.side * Math.sin(a) * sp, side: b.side, life: 1.1 });
+        if (b.airborne) {
+          // In the air the spray flies out all round, evenly, so nothing close slips through.
+          for (let i = 0; i < AIR_SPRAY; i++) {
+            const a = ((i + rand(-0.3, 0.3)) / AIR_SPRAY) * Math.PI * 2, sp = rand(45, 85);
+            this.drops.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, side: b.side, life: 0.8, air: true });
+          }
+        } else {
+          // On the line it flies out on its own side and falls back to the line.
+          for (let i = 0; i < SPRAY; i++) {
+            const a = rand(0.15, Math.PI - 0.15), sp = rand(55, 120);
+            this.drops.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: -b.side * Math.sin(a) * sp, side: b.side, life: 1.1, air: false });
+          }
+          L.impulse(b.x, b.side * 90, 6);
         }
         this.fx.burst(cx, cy, 18, 60, BUBBLE_GREEN, 0, 0.4);
-        L.impulse(b.x, b.side * 90, 6);
         sfx.play('pop');
       }
-      if (b.state === 'grow' && b.x < this.endX + 4) b.pop();
+      if (b.harmful && b.x < this.endX + 4) b.pop();
     }
     this.bubbles = this.bubbles.filter((b) => b.state !== 'done' && b.x > n.camX - 60);
     for (const d of this.drops) {
@@ -392,15 +528,47 @@ export class Game {
       d.life -= dt;
       // Back into the line on its own side.
       if (d.side * (d.y - L.sample(d.x)) > 0 && d.side * d.vy > 0) d.life = 0;
-      if (d.life > 0 && W.onLine && (W.under ? -1 : 1) === d.side) {
-        const g = L.sample(W.x);
-        if (Math.abs(d.x - W.x) < 6 && d.side * (g - d.y) > -2 && d.side * (g - d.y) < 28) {
-          d.life = 0;
-          if (W.stun()) this.teach('dizzy', 'DIZZY: slow for a moment, and the line keeps coming', 'DIZZY: slow for a moment, and the line keeps coming');
-        }
+      if (d.life > 0 && d.air && W.flying && Math.hypot(d.x - W.x, d.y - W.by) < W.bubbleR + 1) {
+        d.life = 0;
+        W.hurt('pop');
+      }
+      if (d.life > 0 && this.onBody(d.x, d.y, d.side, 0)) {
+        d.life = 0;
+        if (W.stun()) this.teach('dizzy', 'DIZZY: slow for a moment, and the line keeps coming', 'DIZZY: slow for a moment, and the line keeps coming');
       }
     }
     this.drops = this.drops.filter((d) => d.life > 0);
+  }
+
+  /** Does something at (x, y), with this margin, on this side of the line, touch his body? */
+  private onBody(x: number, y: number, side: number, margin: number) {
+    const W = this.wavell;
+    if (!W.onLine || (W.under ? -1 : 1) !== side) return false;
+    const h = side * (this.line.sample(W.x) - y);
+    return Math.abs(x - W.x) < 6 * W.scale + margin && h > -2 - margin && h < 28 * W.scale + margin;
+  }
+
+  /** Now and then a bonus that makes him grow, for as long as he still can. */
+  private updateGrowths(dt: number) {
+    const W = this.wavell, L = this.line, n = this.neon;
+    if (W.size < DIFF.growMax) this.growClock += dt;
+    if (!this.quiet && W.alive && W.state !== 'appear' && W.size < DIFF.growMax && this.playTime > DIFF.growFrom
+      && this.growClock >= DIFF.growEvery && this.growths.length === 0) {
+      this.growClock = 0;
+      // Mostly on his side, but sometimes it takes a trip through the line.
+      const side = (Math.random() < 0.7 ? W.side : -W.side) as 1 | -1;
+      this.growths.push({ x: W.x + rand(70, 150), y: 0, side, life: DIFF.growStay, p: rand(0, 6) });
+      this.teach('growth', 'CATCH IT TO GROW: a hit takes a size instead of a life', 'CATCH IT TO GROW: a hit takes a size instead of a life');
+    }
+    for (const o of this.growths) {
+      o.life -= dt;
+      o.y = L.sample(o.x) - o.side * (GROWTH_HEIGHT + Math.sin(this.time * 3 + o.p) * 2);
+      if (o.x < this.endX + 4) o.life = 0;
+      if (o.life <= 0 || !W.alive) continue;
+      const hit = W.flying ? Math.hypot(o.x - W.x, o.y - W.by) < W.bubbleR + 5 : this.onBody(o.x, o.y, o.side, 5);
+      if (hit && W.grow()) o.life = 0;
+    }
+    this.growths = this.growths.filter((o) => o.life > 0 && o.x > n.camX - 40);
   }
 
   private updateSparkles(dt: number) {
@@ -461,11 +629,11 @@ export class Game {
 
   private updateRefluxes(dt: number) {
     const W = this.wavell, L = this.line, n = this.neon;
-    this.refluxClock += dt;
-    // Every so often: maybe a reflux, unless a Snawave is still coming in from the far right.
-    if (!this.quiet && this.refluxClock > DIFF.refluxCheck) {
+    if (this.canSpawn()) this.refluxClock += dt;
+    // Every so often: maybe a reflux, unless a Sinepede is still coming in from the far right.
+    if (!this.quiet && this.canSpawn() && this.refluxClock > DIFF.refluxCheck) {
       this.refluxClock = 0;
-      const incoming = this.snawaves.some((s) => s.x > n.camX + n.viewW * 0.9);
+      const incoming = this.sinepedes.some((s) => s.x > n.camX + n.viewW * 0.9);
       if (W.alive && W.state !== 'appear' && this.playTime > DIFF.refluxFrom && this.refluxes.length === 0 && !incoming &&
           Math.random() < at('refluxChance', this.level)) {
         const dir = Math.random() < 0.5 ? 1 : -1;
@@ -486,7 +654,7 @@ export class Game {
       if (Math.abs(x - W.x) < 5) {
         const hit = W.flying ? Math.hypot(x - W.x, r.y - W.by) < W.bubbleR + 3
           : r.y < 0 ? W.onLine && !W.under : W.under;
-        if (hit) { W.kill(W.flying ? 'pop' : 'zap'); continue; }
+        if (hit) { W.hurt(W.flying ? 'pop' : 'zap'); r.passed = true; continue; }
       }
       if (!r.passed && (r.dir > 0 ? x > W.x + 5 : x < W.x - 5)) {
         r.passed = true;
@@ -521,19 +689,19 @@ export class Game {
       const left = W.stroke(L);
       if (left) this.endX = Math.max(this.endX, left[left.length - 2] - 7);
     }
-    // Once the knot has come undone (or the jaws have closed), what is left flies apart
+    // Once the knot has come undone, what is left flies apart
     // and the line twangs.
     if (W.death !== 'pop' && W.t >= W.linger && W.t - STEP < W.linger) {
       const pts = W.figurePoints(L);
-      if (W.death === 'eaten') { fx.shatter(pts, COLORS.wavell, 40, 80, -20); L.impulse(W.x, 160, 10); n.shake = 1.6; }
-      else if (W.death === 'fall') L.impulse(W.x + 8, 120, 8);
+      if (W.death === 'fall') L.impulse(W.x + 8, 120, 8);
       // Pressed flat: what is left of him slides off along the line, which stays still.
       else if (W.death === 'flatten') L.calm(W.x, 14);
       else { fx.shatter(pts, '#ffffff', 70, 0); fx.shatter(pts, COLORS.danger, 40, 0); L.impulse(W.x, -110, 6); }
     }
     if (W.t > 1.7) {
       if (this.lives > 0) {
-        for (const s of this.snawaves) s.sink();
+        for (const s of this.sinepedes) s.sink();
+        for (const u of this.urchins) u.sink();
         for (const w of this.worms) w.sink();
         for (const b of this.bubbles) b.pop();
         this.drops = [];
@@ -556,10 +724,12 @@ export class Game {
 
   /** Creatures an attack can reach: their span on the line and the side they bulge to. */
   private targets() {
-    const out: { e: Snawave | Worm | BubbleBurst; x0: number; x1: number; side: number }[] = [];
-    for (const s of this.snawaves) if (s.harmful && s.state !== 'bite') out.push({ e: s, x0: s.x, x1: s.back, side: 1 });
+    const out: { e: Sinepede | Urchin | Worm | BubbleBurst; x0: number; x1: number; side: number }[] = [];
+    for (const u of this.urchins) if (u.standing) out.push({ e: u, x0: u.x - u.reach, x1: u.x + u.reach, side: 1 });
+    for (const s of this.sinepedes) if (s.harmful) out.push({ e: s, x0: s.x, x1: s.back, side: s.front(this.wavell.x)?.side ?? 1 });
     for (const w of this.worms) if (w.harmful && w.state !== 'bite') out.push({ e: w, x0: w.x, x1: w.back, side: -1 });
-    for (const b of this.bubbles) if (b.harmful) out.push({ e: b, x0: b.x - 8, x1: b.x + 8, side: b.side });
+    // One that has floated off the line is out of reach of anything sent along the line.
+    for (const b of this.bubbles) if (b.harmful && !b.airborne) out.push({ e: b, x0: b.x - 8, x1: b.x + 8, side: b.side });
     return out;
   }
 
@@ -590,8 +760,31 @@ export class Game {
    * on the other), or shrinks it back a size if it had grown. The wrong one feeds it:
    * it grows and is thrown back. dir is the way a flattened one melts away.
    */
-  private hit(e: Snawave | Worm | BubbleBurst, side: number, kind: Attack, from: number, dir: number) {
+  private hit(e: Sinepede | Urchin | Worm | BubbleBurst, side: number, kind: Attack, from: number, dir: number) {
     const L = this.line, n = this.neon, W = this.wavell;
+    // The Sea Urchin has its own rule, from either side: only a pull hurts it.
+    if (e instanceof Urchin) {
+      const y = L.sample(e.x) - 12 * W.side;
+      if (kind === 'wipe') {
+        e.grow();
+        this.fx.burst(e.x, y, 12, 30, COLORS.danger, 0, 0.4);
+        n.shake = Math.max(n.shake, 0.3);
+        sfx.crunch(0.16, 1.5);
+        this.teach('urchinGrow', 'A WIPE FEEDS THE SEA URCHIN! SWIPE SIDEWAYS to pull it', 'A WIPE FEEDS THE SEA URCHIN! X pulls it');
+      } else if (e.size > 0) {
+        e.shrink();
+        this.fx.burst(e.x, y, 10, 40, '#ffffff', 0, 0.3);
+        sfx.crunch(0.1, 0.75);
+      } else {
+        e.sink();
+        L.calm(e.x, 12);
+        this.addScore(4 + 3 * e.peak, e.x, y - 8 * W.side);
+        this.fx.burst(e.x, y, 14, 45, COLORS.danger, 0, 0.35);
+        n.shake = Math.max(n.shake, 0.5);
+        sfx.crunch(0.18, 0.5);
+      }
+      return;
+    }
     const right = (kind === 'pull') === (side === from);
     if (e instanceof BubbleBurst) {
       const [cx, cy] = e.centre(L);
@@ -604,8 +797,28 @@ export class Game {
       }
       return;
     }
-    const worm = e instanceof Worm, x = e.centre;
-    const y = worm ? L.sample(x) + 14 * e.sc : L.sample(x) - 34 * e.sc;
+    if (e instanceof Sinepede) {
+      const x = e.frontCentre(W.x), y = L.sample(x) - side * 24;
+      if (right) {
+        // The two waves cancel: that segment is gone, and a ripple rolls on the way it was hit.
+        e.cancel(W.x);
+        L.pulse(x, -side * 5, 10, dir);
+        this.addScore(4, x, y - side * 6);
+        this.fx.burst(x, y, 10, 40, COLORS.enemy, 0, 0.3);
+        n.shake = Math.max(n.shake, 0.4);
+        sfx.cancelled(side, e.count === 0);
+      } else {
+        e.grow(W.x);
+        e.knock((Math.sign(x - W.x) || 1) * DIFF.knock);
+        L.impulse(x, side * 60, 8);
+        this.fx.burst(x, y, 12, 30, COLORS.enemy, 0, 0.4);
+        n.shake = Math.max(n.shake, 0.3);
+        sfx.fed(side);
+        this.teach('grow', 'WRONG ATTACK, IT GREW! Your side: SWIPE SIDEWAYS. Other side: TAP', 'WRONG ATTACK, IT GREW! Your side: X. Other side: Z');
+      }
+      return;
+    }
+    const x = e.centre, y = L.sample(x) + 14 * e.sc;
     if (!right) {
       this.fed(x, y, () => { e.grow(); e.knock((Math.sign(x - W.x) || 1) * DIFF.knock); });
       // Thrown back, it drags the line with it.
@@ -615,8 +828,8 @@ export class Game {
       // Flattened, it melts into the line and rolls on the way it was hit.
       e.kill(dir);
       L.pulse(x, -side * 6 * e.sc, 10, dir);
-      this.addScore((worm ? 5 : 4) + 3 * e.peak, e.x + 12, y + (worm ? 8 : -2));
-      this.fx.burst(x, L.sample(x) - side * (worm ? 8 : 18), 10, 40, COLORS.enemy, 0, 0.3);
+      this.addScore(5 + 3 * e.peak, e.x + 12, y + 8);
+      this.fx.burst(x, L.sample(x) - side * 8, 10, 40, COLORS.enemy, 0, 0.3);
       n.shake = Math.max(n.shake, 0.6);
       sfx.play('kill');
     }
@@ -656,7 +869,7 @@ export class Game {
     const W = this.wavell, L = this.line;
     this.fx.burst((ex + W.x) / 2, L.sample(W.x), 16, 50, '#ffffff', 0, 0.35);
     L.calm((ex + W.x) / 2, 16);
-    W.kill('flatten');
+    W.hurt('flatten');
     this.neon.shake = Math.max(this.neon.shake, 0.7);
     this.teach('cancel', 'OPPOSITE WAVES CANCEL: the other side is no way round', 'OPPOSITE WAVES CANCEL: the other side is no way round');
   }

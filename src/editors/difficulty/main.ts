@@ -186,8 +186,9 @@ function loop(now: number) {
   if (game.level !== shownLevel) { shownLevel = game.level; $('level').textContent = String(game.level); ramps.forEach(drawRamp); }
   const W = game.wavell;
   $('state').textContent = `${game.mode}  ·  score ${game.score}  ·  lives ${game.lives}  ·  ${game.playTime.toFixed(1)} s  ·  ` +
-    `lead ${Math.max(0, W.x - game.endX).toFixed(0)} / ${DIFF.endLead} u  ·  snawaves ${game.snawaves.length}  worms ${game.worms.length}  ` +
-    `bubbles ${game.bubbles.length}  backwaves ${game.backwaves.length}  refluxes ${game.refluxes.length}`;
+    `lead ${Math.max(0, W.x - game.endX).toFixed(0)} / ${DIFF.endLead} u  ·  sinepedes ${game.sinepedes.length}  urchins ${game.urchins.length}  worms ${game.worms.length}  ` +
+    `bubbles ${game.bubbles.length}  backwaves ${game.backwaves.length}  refluxes ${game.refluxes.length}` +
+    (DIFF.beatOn ? `  ·  ${Math.round(game.beat.bpm)} BPM, world ${game.beat.speed.toFixed(2)}×` : '');
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

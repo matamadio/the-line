@@ -2,6 +2,9 @@
 // spliced into the line's own stroke, so it grows out of the line, rides the
 // line's waves, and sinks back into it. The shape follows the original sprite: an
 // S-shaped belly, a snout with a red eye, a crest of foam curls and one claw.
+//
+// The game no longer sends these: the Sinepede took over as the basic enemy. It stays
+// for the keyframe editor, which edits its outline and motions.
 
 import type { SpringLine } from '../line';
 import { DIFF } from '../../data/difficulty';
@@ -54,7 +57,7 @@ export class Snawave {
   private kick = 0;
 
   /** speed: how fast it comes (u/s), from the difficulty at its level. */
-  constructor(public x: number, public speed = DIFF.snaSpeed) {}
+  constructor(public x: number, public speed = 100) {}
 
   get back() { return this.x + SNAWAVE_W * this.sc; }
   get centre() { return this.x + SNAWAVE_W * this.sc / 2; }
