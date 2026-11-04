@@ -72,6 +72,11 @@ export const DIFF_KNOBS = {
   levelScore: knob('Progress', 'Points per level', 100, 10, 1000, 5),
   lifeEvery: knob('Progress', 'Extra life every N levels (0: never)', 3, 0, 20, 1),
   startLevel: knob('Progress', 'Start at level', 1, 1, 30, 1),
+
+  beatOn: knob('Beat (prototype)', 'On (1) or off (0)', 0, 0, 1, 1),
+  bpm: knob('Beat (prototype)', 'Tempo at level 1 (BPM)', 75, 40, 200, 1),
+  bpmPer: knob('Beat (prototype)', '… added per level', 3, 0, 20, 0.5),
+  bpmCap: knob('Beat (prototype)', '… at most', 120, 40, 300, 1),
 };
 
 export type DiffKey = keyof typeof DIFF_KNOBS;

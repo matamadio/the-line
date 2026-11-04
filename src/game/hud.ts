@@ -12,6 +12,15 @@ export function muteButton(n: Neon): [number, number, number] {
   return [n.w - s * 1.4, n.h - s * 1.4, s * 0.9];
 }
 
+/** The four beats of the bar, as dots ending at x, with the current one lit. */
+function drawBar(g: Game, x: number, y: number, s: number) {
+  for (let i = 0; i < 4; i++) {
+    const p = new Path2D(), r = s * 0.13, cx = x - (3 - i) * s * 0.6 - r;
+    p.arc(cx, y, r, 0, Math.PI * 2);
+    g.neon.glow(p, COLORS.hud, 1.2, i === g.beat.beatOfBar ? 1.4 : 0.25);
+  }
+}
+
 /** How much line is left behind Wavell before the break: the time you have. */
 function drawLead(g: Game, x: number, y: number, s: number) {
   const n = g.neon, W = g.wavell;
@@ -49,7 +58,8 @@ export function drawHud(g: Game) {
     help.forEach((line, i) => n.text(line, cx, n.lineY + s * (5 + i * 1.1), s * 0.55, '#c9a640'));
   } else {
     n.text(String(g.score).padStart(6, '0'), n.w - pad, pad, s, COLORS.hud, 'right');
-    n.text('LEVEL ' + g.level, cx, pad, s * 0.7, '#ffb21a');
+    n.text('LEVEL ' + g.level + (DIFF.beatOn ? `  ·  ${Math.round(g.beat.bpm)} BPM` : ''), cx, pad, s * 0.7, '#ffb21a');
+    if (DIFF.beatOn) drawBar(g, n.w - pad, pad + s * 1.1, s);
     n.world();
     for (let i = 0; i < g.lives; i++) {
       const [wx, wy] = [n.camX + (pad / n.unit) + 4 + i * 11, n.viewTop + pad / n.unit + 1];

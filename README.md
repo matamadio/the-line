@@ -80,6 +80,7 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | Fighting | Pull reach, knockback, the most sizes a creature can grow |
 | Sparkles | How many at once, how many are gold, the chain window |
 | Progress | Lives, points per level, extra lives, the starting level |
+| Beat (prototype) | Whether the beat is on, and the tempo ramp. See [docs/DESIGN.md](docs/DESIGN.md#the-beat-prototype) |
 
 **The bar under the game** has restart, pause, level up and down, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
 
@@ -172,6 +173,7 @@ docs/              Game design notes and the original game's event list
 | --- | --- |
 | `npm start` | Runs the game and opens it in your browser |
 | `npm run dev` | The same, without opening a browser |
+| `npm run beat` | Opens the game with the beat prototype on |
 | `npm run difficulty` | Opens the difficulty editor |
 | `npm run lab` | Opens the animation lab |
 | `npm run phone` | Runs the game so phones on your network can reach it |

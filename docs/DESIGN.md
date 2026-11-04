@@ -42,6 +42,16 @@ A Bubble Burst sprays drops that make Wavell dizzy: no moves for a moment and sl
 
 Sparkles pop up all around, often behind Wavell or off the line, drift about at random and blink out after a few seconds. Catching them in a quick chain is worth more and more, and gold ones, high up, are worth five times as much. Chasing them means giving ground to the line.
 
+## The beat (prototype)
+
+An experiment towards a music-timing core for the game ([issue #3](https://github.com/matamadio/the-line/issues/3)). It is off by default. To try it, run `npm run beat`, add `?beat` to the game's address, or set the first knob of the Beat group in the difficulty editor.
+
+- A click on every beat, with a higher one on the first beat of each bar. The music is silent, because its tempo wouldn't match.
+- The line lights up and sends out a small ripple from Wavell on each beat, so the beat can be seen with the sound off.
+- The whole world runs at `BPM / 75`, and the tempo rises with the level, changing only at the start of a bar.
+
+Spawns aren't on the beat yet, and the player's timing isn't judged. The question this step answers is whether the game feels better on a beat.
+
 ## Not in yet
 
 These are in the original game and have no version here so far: the Wavehole, the Linesaver bonus and the Flatter. Some of their sounds are already in `public/assets/sounds/`.

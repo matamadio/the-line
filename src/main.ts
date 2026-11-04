@@ -1,6 +1,10 @@
 import { Game } from './game/game';
 import { Input } from './core/input';
 import { Neon } from './core/neon';
+import { DIFF } from './data/difficulty';
+
+// The beat prototype (see game/beat.ts) is off unless the address asks for it.
+if (new URLSearchParams(location.search).has('beat')) DIFF.beatOn = 1;
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const neon = new Neon(canvas);

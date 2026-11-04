@@ -2,6 +2,7 @@
 // everything flying around it. Only reads the game's state; the HUD is in hud.ts.
 
 import { COLORS, rand, smoothPath } from '../core/neon';
+import { DIFF } from '../data/difficulty';
 import { BUBBLE_GREEN } from './actors/bubble';
 import type { Game } from './game';
 import { drawHud } from './hud';
@@ -108,7 +109,7 @@ function drawLine(g: Game) {
     path.lineTo(x, L.y[i]);
     i++;
   }
-  n.glow(path, COLORS.line, 0.9);
+  n.glow(path, COLORS.line, 0.9, 1 + (DIFF.beatOn ? g.beat.flash * 1.6 : 0));
   for (const k of solo) n.glow(smoothPath(k.pts), COLORS.line, 0.9, 1 + k.flash);
   for (const k of splice) if (k.flash > 0.05) n.glow(smoothPath(k.pts), '#ffffff', 0.8, k.flash);
   // The frayed end of the line (not while he burns: then he is its end).

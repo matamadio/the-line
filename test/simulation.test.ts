@@ -6,7 +6,7 @@ import type { Controls } from '../src/core/input';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 // No audio in tests. start() would otherwise open an AudioContext.
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, setMusicAllowed() {}, beat() {}, muted: true } }));
 
 const SECONDS = 120;
 const STEPS_PER_SECOND = 120;

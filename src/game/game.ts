@@ -14,6 +14,7 @@
 // walking speed, so every stop costs ground. Sparkles are the bait: they drift
 // about, often behind him or off the line, and catching them means giving ground.
 
+import { BeatClock } from './beat';
 import { Fx } from './fx';
 import { Input, type Controls } from '../core/input';
 import { SpringLine } from './line';
@@ -47,6 +48,7 @@ export class Game {
   readonly line = new SpringLine();
   readonly fx = new Fx();
   readonly wavell = new Wavell();
+  readonly beat = new BeatClock();
   snawaves: Snawave[] = [];
   worms: Worm[] = [];
   backwaves: Backwave[] = [];
@@ -120,6 +122,7 @@ export class Game {
     this.refluxes = [];
     this.pulses = [];
     this.fx.clear();
+    this.beat.reset(this.level);
     this.wavell.spawn(this.wavell.x);
     this.endX = this.wavell.x - DIFF.endLead;
     this.endGrace = DIFF.endGrace;
@@ -139,7 +142,8 @@ export class Game {
     if (this.mode === 'title' && this.input.anyPressed) this.start();
     else if (this.mode === 'over' && this.overT > 0.8 && this.input.anyPressed) this.start();
     let controls: Controls = this.mode === 'play' ? { ...this.input } : NO_INPUT;
-    this.acc += dt;
+    sfx.setMusicAllowed(!DIFF.beatOn);
+    this.acc += dt * (DIFF.beatOn ? this.beat.speed : 1);
     while (this.acc >= STEP) {
       this.step(STEP, controls);
       controls = { ...controls, upPressed: false, downPressed: false, dragPressed: false, pullPressed: false };
@@ -173,6 +177,7 @@ export class Game {
     if (this.mode === 'over') { this.overT += dt; this.updateSnawaves(dt); return; }
 
     this.playTime += dt;
+    if (DIFF.beatOn) this.stepBeat();
     for (const e of W.events.splice(0)) {
       if (e === 'appear') { sfx.play('appear'); this.fx.burst(W.x, L.sample(W.x), 26, 70, COLORS.wavell, 0, 0.5); }
       else if (e === 'drag') sfx.play('drag', W.attack === 'wipe' ? 1 : 0.7);
@@ -226,6 +231,16 @@ export class Game {
       sfx.play('level');
       if (DIFF.lifeEvery > 0 && this.level % DIFF.lifeEvery === 0) this.lives++;
     }
+  }
+
+  /** On each beat: a click, and a ripple running out along the line from Wavell. */
+  private stepBeat() {
+    const hit = this.beat.step(this.level);
+    if (!hit) return;
+    sfx.beat(60 / this.beat.bpm, hit === 'bar');
+    const amp = hit === 'bar' ? -2.6 : -1.5;
+    this.line.pulse(this.wavell.x, amp, 12, 1);
+    this.line.pulse(this.wavell.x, amp, 12, -1);
   }
 
   private spawnSnawaves(dt: number) {

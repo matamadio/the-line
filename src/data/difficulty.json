@@ -48,5 +48,9 @@
   "lives": 3,
   "levelScore": 100,
   "lifeEvery": 3,
-  "startLevel": 1
+  "startLevel": 1,
+  "beatOn": 0,
+  "bpm": 75,
+  "bpmPer": 3,
+  "bpmCap": 120
 }

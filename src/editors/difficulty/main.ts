@@ -187,7 +187,8 @@ function loop(now: number) {
   const W = game.wavell;
   $('state').textContent = `${game.mode}  ·  score ${game.score}  ·  lives ${game.lives}  ·  ${game.playTime.toFixed(1)} s  ·  ` +
     `lead ${Math.max(0, W.x - game.endX).toFixed(0)} / ${DIFF.endLead} u  ·  snawaves ${game.snawaves.length}  worms ${game.worms.length}  ` +
-    `bubbles ${game.bubbles.length}  backwaves ${game.backwaves.length}  refluxes ${game.refluxes.length}`;
+    `bubbles ${game.bubbles.length}  backwaves ${game.backwaves.length}  refluxes ${game.refluxes.length}` +
+    (DIFF.beatOn ? `  ·  ${Math.round(game.beat.bpm)} BPM, world ${game.beat.speed.toFixed(2)}×` : '');
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
