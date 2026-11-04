@@ -13,7 +13,8 @@ export function drawGame(g: Game, dt: number) {
   drawBackdrop(g);
   n.world();
   drawLine(g);
-  for (const s of g.snawaves) s.drawFeatures(n, g.line);
+  for (const s of g.sinepedes) s.drawFeatures(n, g.line);
+  for (const u of g.urchins) u.drawFeatures(n, g.line);
   for (const w of g.worms) w.drawFeatures(n, g.line);
   for (const b of g.bubbles) b.drawFeatures(n, g.line);
   // A grown creature shows how many right waves it still takes, as dots off its tip.
@@ -25,10 +26,11 @@ export function drawGame(g: Game, dt: number) {
     }
     n.glow(path, COLORS.enemy, 0.6, 1.2);
   };
-  for (const e of g.snawaves) if (e.harmful && e.size > 0) pips(e.centre, g.line.sample(e.centre) - 33 * e.sc * e.squash - 6, e.size + 1);
+  for (const u of g.urchins) if (u.standing && u.size > 0) pips(u.x, g.line.sample(u.x) - u.tip - 5, u.size + 1);
   for (const e of g.worms) if (e.harmful && e.size > 0) pips(e.centre, g.line.sample(e.centre) + 9 * e.sc * e.squash + 5, e.size + 1);
   drawDrops(g);
   drawSparkles(g);
+  drawGrowths(g);
   drawBackwaves(g);
   drawRefluxes(g);
   g.wavell.drawFeatures(n, g.line);
@@ -62,7 +64,7 @@ function drawBackdrop(g: Game) {
 }
 
 /**
- * The line, with Wavell and every Snawave spliced into the same stroke: the
+ * The line, with Wavell and every creature spliced into the same stroke: the
  * characters are knots and waves of the line itself.
  */
 function drawLine(g: Game) {
@@ -72,7 +74,11 @@ function drawLine(g: Game) {
   const path = new Path2D();
   interface Knot { pts: number[]; x0: number; x1: number; flash: number; solo?: boolean }
   const knots: Knot[] = [];
-  for (const s of g.snawaves) {
+  for (const u of g.urchins) {
+    const pts = u.outline(L);
+    knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: 0 });
+  }
+  for (const s of g.sinepedes) {
     const pts = s.outline(L);
     knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: s.intensity - 1 });
   }
@@ -88,7 +94,7 @@ function drawLine(g: Game) {
   const w = g.wavell.stroke(L);
   // While he crumbles, what is left of him no longer joins the line.
   if (w) knots.push({ pts: w, x0: Math.min(w[0], w[w.length - 2]), x1: Math.max(w[0], w[w.length - 2]), flash: 0, solo: g.wavell.burning });
-  // Overlapping knots (a Snawave biting Wavell) can't share the stroke: they are drawn on their own.
+  // Overlapping knots (a Worm biting Wavell) can't share the stroke: they are drawn on their own.
   const splice: Knot[] = [], solo: Knot[] = [];
   let lastEnd = -Infinity;
   for (const k of knots.sort((a, b) => a.x0 - b.x0)) {
@@ -148,6 +154,19 @@ function drawSparkles(g: Game) {
     p.moveTo(s.x - q, s.y - q); p.lineTo(s.x + q, s.y + q);
     p.moveTo(s.x - q, s.y + q); p.lineTo(s.x + q, s.y - q);
     n.glow(p, s.gold ? '#fff0a8' : '#ffe680', s.gold ? 0.8 : 0.6, s.gold ? 1.4 : 1);
+  }
+}
+
+/** A growth bonus: a ring in his colour with a plus in it, blinking out at the end. */
+function drawGrowths(g: Game) {
+  const n = g.neon;
+  for (const o of g.growths) {
+    if (o.life < 1.5 && Math.floor(o.life * 8) % 2 === 0) continue;
+    const r = 5 + Math.sin(g.time * 6 + o.p) * 0.5, p = new Path2D();
+    p.arc(o.x, o.y, r, 0, Math.PI * 2);
+    p.moveTo(o.x - r * 0.5, o.y); p.lineTo(o.x + r * 0.5, o.y);
+    p.moveTo(o.x, o.y - r * 0.5); p.lineTo(o.x, o.y + r * 0.5);
+    n.glow(p, COLORS.wavell, 0.8, 1.3);
   }
 }
 

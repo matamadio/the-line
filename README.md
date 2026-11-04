@@ -36,7 +36,7 @@ npm start
 
 ## How to play
 
-Keep walking right. The end of the line crumbles in behind you at nearly your walking speed, so every stop costs ground. The gauge under your lives shows how much lead is left.
+Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your lives shows how much lead is left.
 
 | Action | Keyboard | Touch |
 | --- | --- | --- |
@@ -75,10 +75,12 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | Group | What it controls |
 | --- | --- |
 | End of the line | Crumble speed, the most lead Wavell can build up, the pause after a respawn |
-| Snawave, Worm, Bubble Burst | Speed, how often they come, when they first appear. Also: the Snawave's clock rate while Wavell stands, the Worm's while he is under the line, the Bubble's time to burst and its side |
+| One at a time | Up to which level threats come one at a time, and the clear line between them |
+| Sinepede, Worm, Sea Urchin, Bubble Burst | Speed, how often they come, when they first appear. Also: the Sinepede's segments and its clock rate while Wavell stands, the Worm's while he is under the line, the Urchin's warning and how long its spikes stay out, the Bubble's time to burst, its side, and when it starts floating off the line |
 | Backwave, Reflux | Chance per roll, how often it rolls, when it first appears |
 | Fighting | Pull reach, knockback, the most sizes a creature can grow |
 | Sparkles | How many at once, how many are gold, the chain window |
+| Growing | How often the bonus comes and how long it stays, how many times he can grow, and what each size adds to his scale, walking speed and bubble |
 | Progress | Lives, points per level, extra lives, the starting level |
 | Beat (prototype) | Whether the beat is on, and the tempo ramp. See [docs/DESIGN.md](docs/DESIGN.md#the-beat-prototype) |
 
@@ -123,7 +125,7 @@ The bar also has a timeline to scrub, speeds from 0.05× to 1×, zoom and a loop
 **Edit keyframes**, at the top of the lab, switches to the keyframe editor. Choose what to edit from the list:
 
 - **Wavell:** walk cycle, wipe, pull, idle pose
-- **Snawave:** outline, rise, bite, sink
+- **Snawave** (no longer in the game): outline, rise, bite, sink
 - **Worm:** rise, bite, sink
 
 The real stroke is drawn over a grid, with the keys either side shown faintly (onion skin).
@@ -156,14 +158,15 @@ src/
     game.ts        The rules: the simulation, spawning, attacks, scoring
     render.ts      Draws the world
     hud.ts         Draws the score, menus and touch controls
+    title.ts       Draws the title, one unbroken stroke
     line.ts        The line itself: a wave-equation string
     fx.ts          Sparks, debris, score popups
-    actors/        Wavell, Snawave, Worm, Bubble Burst
+    actors/        Wavell, Sinepede, Sea Urchin, Worm, Bubble Burst, and the retired Snawave
   data/            The tunable numbers and the files the editors save
   editors/         The difficulty editor and the animation lab
 test/              Headless tests: the real simulation, no browser
 tools/             The dev server's save endpoint for the editors
-public/assets/     Sounds and music
+public/assets/     Sounds
 docs/              Game design notes and the original game's event list
 ```
 
@@ -189,8 +192,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: branch, change, `npm run check
 
 ## Credits
 
-*The Line* grows out of *The Line continues* (Bepposoft, 2003), a game by Beppo made with The Games Factory and Multimedia Fusion, with a little help by Lupo, technical contributions by Cappy, and the online hiscore page by Mk. The sound effects and the music come from that game, and timings and speeds follow its events wherever there is one to follow ([docs/original-events.txt](docs/original-events.txt)).
+*The Line* grows out of *The Line continues* (Bepposoft, 2003), a game by Beppo made with The Games Factory and Multimedia Fusion, with a little help by Lupo, technical contributions by Cappy, and the online hiscore page by Mk. The sound effects come from that game, and timings and speeds follow its events wherever there is one to follow ([docs/original-events.txt](docs/original-events.txt)).
 
 ## License
 
-No license has been chosen yet, so all rights are reserved for now. Sounds and music remain the property of their respective authors.
+No license has been chosen yet, so all rights are reserved for now. Sounds remain the property of their respective authors.

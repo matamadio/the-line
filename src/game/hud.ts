@@ -5,6 +5,7 @@ import { COLORS, Neon, clamp } from '../core/neon';
 import { sfx } from '../core/sfx';
 import { DIFF } from '../data/difficulty';
 import type { Game } from './game';
+import { drawTitle } from './title';
 
 /** The mute button on screen: [x, y, radius]. */
 export function muteButton(n: Neon): [number, number, number] {
@@ -46,8 +47,7 @@ export function drawHud(g: Game) {
   const s = Math.max(16, n.unit * 9), pad = s * 0.9;
   const cx = n.w / 2;
   if (g.mode === 'title') {
-    const big = Math.min(n.w / 6.5, n.unit * 40);
-    n.text('THE LINE', cx, n.lineY - big * 2.3, big);
+    drawTitle(n, g.time);
     const blink = 0.55 + 0.45 * Math.sin(g.time * 4);
     n.text(inp.touchUsed || matchMedia('(pointer: coarse)').matches ? 'tap to start' : 'press any key', cx, n.lineY + s * 3.2, s, COLORS.hud, 'center', blink);
     const help = matchMedia('(pointer: coarse)').matches

@@ -1,19 +1,17 @@
 // The Worm: a sag of the line that crawls along its underside. Like the Snawave, its
 // body is spliced into the line's stroke; a ripple runs back along it as it crawls.
-// It only bites Wavell when he hangs under the line, and only a downward wave (a
-// pulse sent from underneath) flattens it.
+// On his side of the line, under it, it bites: he is left dizzy and it is gone. Walked
+// over from on top, the two opposite waves cancel, and that costs him.
 
 import type { SpringLine } from '../line';
 import { DIFF } from '../../data/difficulty';
 import { TUNE } from '../../data/tune';
-import { motion, motionLength, motionMark } from '../../data/anim';
+import { motion, motionLength } from '../../data/anim';
 import { COLORS, Neon, clamp, lerp, polyPath, smooth } from '../../core/neon';
 
 export const WORM_W = 26;
 const DEPTH = 6.5;
 /** Units per second. */
-/** When the jaws close on Wavell: the bite motion's "hit" mark. */
-export const wormBiteHit = () => motionMark('worm.bite', 'hit');
 
 /**
  * Flattened, a creature melts back into what it is made of: its outline turns into a

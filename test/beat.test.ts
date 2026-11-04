@@ -7,7 +7,7 @@ import { DIFF, at } from '../src/data/difficulty';
 import { BASE_BPM, BeatClock } from '../src/game/beat';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, setMusicAllowed() {}, beat: vi.fn(), muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
 
 describe('the beat clock', () => {
   it('has a beat every 96 steps and a bar every four beats', () => {

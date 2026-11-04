@@ -6,7 +6,7 @@ import type { Controls } from '../src/core/input';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 // No audio in tests. start() would otherwise open an AudioContext.
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, setMusicAllowed() {}, beat() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
 
 const SECONDS = 120;
 const STEPS_PER_SECOND = 120;
@@ -17,7 +17,7 @@ function play(seed: number) {
   const keys = seeded(seed + 1);
   const g = headlessGame();
   g.start();
-  const seen = { snawaves: 0, worms: 0, bubbles: 0, deaths: 0, maxScore: 0 };
+  const seen = { sinepedes: 0, urchins: 0, worms: 0, bubbles: 0, deaths: 0, maxScore: 0 };
   let lives = g.lives, k: Controls = IDLE;
   for (let i = 0; i < SECONDS * STEPS_PER_SECOND; i++) {
     if (i % 30 === 0) {
@@ -25,7 +25,8 @@ function play(seed: number) {
     } else k = { ...k, downPressed: false, upPressed: false, dragPressed: false, pullPressed: false };
     g.tick(k);
     if (g.mode === 'over') g.start();
-    seen.snawaves = Math.max(seen.snawaves, g.snawaves.length);
+    seen.sinepedes = Math.max(seen.sinepedes, g.sinepedes.length);
+    seen.urchins = Math.max(seen.urchins, g.urchins.length);
     seen.worms = Math.max(seen.worms, g.worms.length);
     seen.bubbles = Math.max(seen.bubbles, g.bubbles.length);
     seen.maxScore = Math.max(seen.maxScore, g.score);
@@ -56,7 +57,8 @@ describe('the simulation', () => {
 
   it('plays a couple of minutes with every kind of enemy and no broken numbers', () => {
     const { seen } = play(11);
-    expect(seen.snawaves).toBeGreaterThan(0);
+    expect(seen.sinepedes).toBeGreaterThan(0);
+    expect(seen.urchins).toBeGreaterThan(0);
     expect(seen.worms).toBeGreaterThan(0);
     expect(seen.bubbles).toBeGreaterThan(0);
     expect(seen.deaths).toBeGreaterThan(0);
@@ -69,7 +71,7 @@ describe('the simulation', () => {
     g.quiet = true;
     g.start();
     const lives = g.lives;
-    for (let i = 0; i < 10 * STEPS_PER_SECOND; i++) g.tick(IDLE);
+    for (let i = 0; i < 20 * STEPS_PER_SECOND; i++) g.tick(IDLE);
     expect(g.lives).toBeLessThan(lives);
   });
 });
