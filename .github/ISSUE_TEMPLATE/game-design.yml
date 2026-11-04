@@ -1,0 +1,23 @@
+name: Game design
+description: Suggestions and ideas about the game mechanics
+labels: [design]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What's the idea?
+      description: A new enemy, a change to a rule, a power-up, how levels work...
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What would it make better?
+      description: The problem it solves, or what it would add to playing the game.
+  - type: textarea
+    id: line
+    attributes:
+      label: How does it fit the line?
+      description: >-
+        The game's rule is that every threat is something the line does, and every answer is something
+        Wavell does to the line. See docs/DESIGN.md. Leave this empty if you're not sure.
