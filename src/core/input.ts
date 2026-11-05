@@ -31,6 +31,9 @@ export class Input implements Controls {
   upPressed = false; downPressed = false; dragPressed = false; pullPressed = false;
   /** Any key or tap this frame (for menus). */
   anyPressed = false;
+  /** Where the mouse is (for hovering over on-screen buttons). */
+  mouseX = -1;
+  mouseY = -1;
   /** Set once a finger has touched the screen: show the on-screen controls. */
   touchUsed = false;
   stick: Stick | null = null;
@@ -51,14 +54,17 @@ export class Input implements Controls {
   constructor(el: HTMLElement) {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
-      this.onKey.get(e.code)?.();
+      const own = this.onKey.get(e.code);
+      own?.();
       const k = KEYS[e.code];
-      this.latch.any = true;
+      // A key with a job of its own (mute, pause) doesn't count as "press any key".
+      if (!own) this.latch.any = true;
       if (!k) return;
       e.preventDefault();
       this.keys[k] = true;
       if (k === 'up' || k === 'down' || k === 'drag' || k === 'pull') this.latch[k] = true;
     });
+    window.addEventListener('mousemove', (e) => { this.mouseX = e.clientX; this.mouseY = e.clientY; });
     window.addEventListener('keyup', (e) => { const k = KEYS[e.code]; if (k) this.keys[k] = false; });
     window.addEventListener('blur', () => { for (const k of Object.keys(this.keys) as (keyof Held)[]) this.keys[k] = false; });
 

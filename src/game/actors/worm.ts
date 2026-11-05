@@ -2,7 +2,11 @@
 // body is spliced into the line's stroke; a ripple runs back along it as it crawls.
 // On his side of the line, under it, it bites: he is left dizzy and it is gone. Walked
 // over from on top, the two opposite waves cancel, and that costs him.
+//
+// Unlike the Sinepede it has one rule from either side: a pull flattens it, and a wipe
+// feeds it: it grows and is pushed back.
 
+import type { Part, Shape } from '../crumble';
 import type { SpringLine } from '../line';
 import { DIFF } from '../../data/difficulty';
 import { TUNE } from '../../data/tune';
@@ -67,6 +71,8 @@ export class Worm {
     this.meltAmp = DEPTH * (1.3 / 0.6) * TUNE.meltHeight * this.g * this.squash * this.sc;
   }
   sink() { if (!this.dead) { this.state = 'sink'; this.t = 0; } }
+  /** Gone at once: a Crumble takes over its strokes. */
+  vanish() { this.state = 'done'; }
 
   update(dt: number) {
     this.time += dt;
@@ -139,21 +145,37 @@ export class Worm {
     return out.map((c, i) => lerp(c, hump[i], m));
   }
 
+  /** Mandibles and segment marks. */
+  private marks(line: SpringLine) {
+    const P = this.tf(line);
+    const open = this.state === 'bite' ? 1 : 0.4 + 0.3 * Math.sin(this.time * 8);
+    const out = [
+      [...P(1.2, this.depth(1.2) * 0.5), ...P(-1.8, this.depth(1.2) * 0.5 + 1.6 * open)],
+      [...P(1.2, this.depth(1.2) * 0.5), ...P(-1.8, this.depth(1.2) * 0.5 - 1.2 * open)],
+    ];
+    for (const u of [9, 13, 17, 21]) {
+      const d = this.depth(u);
+      out.push([...P(u, d - 1.2), ...P(u + 0.6, d + 1)]);
+    }
+    return out;
+  }
+
+  /** Everything it is drawn with, for when it comes apart. */
+  parts(line: SpringLine): Shape {
+    const bits: Part[] = this.marks(line).map((pts) => ({ pts, color: COLORS.enemy }));
+    const [ex, ey] = this.tf(line)(3.4, this.depth(3.4) * 0.62);
+    bits.push({ pts: [ex - 0.9, ey, ex + 0.9, ey], color: COLORS.eye });
+    return { contours: [{ pts: this.outline(line), color: COLORS.line }], bits };
+  }
+
   /** Eye, mandibles and segment marks: everything that isn't part of the line stroke. */
   drawFeatures(neon: Neon, line: SpringLine) {
     if (this.g * this.squash < 0.1 || (this.state === 'die' && this.t > 0.08)) return;
-    const P = this.tf(line);
     const feat = new Path2D();
-    const open = this.state === 'bite' ? 1 : 0.4 + 0.3 * Math.sin(this.time * 8);
-    polyPath([...P(1.2, this.depth(1.2) * 0.5), ...P(-1.8, this.depth(1.2) * 0.5 + 1.6 * open)], false, feat);
-    polyPath([...P(1.2, this.depth(1.2) * 0.5), ...P(-1.8, this.depth(1.2) * 0.5 - 1.2 * open)], false, feat);
-    for (const u of [9, 13, 17, 21]) {
-      const d = this.depth(u);
-      polyPath([...P(u, d - 1.2), ...P(u + 0.6, d + 1)], false, feat);
-    }
+    for (const mark of this.marks(line)) polyPath(mark, false, feat);
     neon.glow(feat, COLORS.enemy, 0.6, this.intensity);
     const eye = new Path2D();
-    const [ex, ey] = P(3.4, this.depth(3.4) * 0.62);
+    const [ex, ey] = this.tf(line)(3.4, this.depth(3.4) * 0.62);
     eye.arc(ex, ey, 0.9, 0, Math.PI * 2);
     neon.glow(eye, COLORS.eye, 0.9, this.intensity);
   }

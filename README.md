@@ -36,7 +36,7 @@ npm start
 
 ## How to play
 
-Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your lives shows how much lead is left.
+Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your size counter shows how much lead is left.
 
 | Action | Keyboard | Touch |
 | --- | --- | --- |
@@ -46,6 +46,8 @@ Keep walking right. The end of the line crumbles in behind you, faster every lev
 | Wipe | Z, Shift or Space | Right thumb, tap |
 | Pull | X or Ctrl | Right thumb, swipe sideways |
 | Mute | M | Speaker icon |
+| Pause | P | |
+| Back to the start screen | Esc | |
 
 The one rule to remember: **pull in what is close on your side, wipe what is on the other.** The wrong attack feeds a creature and it grows. Each enemy is explained the first time it appears, and [docs/DESIGN.md](docs/DESIGN.md) has the full rules.
 
@@ -57,6 +59,7 @@ The game comes with two editors, each running the real game inside a page. They 
 | --- | --- | --- |
 | **Open with** | `npm run difficulty` | `npm run lab` |
 | **Page** | `/difficulty.html` | `/lab.html` |
+| **From the game** | Dev box on the start screen: gameplay settings | Dev box on the start screen: animation editor |
 | **For** | How hard the game is, level by level | How things move and feel |
 | **Edits** | [`src/data/difficulty.json`](src/data/difficulty.json) | [`src/data/anim.json`](src/data/anim.json) and the numbers in [`src/data/tune.ts`](src/data/tune.ts) |
 
@@ -78,11 +81,11 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | One at a time | Up to which level threats come one at a time, and the clear line between them |
 | Sinepede, Worm, Sea Urchin, Bubble Burst | Speed, how often they come, when they first appear. Also: the Sinepede's segments and its clock rate while Wavell stands, the Worm's while he is under the line, the Urchin's warning and how long its spikes stay out, the Bubble's time to burst, its side, and when it starts floating off the line |
 | Backwave, Reflux | Chance per roll, how often it rolls, when it first appears |
-| Fighting | Pull reach, knockback, the most sizes a creature can grow |
-| Sparkles | How many at once, how many are gold, the chain window |
-| Growing | How often the bonus comes and how long it stays, how many times he can grow, and what each size adds to his scale, walking speed and bubble |
+| Fighting | Knockback, the most sizes a creature can grow |
+| Sparkles | How many an enemy leaves, how often one comes on its own and how many at once, how many are gold, the chain window |
+| Growing | How many sparkles make a size, how long he glows, how many times he can grow, and what each size adds to his scale, walking speed and bubble |
 | Progress | Lives, points per level, extra lives, the starting level |
-| Beat (prototype) | Whether the beat is on, and the tempo ramp. See [docs/DESIGN.md](docs/DESIGN.md#the-beat-prototype) |
+| Beat | Whether the beat is on, the tempo ramp, and from which level enemies come on more beats. See [docs/DESIGN.md](docs/DESIGN.md#the-beat) |
 
 **The bar under the game** has restart, pause, level up and down, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
 
@@ -160,7 +163,8 @@ src/
     hud.ts         Draws the score, menus and touch controls
     title.ts       Draws the title, one unbroken stroke
     line.ts        The line itself: a wave-equation string
-    fx.ts          Sparks, debris, score popups
+    crumble.ts     A creature coming apart at the end of the line
+    fx.ts          Sparks, score popups
     actors/        Wavell, Sinepede, Sea Urchin, Worm, Bubble Burst, and the retired Snawave
   data/            The tunable numbers and the files the editors save
   editors/         The difficulty editor and the animation lab
@@ -176,7 +180,6 @@ docs/              Game design notes and the original game's event list
 | --- | --- |
 | `npm start` | Runs the game and opens it in your browser |
 | `npm run dev` | The same, without opening a browser |
-| `npm run beat` | Opens the game with the beat prototype on |
 | `npm run difficulty` | Opens the difficulty editor |
 | `npm run lab` | Opens the animation lab |
 | `npm run phone` | Runs the game so phones on your network can reach it |

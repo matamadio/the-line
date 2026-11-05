@@ -8,6 +8,8 @@ import { TUNE } from '../data/tune';
 const H = 2;
 const SPONGE = 24;
 const VISC = 40;
+/** What it takes, measured, for a carried bump to settle at the height it was asked for. */
+const CARRY_GAIN = 1.19;
 
 export class SpringLine {
   /** Wave speed in units per second. Pulses travel at exactly this speed. */
@@ -66,12 +68,32 @@ export class SpringLine {
     this.each(x, radius * 2.5, (i, d) => { this.f[i] += force * Math.exp(-(d * d) / (radius * radius)); });
   }
 
-  /** Add a bump that travels at wave speed, right (dir 1) or left (-1): y = amp * gauss(x - x0 - dir c t). */
-  pulse(x0: number, amp: number, width: number, dir = 1) {
+  /** Add a bump that travels right (dir 1) or left (-1), by default at wave speed: y = amp * gauss(x - x0 - dir speed t). */
+  pulse(x0: number, amp: number, width: number, dir = 1, speed = this.c) {
     this.each(x0, width * 3, (i, d) => {
       const g = amp * Math.exp(-(d * d) / (width * width));
       this.y[i] += g;
-      this.v[i] += dir * this.c * g * 2 * d / (width * width);
+      this.v[i] += dir * speed * g * 2 * d / (width * width);
+    });
+  }
+
+  /**
+   * The forces that keep a bump started with pulse() going at its own speed, slower
+   * than the line's waves, without losing height. Call it once per step (`vel` signed).
+   * It stays a wave in the line: other waves run through it and add up with it. `swell`
+   * is how much height to add to it on this step.
+   */
+  carry(x0: number, amp: number, width: number, vel: number, swell = 0) {
+    const w2 = width * width, cc = this.c * this.c;
+    this.each(x0, width * 3, (i, d) => {
+      const g = amp * Math.exp(-(d * d) / w2);
+      const g1 = (-2 * d / w2) * g;
+      const g2 = (4 * d * d / (w2 * w2) - 2 / w2) * g;
+      const g3 = (12 * d / (w2 * w2) - 8 * d * d * d / (w2 * w2 * w2)) * g;
+      // What the wave equation in step() needs for y = g(x - vel t). Each step's forces
+      // only act on the first of its two halves, hence the 2.
+      this.f[i] += 2 * CARRY_GAIN * ((vel * vel - cc) * g2 + this.k * g - this.damp * vel * g1 + VISC * H * H * vel * g3);
+      if (amp) this.y[i] += (swell / amp) * g;
     });
   }
 

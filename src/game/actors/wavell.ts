@@ -49,6 +49,9 @@ const REACH_FAR = 47.5;
 /** How long a dying knot takes to come undone. */
 const unravel = (d: Death) => ({ fall: TUNE.burnTime, zap: 0.25, pop: 0, flatten: TUNE.flattenTime })[d];
 
+/** How tall he stands at his smallest (u). */
+const HEIGHT = 28;
+
 export class Wavell {
   x = 0;
   /** Bubble centre while flying, otherwise unused. */
@@ -56,7 +59,10 @@ export class Wavell {
   facing = 1;
   /** -2..2: how fast the world scrolls, in the original's units. */
   vel = 0;
+  private kick = 0;
   state: State = 'appear';
+  /** How long the current appearing takes (s). */
+  private appearFor = TUNE.appearTime;
   death: Death = 'fall';
   t = 0;
   flip = 0;
@@ -78,6 +84,10 @@ export class Wavell {
   dizzy = 0;
   /** How many times he has grown. An enemy's hit takes one of these instead of a life. */
   size = 0;
+  /** Sparkles caught towards his next size. */
+  sparks = 0;
+  /** Seconds left of the glow he gets from growing. */
+  glowing = 0;
   /** Drawn scale, easing towards his size. */
   scale = 1;
   /** Seconds in which enemies can't hurt him, after losing a size. */
@@ -97,6 +107,8 @@ export class Wavell {
   /** Holding the line away from the ground: it is pinned, so waves bounce off it. */
   get holding() { return this.state === 'drag' && this.t > mark(this.attack, 'grab') && this.t <= mark(this.attack, 'release'); }
   get flying() { return this.state === 'fly'; }
+  /** How tall he stands on the line. */
+  get height() { return HEIGHT * this.scale; }
   get alive() { return this.state !== 'dead'; }
   /** Pressed flat by an opposite wave closing in (1: full height); set by the game. */
   squash = 1;
@@ -119,10 +131,21 @@ export class Wavell {
     return true;
   }
 
-  /** Caught a growth bonus. False if he is as big as he gets. */
+  /** Thrown back along the line, easing to a stop. */
+  bounce(v: number) { this.kick = v; }
+
+  /** Caught a sparkle: enough of them and he grows. At full size they don't add up. */
+  collect() {
+    if (this.size >= DIFF.growMax || ++this.sparks < DIFF.sparksPerSize) return;
+    this.sparks = 0;
+    this.grow();
+  }
+
+  /** One size bigger. False if he is as big as he gets. */
   grow() {
     if (this.size >= DIFF.growMax) return false;
     this.size++;
+    this.glowing = DIFF.growGlow;
     this.events.push('grow');
     return true;
   }
@@ -143,6 +166,8 @@ export class Wavell {
 
   spawn(x: number) {
     this.size = 0;
+    this.sparks = 0;
+    this.glowing = 0;
     this.scale = 1;
     this.safe = 0;
     this.x = x;
@@ -151,9 +176,27 @@ export class Wavell {
     this.flip = 0;
     this.side = 1;
     this.dizzy = 0;
+    this.kick = 0;
     this.buffered = null;
+    this.appearFor = TUNE.appearTime;
     this.go('appear');
     this.events.push('appear');
+  }
+
+  /** The first time: the line lies flat for a moment, then he grows slowly out of it, without a sound or a burst. */
+  rise(x: number) {
+    this.spawn(x);
+    this.events.length = 0;
+    this.appearFor = TUNE.riseTime;
+    this.t = -TUNE.riseHold;
+  }
+
+  /** Still rising when the game starts: carry on from where he is, at the usual pace. */
+  hurry() {
+    if (this.state !== 'appear') return;
+    const k = clamp(this.t / this.appearFor, 0, 1);
+    this.appearFor = Math.min(this.appearFor, TUNE.appearTime);
+    this.t = k * this.appearFor;
   }
 
   kill(kind: Death) {
@@ -162,6 +205,7 @@ export class Wavell {
     if (this.state === 'fly') kind = 'pop';
     this.death = kind;
     this.linger = unravel(kind);
+    this.kick = 0;
     this.burnt = 0;
     this.crumbs.length = 0;
     this.ember = null;
@@ -178,11 +222,12 @@ export class Wavell {
     this.t = 0;
   }
 
-  update(dt: number, k: Controls, line: SpringLine, canLand: boolean, top: number) {
+  update(dt: number, k: Controls, line: SpringLine, canLand: boolean, top: number, ahead: number) {
     this.time += dt;
     this.t += dt;
     this.dizzy = Math.max(0, this.dizzy - dt);
     this.safe = Math.max(0, this.safe - dt);
+    this.glowing = Math.max(0, this.glowing - dt);
     this.scale += (1 + DIFF.growScale * this.size - this.scale) * Math.min(1, dt * 8);
     const ground = line.sample(this.x);
     // Presses during an animation are kept for a moment, so a quick player never loses one.
@@ -195,7 +240,7 @@ export class Wavell {
     switch (this.state) {
       case 'appear':
         this.vel = 0;
-        if (this.t > TUNE.appearTime) this.go('ground');
+        if (this.t > this.appearFor) this.go('ground');
         break;
       case 'land':
         this.vel = 0;
@@ -239,7 +284,7 @@ export class Wavell {
           else {
             // From the hands down to the line, then taut all the way out.
             line.shape(x0, x0 + f * 14, (x) => top * (1 - Math.abs(x - x0) / 14) ** 2);
-            if (t > haulAt) line.shape(x0 + f * 14, x0 + f * DIFF.pullRange, () => 0);
+            if (t > haulAt) line.shape(x0 + f * 14, this.x + f * ahead, () => 0);
           }
         }
         if (this.attack === 'pull' && t > haulAt && t - dt <= haulAt) this.events.push('haul');
@@ -293,9 +338,13 @@ export class Wavell {
         break;
     }
     this.x += this.vel * TUNE.walkSpeed * dt * (this.state === 'ground' ? this.speedMul : 1);
+    this.x += this.kick * dt;
+    this.kick *= Math.exp(-5 * dt);
 
     // Footsteps press the line and the figure's weight dents it.
     if (this.onLine && this.state !== 'land') line.push(this.x, 1800, 3);
+    // His weight comes on as he rises, so the line takes it without a jolt.
+    else if (this.state === 'appear') line.push(this.x, 1800 * smooth(this.t / this.appearFor), 3);
     if (this.state === 'ground' && this.vel) {
       const walk = ANIM.clips.walk, len = walk.length ?? 0.4;
       const before = this.phase;
@@ -350,7 +399,7 @@ export class Wavell {
     if (next <= this.burnt) return;
     const pts = this.fullStroke(line), lens = arcLengths(pts), total = lens[lens.length - 1];
     const from = this.burnt * total, to = next * total;
-    // Pieces about 2.5 units long, so the outline falls apart in its own shape.
+    // Pieces about 2.5 units long, so the outline comes apart in its own shape.
     for (let d = from; d < to; d += 2.5) {
       const [x0, y0] = pointAt(pts, lens, d), [x1, y1] = pointAt(pts, lens, Math.min(to, d + 2.5));
       this.crumbs.push(x0, y0, x1, y1);
@@ -367,7 +416,7 @@ export class Wavell {
       sy = k < 0.7 ? smooth(k / 0.7) * 1.12 : lerp(1.12, 1, (k - 0.7) / 0.3);
       sx = lerp(1.6, 1, smooth(k));
     };
-    if (this.state === 'appear') grow(clamp(this.t / TUNE.appearTime, 0, 1));
+    if (this.state === 'appear') grow(clamp(this.t / this.appearFor, 0, 1));
     else if (this.state === 'land') grow(clamp((this.t - TUNE.landDive) / (TUNE.landTime - TUNE.landDive), 0, 1));
     else if (this.state === 'dead' && this.death === 'fall') jit = 0.3;
     else if (this.state === 'dead') {
@@ -474,9 +523,10 @@ export class Wavell {
   /**
    * The stroke to splice into the line, in world space and left to right, or null
    * when Wavell is not part of the line. While he holds the line up, it ends at
-   * his front hand and the line carries on from there.
+   * his front hand and the line carries on from there. During a pull it ends in the
+   * bulge, which stays within `room` of him.
    */
-  stroke(line: SpringLine, force = false): number[] | null {
+  stroke(line: SpringLine, force = false, room = Infinity): number[] | null {
     if (this.state === 'fly') return this.t < TUNE.takeoff ? this.pinch(line, this.t / TUNE.takeoff, this.bubbleR) : null;
     if (this.state === 'land' && this.t < TUNE.landDive) return this.pinch(line, 1 - this.t / TUNE.landDive, this.landR);
     if (this.state === 'dead' && this.death === 'fall') {
@@ -490,11 +540,11 @@ export class Wavell {
       return [...this.ember, ...pts.slice((i + 1) * 2)];
     }
     if (this.state === 'dead' && (this.death === 'pop' || (this.t >= this.linger && !force))) return null;
-    return this.fullStroke(line);
+    return this.fullStroke(line, room);
   }
 
   /** The whole figure as a stroke in world space, left to right. */
-  private fullStroke(line: SpringLine): number[] {
+  private fullStroke(line: SpringLine, room = Infinity): number[] {
     const tf = this.transform(line);
     const p = this.strokePose();
     const out: number[] = [];
@@ -505,9 +555,29 @@ export class Wavell {
         [out[i + 1], out[j + 1]] = [out[j + 1], out[i + 1]];
       }
     }
-    if (this.holding) {
+    if (this.state === 'drag' && this.attack === 'pull') {
+      if (this.facing < 0) out.unshift(...this.pullTail(line, out[0], out[1], room));
+      else out.push(...this.pullTail(line, out[out.length - 2], out[out.length - 1], room));
+    } else if (this.holding) {
       const hand = tf(this.cur[I.handF], this.cur[I.handF + 1]);
       if (this.facing < 0) out.unshift(...hand); else out.push(...hand);
+    }
+    return out;
+  }
+
+  /**
+   * The bulge of a pull: from where his stroke ends, the line eases down ahead of him.
+   * It is only drawn, on top of the real line, so the pull still does the same to
+   * everything on the line; it stops short of the next creature (`room` away from
+   * him) and sinks away as the keyframes bring his stroke back down.
+   */
+  pullTail(line: SpringLine, ex: number, ey: number, room = Infinity): number[] {
+    const f = this.facing;
+    const len = Math.max(6, Math.min(TUNE.pullBulge * this.scale, room - f * (ex - this.x)));
+    const lift = ey - line.sample(ex), n = Math.ceil(len / 3), out: number[] = [];
+    for (let i = 1; i <= n; i++) {
+      const j = f < 0 ? n + 1 - i : i, x = ex + (f * len * j) / n;
+      out.push(x, line.sample(x) + lift * (1 - smooth(j / n)));
     }
     return out;
   }
@@ -530,8 +600,59 @@ export class Wavell {
     return this.stroke(line, true) ?? [];
   }
 
+  /** His shape as he stands, or the bubble's ring: what the aura of growing plays over. */
+  auraPoints(line: SpringLine): number[] {
+    if (!this.flying) return this.stroke(line) ?? [];
+    const out: number[] = [];
+    for (let i = 0; i <= 48; i++) {
+      const a = -Math.PI / 2 + (i / 48) * Math.PI * 2;
+      out.push(this.x + Math.cos(a) * this.bubbleR, this.by + Math.sin(a) * this.bubbleR);
+    }
+    return out;
+  }
+
+  /**
+   * Just grew. His outline stays as it is. Fine copies of it ripple outwards, turning from
+   * cyan to violet as they go, while light runs along him from both feet to meet at the head.
+   */
+  private drawAura(neon: Neon, line: SpringLine) {
+    const pts = this.auraPoints(line);
+    if (pts.length < 4) return;
+    const t = 1 - this.glowing / DIFF.growGlow, fade = Math.min(1, this.glowing / 0.25);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (let i = 0; i < pts.length; i += 2) {
+      x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]);
+      y0 = Math.min(y0, pts[i + 1]); y1 = Math.max(y1, pts[i + 1]);
+    }
+    // On the line they grow out of it, from his feet; the bubble's spread all round.
+    const cx = (x0 + x1) / 2, cy = this.flying ? (y0 + y1) / 2 : this.under ? y0 : y1;
+    for (let i = 0; i < AURA_RIPPLES; i++) {
+      const e = (t - i * AURA_GAP) / AURA_RIPPLE;
+      if (e <= 0 || e >= 1) continue;
+      const k = 1 + AURA_REACH * (1 - (1 - e) * (1 - e)), echo = new Path2D();
+      const copy = pts.map((v, j) => (j % 2 ? cy + (v - cy) * k : cx + (v - cx) * k));
+      polyPath(copy, false, echo);
+      neon.glow(echo, `hsl(${185 + 100 * e}, 100%, 72%)`, 0.32, (1 - e) * (1 - e) * 1.3 * fade);
+    }
+    const lens = arcLengths(pts), len = lens[lens.length - 1];
+    const run = len / 2 * ((t * AURA_RUNS) % 1);
+    for (const from of [0, len]) {
+      const dir = from ? -1 : 1, tail = new Path2D(), head = new Path2D();
+      const trail = (path: Path2D, long: number) => {
+        const out: number[] = [];
+        for (let i = 0; i <= 8; i++) out.push(...pointAt(pts, lens, from + dir * Math.max(0, run - (long * i) / 8)));
+        polyPath(out, false, path);
+      };
+      trail(tail, len * 0.16);
+      trail(head, len * 0.04);
+      neon.glow(tail, '#9fe8ff', 0.5, 0.8 * fade);
+      neon.glow(head, '#ffffff', 0.6, 1.4 * fade);
+    }
+  }
+
   /** Everything that isn't part of the line: the eyes, or the whole bubble. */
   drawFeatures(neon: Neon, line: SpringLine) {
+    if (this.glowing > 0 && this.alive) this.drawAura(neon, line);
     // Just lost a size: he flashes for as long as nothing can hurt him.
     if (this.safe > 0 && this.alive && Math.floor(this.time * 14) % 2 === 0) {
       const s = this.stroke(line);
@@ -541,7 +662,7 @@ export class Wavell {
     if (this.state === 'land' && this.t < TUNE.landDive + 0.08) return;
     if (this.burning) { this.drawBurn(neon, line); if (this.burnt > 0.5) return; }
     else if (this.state === 'dead') return;
-    if (this.state === 'appear' && this.t < TUNE.appearTime * 0.5) return;
+    if (this.state === 'appear' && this.t < this.appearFor * 0.5) return;
     const tf = this.transform(line), H = this.headTf();
     const E = (lx: number, ly: number) => tf(...H(lx, ly));
     const eyes = new Path2D();
@@ -620,15 +741,18 @@ export class Wavell {
   }
 }
 
+/** The aura of growing: its ripples, the share of it each takes and comes after the last, how far they spread, and the runs of light. */
+const AURA_RIPPLES = 3, AURA_RIPPLE = 0.5, AURA_GAP = 0.22, AURA_REACH = 1.1, AURA_RUNS = 2;
+
 /** Running length along flat [x, y, ...] points, one entry per point. */
-function arcLengths(p: number[]): number[] {
+export function arcLengths(p: number[]): number[] {
   const out = [0];
   for (let i = 2; i < p.length; i += 2) out.push(out[out.length - 1] + Math.hypot(p[i] - p[i - 2], p[i + 1] - p[i - 1]));
   return out;
 }
 
 /** The point at distance d along the points. */
-function pointAt(p: number[], lens: number[], d: number): [number, number] {
+export function pointAt(p: number[], lens: number[], d: number): [number, number] {
   let i = 0;
   while (i < lens.length - 2 && lens[i + 1] < d) i++;
   const seg = lens[i + 1] - lens[i] || 1, f = clamp((d - lens[i]) / seg, 0, 1);

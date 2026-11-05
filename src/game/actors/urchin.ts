@@ -4,9 +4,10 @@
 // it looks like what it sounds like.
 //
 // It sticks out on both sides of the line, so there is no way round it. A pull always
-// kills it and a wipe always feeds it: it grows, and each size takes one more pull. Or
-// wait it out.
+// kills it and a wipe always feeds it: it grows, is bounced back a little, its time
+// starts over and lasts longer, and each size takes one more pull. Or wait it out.
 
+import type { Shape } from '../crumble';
 import type { SpringLine } from '../line';
 import { DIFF } from '../../data/difficulty';
 import { COLORS, Neon, clamp, lerp, smooth, smoothPath } from '../../core/neon';
@@ -37,6 +38,7 @@ export class Urchin {
   peak = 0;
   /** Drawn scale, easing towards the size. */
   private sc = 1;
+  private kick = 0;
   /** Cuts off the sound it is making now, if it goes early. */
   hush?: () => void;
 
@@ -51,13 +53,26 @@ export class Urchin {
 
   grow() { if (this.size < DIFF.maxSize) this.size++; this.peak = Math.max(this.peak, this.size); }
   shrink() { this.size = Math.max(0, this.size - 1); }
+  /** Its time starts over, with this much more of it. It stays fully out meanwhile. */
+  renew(extra: number) {
+    this.hold += extra;
+    if (this.state === 'spikes') this.t = Math.min(this.t, OPEN);
+  }
+  /** Time left with the spikes out. */
+  get holdLeft() { return this.hold - this.t; }
+  /** Bounced back along the line, easing to a stop. */
+  knock(v: number) { this.kick = v; }
+  /** Still on its way after being bounced back. */
+  get moving() { return this.kick !== 0; }
 
-  update(dt: number) {
+  /** onBeat: the spikes wait for it, so their sound falls on the beat. */
+  update(dt: number, onBeat = true) {
     this.time += dt;
     this.t += dt;
+    if (this.kick) { this.x += this.kick * dt; this.kick *= Math.exp(-5 * dt); if (Math.abs(this.kick) < 5) this.kick = 0; }
     this.justOpened = false;
     this.sc += (1 + GROW * this.size - this.sc) * Math.min(1, dt * 10);
-    if (this.state === 'warn' && this.t >= this.warn) { this.state = 'spikes'; this.t = 0; this.justOpened = true; }
+    if (this.state === 'warn' && this.t >= this.warn && onBeat) { this.state = 'spikes'; this.t = 0; this.justOpened = true; }
     else if (this.state === 'spikes' && this.t >= this.hold) { this.state = 'close'; this.t = 0; }
     else if (this.state === 'close' && this.t >= CLOSE) this.state = 'done';
   }
@@ -68,6 +83,23 @@ export class Urchin {
     this.state = 'close';
     this.t = 0;
     this.hush?.();
+  }
+
+  /** Gone at once: a Crumble takes over its strokes. */
+  vanish() { this.state = 'done'; this.hush?.(); }
+
+  /** Everything it is drawn with, for when it comes apart. */
+  parts(line: SpringLine): Shape {
+    if (this.state === 'warn') return { contours: [{ pts: this.fuzz(line), color: COLORS.line }], bits: [] };
+    const top = this.outline(line), y0 = line.sample(this.x);
+    return {
+      contours: [
+        { pts: top, color: COLORS.line },
+        { pts: top, color: COLORS.danger },
+        { pts: top.map((v, i) => (i % 2 ? 2 * y0 - v : v)), color: COLORS.line },
+      ],
+      bits: [],
+    };
   }
 
   /** How big the body is, 0..1. */

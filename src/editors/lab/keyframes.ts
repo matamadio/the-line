@@ -239,7 +239,9 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
 
   function strokeOf(p: Float32Array) {
     fig.showPose(p);
-    return fig.stroke(line) ?? [];
+    const s = fig.stroke(line) ?? [];
+    // A pull's bulge, as the game draws it.
+    return target === 'pull' ? [...s, ...fig.pullTail(line, s[s.length - 2], s[s.length - 1])] : s;
   }
 
   function draw(dt: number) {

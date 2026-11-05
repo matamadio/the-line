@@ -15,7 +15,7 @@ import { COLORS, Neon, clamp, lerp, smooth, smoothPath } from '../../core/neon';
 export const BUBBLE_GREEN = '#9dff5a';
 const MAX_R = 9;
 /** How far towards bursting (0..1) one that floats off lets go of the line. */
-const DETACH = 0.55;
+const DETACH = 0.5;
 /** How fast it leaves the line (u/s), slowing down as it goes. */
 const RISE = 34;
 /** How much bigger each wrong wave makes it. */
@@ -62,19 +62,20 @@ export class BubbleBurst {
     this.t = Math.min(this.growTime, this.t + this.growTime * 0.4);
   }
 
-  update(dt: number, line: SpringLine) {
+  /** onBeat: letting go and bursting wait for it, so their sounds fall on the beat. */
+  update(dt: number, line: SpringLine, onBeat = true) {
     this.time += dt;
     this.t += dt;
     this.justDetached = this.justBurst = false;
-    if (this.state === 'grow' && this.flyTime > 0 && this.ripeness >= DETACH) {
+    if (this.state === 'grow' && this.flyTime > 0 && this.ripeness >= DETACH && onBeat) {
       this.y = this.centre(line)[1];
       this.airborne = this.justDetached = true;
       this.state = 'fly';
       this.t = 0;
-    } else if (this.state === 'grow' && this.t >= this.growTime) this.burst();
+    } else if (this.state === 'grow' && this.t >= this.growTime && onBeat) this.burst();
     else if (this.state === 'fly') {
       this.y -= this.side * RISE * (1 - 0.6 * this.t / this.flyTime) * dt;
-      if (this.t >= this.flyTime) this.burst();
+      if (this.t >= this.flyTime && onBeat) this.burst();
     } else if ((this.state === 'burst' || this.state === 'popped') && this.t > 0.05) this.state = 'done';
   }
 
