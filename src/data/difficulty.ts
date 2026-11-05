@@ -44,6 +44,8 @@ export const DIFF_KNOBS = {
   urchinWarnCap: knob('Sea Urchin', '… limit', 0.5, 0.1, 3, 0.05),
   urchinHold: knob('Sea Urchin', 'Spikes stay out (s)', 1, 0.1, 4, 0.05),
   urchinFrom: knob('Sea Urchin', 'First after (s of play)', 14, 0, 120, 1),
+  urchinKnock: knob('Sea Urchin', 'Wiped: knockback', 250, 0, 1000, 10),
+  urchinRenew: knob('Sea Urchin', 'Wiped: spikes stay out this much longer (s)', 0.5, 0, 3, 0.05),
 
   wormSpeed: knob('Worm', 'Speed at level 1 (u/s)', 70, 10, 200, 1),
   wormSpeedPer: knob('Worm', '… added per level', 0, 0, 30, 0.5),
@@ -71,6 +73,10 @@ export const DIFF_KNOBS = {
   backChanceCap: knob('Backwave', '… at most', 1, 0, 1, 0.01),
   backCheck: knob('Backwave', 'Rolled every (s)', 4, 0.5, 20, 0.25),
   backFrom: knob('Backwave', 'First after (s of play)', 22, 0, 120, 1),
+  backAmp: knob('Backwave', 'Height (u)', 22, 4, 60, 1),
+  backSpeed: knob('Backwave', 'Speed (u/s)', 220, 60, 500, 5),
+  backGrow: knob('Backwave', 'Grows on its way (share of its height per s)', 0.15, 0, 1, 0.01),
+  backEarn: knob('Backwave', 'Wiped back: the end of the line stops for (s)', 2, 0, 10, 0.25),
 
   refluxChance: knob('Reflux', 'Chance per roll at level 1', 0.29, 0, 1, 0.01),
   refluxChancePer: knob('Reflux', '… added per level', 0.04, -0.5, 0.5, 0.01),
@@ -79,32 +85,34 @@ export const DIFF_KNOBS = {
   refluxFrom: knob('Reflux', 'First after (s of play)', 5, 0, 120, 1),
   refluxSpeed: knob('Reflux', 'Speed (u/s)', 175, 40, 500, 5),
 
-  pullRange: knob('Fighting', 'Pull reach (u)', 120, 30, 300, 5),
-  knock: knob('Fighting', 'Wrong attack: knockback', 650, 0, 2000, 10),
+  knock: knob('Fighting', 'Wrong attack, or a Sinepede touching him: its knockback', 650, 0, 2000, 10),
+  bounce: knob('Fighting', 'A Sinepede touching him: his knockback', 300, 0, 1000, 10),
   maxSize: knob('Fighting', 'Most sizes a creature can grow', 3, 0, 8, 1),
 
-  growEvery: knob('Growing', 'A bonus every (s), while he can still grow', 18, 2, 90, 1),
-  growFrom: knob('Growing', 'First after (s of play)', 8, 0, 120, 1),
-  growStay: knob('Growing', 'A bonus stays for (s)', 7, 1, 30, 0.5),
-  growMax: knob('Growing', 'Most times he can grow', 2, 0, 6, 1),
+  sparksPerSize: knob('Growing', 'Sparkles for each size', 10, 1, 50, 1),
+  growGlow: knob('Growing', 'His aura after growing (s)', 1.5, 0, 5, 0.1),
+  growMax: knob('Growing', 'Most times he can grow', 3, 0, 6, 1),
   growScale: knob('Growing', 'Bigger per size', 0.2, 0, 1, 0.01),
   growWalk: knob('Growing', 'Faster walking per size', 0.08, 0, 0.5, 0.01),
   growBubble: knob('Growing', 'Longer in the bubble per size', 0.35, 0, 2, 0.05),
   growSafe: knob('Growing', 'Safe after losing a size (s)', 1.2, 0, 5, 0.1),
 
-  sparkleMax: knob('Sparkles', 'Most at once', 6, 0, 20, 1),
+  sparkleKill: knob('Sparkles', 'Left by each enemy killed', 2, 0, 10, 1),
+  sparkleEvery: knob('Sparkles', 'One on its own every (s, roughly)', 3, 0.5, 20, 0.1),
+  sparkleMax: knob('Sparkles', 'Most at once, of those on their own', 6, 0, 20, 1),
   sparkleGold: knob('Sparkles', 'Chance of a gold one', 0.12, 0, 1, 0.01),
   chainTime: knob('Sparkles', 'Chain window (s)', 2.2, 0.3, 6, 0.1),
 
-  lives: knob('Progress', 'Lives at the start', 3, 1, 20, 1),
+  lives: knob('Progress', 'Lives at the start', 1, 1, 20, 1),
   levelScore: knob('Progress', 'Points per level', 100, 10, 1000, 5),
-  lifeEvery: knob('Progress', 'Extra life every N levels (0: never)', 3, 0, 20, 1),
+  lifeEvery: knob('Progress', 'Extra life every N levels (0: never)', 0, 0, 20, 1),
   startLevel: knob('Progress', 'Start at level', 1, 1, 30, 1),
 
-  beatOn: knob('Beat (prototype)', 'On (1) or off (0)', 0, 0, 1, 1),
-  bpm: knob('Beat (prototype)', 'Tempo at level 1 (BPM)', 75, 40, 200, 1),
-  bpmPer: knob('Beat (prototype)', '… added per level', 3, 0, 20, 0.5),
-  bpmCap: knob('Beat (prototype)', '… at most', 120, 40, 300, 1),
+  beatOn: knob('Beat', 'On (1) or off (0)', 1, 0, 1, 1),
+  bpm: knob('Beat', 'Tempo at level 1 (BPM)', 75, 40, 200, 1),
+  bpmPer: knob('Beat', '… added per level', 2, 0, 20, 0.5),
+  bpmCap: knob('Beat', '… at most', 120, 40, 300, 1),
+  cueTwoFrom: knob('Beat', 'Enemies on beats 2 and 4 from level (before: only 4)', 6, 1, 30, 1),
 };
 
 export type DiffKey = keyof typeof DIFF_KNOBS;

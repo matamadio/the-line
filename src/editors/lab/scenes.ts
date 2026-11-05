@@ -1,11 +1,12 @@
 // The lab's scenes: a setup plus a script of key presses. To look at a new situation
 // slowly, add an entry here; it shows up in the lab's list. Free play stays last.
 
+import { DIFF } from '../../data/difficulty';
 import { BubbleBurst } from '../../game/actors/bubble';
 import { Sinepede } from '../../game/actors/sinepede';
 import { Urchin } from '../../game/actors/urchin';
 import { Worm } from '../../game/actors/worm';
-import type { Game } from '../../game/game';
+import { backwave, reflux, type Game } from '../../game/game';
 
 export type Held = 'left' | 'right' | 'up' | 'down';
 export type Tap = 'upPressed' | 'downPressed' | 'dragPressed' | 'pullPressed';
@@ -52,7 +53,7 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g); g.sinepedes.push(new Sinepede(ahead(g, 60), 18, 5, 1)); },
   },
   {
-    name: 'Sinepede: touches him', dur: 2,
+    name: 'Sinepede: runs into him on his side', dur: 2.5,
     setup: (g) => { ready(g); g.sinepedes.push(new Sinepede(ahead(g, 70), 100, 1, 1)); },
   },
   {
@@ -77,12 +78,20 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g); g.urchins.push(new Urchin(ahead(g, 60), 0.9, 1)); },
   },
   {
-    name: 'Worm: wiped flat from on top', dur: 2, keys: [['dragPressed', 0.35]],
+    name: 'Worm: pulled flat', dur: 2, keys: [['pullPressed', 0.35]],
     setup: (g) => { ready(g); const w = new Worm(ahead(g, 110)); w.state = 'move'; g.worms.push(w); },
   },
   {
-    name: 'Cancel: under a crest', dur: 2,
+    name: 'Worm: wiped (wrong attack), grows and is pushed back', dur: 2.4, keys: [['dragPressed', 0.35]],
+    setup: (g) => { ready(g); const w = new Worm(ahead(g, 110)); w.state = 'move'; g.worms.push(w); },
+  },
+  {
+    name: 'Sinepede: runs into him from the other side', dur: 2.5,
     setup: (g) => { ready(g, true); g.sinepedes.push(new Sinepede(ahead(g, 100), 100, 1, 1)); },
+  },
+  {
+    name: 'Sinepede: the other side, costs him a size', dur: 2.5,
+    setup: (g) => { ready(g, true); g.wavell.size = 1; g.sinepedes.push(new Sinepede(ahead(g, 100), 100, 2, 1)); },
   },
   {
     name: 'Cancel: over a Worm', dur: 2.2,
@@ -109,28 +118,64 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g, true); const w = new Worm(ahead(g, 90)); w.state = 'move'; g.worms.push(w); },
   },
   {
-    name: 'Growing: catches two bonuses', dur: 3.5, keys: [['right', 0.1, 3.2]],
-    setup: (g) => { ready(g); for (const d of [60, 160]) g.growths.push({ x: ahead(g, d), y: 0, side: 1, life: 7, p: 0 }); },
+    name: 'Growing: the sparkles that make up a size', dur: 3.5, keys: [['right', 0.1, 3.2]],
+    setup: (g) => {
+      ready(g);
+      g.wavell.sparks = DIFF.sparksPerSize - 2;
+      for (const d of [60, 160]) g.sparkles.push({ x: ahead(g, d), y: g.line.sample(ahead(g, d)) - 15, vx: 0, vy: 0, life: 7, max: 7, gold: false, p: 0 });
+    },
   },
   {
     name: 'Growing: hit at full size, loses one size', dur: 3,
-    setup: (g) => { ready(g); g.wavell.size = 2; g.sinepedes.push(new Sinepede(ahead(g, 80), 100, 1, 1)); },
+    setup: (g) => { ready(g); g.wavell.size = DIFF.growMax; g.urchins.push(new Urchin(ahead(g, 2), 1, 1)); },
   },
   {
     name: 'Growing: a full-size wipe', dur: 1.6, keys: [['dragPressed', 0.3]],
-    setup: (g) => { ready(g); g.wavell.size = 2; g.wavell.scale = 1 + 2 * 0.2; },
+    setup: (g) => { ready(g); g.wavell.size = DIFF.growMax; g.wavell.scale = 1 + DIFF.growMax * DIFF.growScale; },
   },
   {
     name: 'Growing: a full-size bubble, until it pops', dur: 6.5, keys: [['upPressed', 0.3], ['up', 0.5, 1]],
-    setup: (g) => { ready(g); g.wavell.size = 2; g.wavell.scale = 1 + 2 * 0.2; },
+    setup: (g) => { ready(g); g.wavell.size = DIFF.growMax; g.wavell.scale = 1 + DIFF.growMax * DIFF.growScale; },
   },
   {
     name: 'Backwave: hit', dur: 2.2,
-    setup: (g) => { ready(g); g.backwaves.push({ x: g.neon.camX - 10, dir: 1, warn: 0.4, done: false }); },
+    setup: (g) => { ready(g); g.backwaves.push(backwave(g.neon.camX - 10, 0.4)); },
+  },
+  {
+    name: 'Backwave: pulled out (facing it)', dur: 2.4, keys: [['left', 0.1, 0.25], ['pullPressed', 0.6]],
+    setup: (g) => { ready(g); g.backwaves.push(backwave(g.neon.camX - 10, 0.4)); },
+  },
+  {
+    name: 'Backwave: wiped back, carrying the end of the line', dur: 3.2, end: true, keys: [['left', 0.1, 0.25], ['dragPressed', 0.4]],
+    setup: (g) => { ready(g); g.endX = g.wavell.x - 130; g.backwaves.push(backwave(g.neon.camX - 10, 0.4)); },
+  },
+  {
+    name: 'Backwave: wiped back', dur: 3, keys: [['left', 0.1, 0.25], ['dragPressed', 0.6]],
+    setup: (g) => { ready(g); g.backwaves.push(backwave(g.neon.camX - 10, 0.4)); },
   },
   {
     name: 'Burn at the end of the line', dur: 2.2, end: true,
     setup: (g) => { ready(g); g.endX = g.wavell.x - 6; },
+  },
+  {
+    name: 'End of the line: a Sinepede comes apart', dur: 2.5, end: true,
+    setup: (g) => { ready(g); g.endX = g.wavell.x - 78; g.wavell.safe = 1; const s = new Sinepede(g.endX + 4, 100, 2, 1); for (const seg of s.segs) seg.g = 1; g.sinepedes.push(s); },
+  },
+  {
+    name: 'End of the line: an Urchin comes apart', dur: 3.2, end: true,
+    setup: (g) => { ready(g); g.endX = g.wavell.x - 75; g.urchins.push(new Urchin(g.endX + 20, 0.1, 5)); },
+  },
+  {
+    name: 'End of the line: a Worm comes apart', dur: 2.5, end: true,
+    setup: (g) => { ready(g); g.endX = g.wavell.x - 75; const w = new Worm(g.endX + 12); w.state = 'move'; g.worms.push(w); },
+  },
+  {
+    name: 'Reflux: on his side, hits him', dur: 2.5,
+    setup: (g) => { ready(g); g.wavell.size = 1; g.refluxes.push(reflux(g.neon.viewW + 12, -1, 1, g.wavell)); },
+  },
+  {
+    name: 'Reflux: on the other side, passes him', dur: 2.5,
+    setup: (g) => { ready(g); g.refluxes.push(reflux(-12, 1, -1, g.wavell)); },
   },
   { name: 'Free play (your keys are recorded)', dur: 0, setup: (g) => ready(g) },
 ];

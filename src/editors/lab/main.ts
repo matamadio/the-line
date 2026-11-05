@@ -12,6 +12,7 @@ import { Neon } from '../../core/neon';
 import { sfx } from '../../core/sfx';
 import { KNOBS, TUNE, type TuneKey } from '../../data/tune';
 import { createEditor } from './keyframes';
+import { DIFF } from '../../data/difficulty';
 import { FREE, SCENES, type Held, type Tap } from './scenes';
 
 const STEP = 1 / 120;
@@ -39,6 +40,8 @@ const editor = createEditor(neon, document.getElementById('editor')!);
 // The game's own input listens on an element nobody touches: the lab feeds it scripted keys.
 const deadInput = new Input(document.createElement('div'));
 sfx.muted = true;
+// Scenes are scripted to the second, and show an animation rather than the beat.
+DIFF.beatOn = 0;
 
 let sceneIx = 1;
 let game!: Game;

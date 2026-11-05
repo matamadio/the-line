@@ -6,9 +6,13 @@ import { SEG_W, Sinepede } from '../src/game/actors/sinepede';
 import { BubbleBurst } from '../src/game/actors/bubble';
 import { Urchin } from '../src/game/actors/urchin';
 import { Worm } from '../src/game/actors/worm';
+import { backwave, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
+
+// These script each enemy to the second; test/beat.test.ts covers them on the beat.
+DIFF.beatOn = 0;
 
 const STEPS_PER_SECOND = 120;
 const PULL = { ...IDLE, pullPressed: true };
@@ -29,6 +33,247 @@ function flipUnder(g: ReturnType<typeof ready>) {
 function run(g: ReturnType<typeof ready>, seconds: number, k = IDLE) {
   for (let i = 0; i < seconds * STEPS_PER_SECOND; i++) g.tick(k);
 }
+
+describe('enemies on the line', () => {
+  const nativeRandom = Math.random;
+  beforeEach(() => {
+    Math.random = seeded(21);
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    vi.stubGlobal('Path2D', class { moveTo() {} lineTo() {} quadraticCurveTo() {} arc() {} closePath() {} });
+  });
+  afterEach(() => {
+    Math.random = nativeRandom;
+    vi.unstubAllGlobals();
+  });
+
+  const spans = (g: ReturnType<typeof ready>) => [
+    ...g.sinepedes.filter((s) => s.harmful).map((s) => [s.x, s.back]),
+    ...g.worms.filter((w) => w.harmful).map((w) => [w.x, w.back]),
+    ...g.urchins.filter((u) => u.standing).map((u) => [u.x - u.reach, u.x + u.reach]),
+    ...g.bubbles.filter((b) => b.harmful && !b.airborne).map((b) => [b.x - b.r, b.x + b.r]),
+  ].sort((a, b) => a[0] - b[0]);
+  const overlap = (g: ReturnType<typeof ready>) => spans(g).some((s, i, all) => i > 0 && s[0] < all[i - 1][1]);
+
+  it('a faster one queues behind a slower one', () => {
+    const g = ready();
+    const worm = new Worm(g.wavell.x + 80, 40), sine = new Sinepede(g.wavell.x + 130, 100, 1);
+    worm.state = 'move';
+    g.worms.push(worm);
+    g.sinepedes.push(sine);
+    run(g, 1);
+    expect(sine.x).toBeGreaterThanOrEqual(worm.back);
+    expect(sine.x - worm.back).toBeLessThan(10);
+  });
+
+  it('one waits behind a Sea Urchin, then carries on', () => {
+    const g = ready();
+    const u = new Urchin(g.wavell.x + 90, 0.5, 0.5), sine = new Sinepede(u.x + 40, 100, 1);
+    g.urchins.push(u);
+    g.sinepedes.push(sine);
+    run(g, 0.8);
+    expect(sine.x).toBeGreaterThanOrEqual(u.x + u.reach);
+    run(g, 1);
+    expect(u.standing).toBe(false);
+    expect(sine.x).toBeLessThan(u.x);
+  });
+
+  it('one thrown back stops at the next, or shoves it along', () => {
+    const g = ready();
+    const u = new Urchin(g.wavell.x + 90, 5, 5), a = new Sinepede(g.wavell.x + 30, 0, 1);
+    g.urchins.push(u);
+    g.sinepedes.push(a);
+    a.knock(2000);
+    run(g, 0.5);
+    expect(a.back).toBeLessThanOrEqual(u.x - u.reach);
+
+    const h = ready();
+    const front = new Sinepede(h.wavell.x + 60, 0, 1), behind = new Sinepede(h.wavell.x + 100, 0, 1);
+    h.sinepedes.push(front, behind);
+    front.knock(1000);
+    run(h, 0.5);
+    expect(behind.x).toBeGreaterThanOrEqual(front.back);
+  });
+
+  it.each([1, 3, 5, 9])('never overlap in a long, messy game at level %i', (level) => {
+    const g = ready();
+    g.quiet = false;
+    let seen = 0, most = 0;
+    for (let i = 0; i < 40000; i++) {
+      g.level = level;
+      g.lives = 9;
+      g.wavell.safe = 9;
+      const r = Math.random();
+      g.tick({ ...IDLE, right: i % 900 < 700, left: i % 900 >= 800, dragPressed: r < 0.01, pullPressed: r > 0.99 });
+      const n = spans(g).length;
+      seen += n;
+      most = Math.max(most, n);
+      expect(overlap(g)).toBe(false);
+    }
+    expect(seen).toBeGreaterThan(1000);
+    if (level >= 5) expect(most).toBeGreaterThan(1);
+  });
+});
+
+describe('the Backwave', () => {
+  const coming = (g: ReturnType<typeof ready>, x: number) => {
+    const b = backwave(x, 0);
+    g.backwaves.push(b);
+    return b;
+  };
+  const holding = (g: ReturnType<typeof ready>, attack: typeof WIPE, facing: 1 | -1 = -1) => {
+    g.wavell.facing = facing;
+    g.tick(attack);
+    while (!g.wavell.holding) g.tick(IDLE);
+  };
+
+  it('does not shrink on its way, and grows a little', () => {
+    const g = ready();
+    const b = backwave(g.neon.camX - 10, 0.01);
+    g.backwaves.push(b);
+    run(g, 0.1);
+    const first = -g.line.sample(b.x);
+    expect(first).toBeGreaterThan(DIFF.backAmp * 0.9);
+    while (b.x < g.wavell.x - 30) g.tick(IDLE);
+    const last = -g.line.sample(b.x);
+    expect(last).toBeGreaterThan(first);
+    expect(last).toBeLessThan(first * 1.3);
+  });
+
+  it('comes slower than the line\'s own waves', () => {
+    const g = ready();
+    const b = coming(g, g.wavell.x - 280);
+    run(g, 0.5);
+    expect(DIFF.backSpeed).toBeLessThan(g.line.c);
+    expect(b.x).toBeCloseTo(g.wavell.x - 280 + DIFF.backSpeed * 0.5, 0);
+  });
+
+  it('is a real ripple: another wave runs through it and comes out whole', () => {
+    const after = (withWave: boolean) => {
+      const g = ready();
+      if (withWave) g.backwaves.push(backwave(g.neon.camX - 10, 0.01));
+      run(g, 0.05);
+      const from = g.wavell.x - 20;
+      g.line.pulse(from, 10, 11, -1);
+      run(g, 0.33);
+      const x = from - g.line.c * 0.33;
+      return { other: g.line.sample(x), crest: withWave ? -g.line.sample(g.backwaves[0].x) : 0, apart: withWave ? g.backwaves[0].x - x : 0 };
+    };
+    const alone = after(false), crossed = after(true);
+    expect(crossed.apart).toBeGreaterThan(50);
+    expect(alone.other).toBeGreaterThan(2);
+    expect(Math.abs(crossed.other - alone.other)).toBeLessThan(0.3 * alone.other);
+    expect(crossed.crest).toBeGreaterThan(DIFF.backAmp * 0.9);
+  });
+
+  it('is not sent back by a wipe facing away from it', () => {
+    const g = ready();
+    holding(g, WIPE, 1);
+    const b = coming(g, g.wavell.x - 16);
+    run(g, 0.2);
+    expect(b.dir).toBe(1);
+    expect(g.wavell.alive).toBe(false);
+    expect(g.score).toBe(0);
+  });
+
+  it('is sent back by a wipe, keeps its height, and earns him time', () => {
+    const g = ready();
+    holding(g, WIPE);
+    const b = coming(g, g.wavell.x - 90);
+    run(g, 0.1);
+    expect(b.dir).toBe(-1);
+    expect(g.wavell.alive).toBe(true);
+    expect(g.score).toBe(10);
+    const height = b.amp;
+    while (g.backwaves.length && b.x > g.neon.camX + 40) {
+      g.tick(IDLE);
+      if (b.x < g.wavell.x - 60) expect(-g.line.sample(b.x)).toBeGreaterThan(height * 0.8);
+    }
+    while (g.backwaves.length) g.tick(IDLE);
+    const end = g.endX;
+    run(g, DIFF.backEarn - 0.1);
+    expect(g.endX).toBe(end);
+    run(g, 0.3);
+    expect(g.endX).toBeGreaterThan(end);
+  });
+
+  it('is sent back from afar by a wipe thrown at it', () => {
+    const g = ready();
+    g.wavell.facing = -1;
+    g.tick(WIPE);
+    while (!g.pulses.length) g.tick(IDLE);
+    const b = coming(g, g.pulses[0].x - 150);
+    run(g, 0.3);
+    expect(b.dir).toBe(-1);
+    expect(b.x).toBeLessThan(g.wavell.x - 60);
+  });
+
+  it('carries the end of the line back to the left of the screen when wiped', () => {
+    const g = ready();
+    g.endX = g.neon.camX + 50;
+    holding(g, WIPE);
+    const b = coming(g, g.wavell.x - 90);
+    run(g, 0.1);
+    expect(b.dir).toBe(-1);
+    const end = g.endX;
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && g.backwaves.length; i++) {
+      g.tick(IDLE);
+      if (g.backwaves.length) expect(g.endX).toBeLessThan(b.x);
+    }
+    expect(g.backwaves.length).toBe(0);
+    expect(g.endX).toBeLessThan(end);
+    expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
+    expect(g.wavell.alive).toBe(true);
+  });
+
+  it('is cancelled by a pull facing it, with no time earned', () => {
+    const g = ready();
+    g.wavell.facing = -1;
+    const b = backwave(g.neon.camX - 10, 0.01);
+    g.backwaves.push(b);
+    const grace = () => (g as unknown as { endGrace: number }).endGrace;
+    run(g, 0.05);
+    g.tick(PULL);
+    for (let i = 0; i < STEPS_PER_SECOND && g.backwaves.length; i++) g.tick(IDLE);
+    expect(g.backwaves.length).toBe(0);
+    expect(g.wavell.alive).toBe(true);
+    expect(g.score).toBe(10);
+    expect(Math.abs(g.line.sample(b.x))).toBeLessThan(DIFF.backAmp * 0.4);
+    expect(grace()).toBeLessThan(DIFF.backEarn);
+    const end = g.endX;
+    run(g, 0.5);
+    expect(g.endX).toBeGreaterThanOrEqual(end);
+  });
+
+  it('starts on the line when the end of the line is in view, never left of it', () => {
+    const g = ready();
+    g.endX = g.neon.camX + 30;
+    const b = backwave(g.neon.camX - 10, 0.01);
+    g.backwaves.push(b);
+    run(g, 0.03);
+    expect(b.warn).toBeLessThanOrEqual(0);
+    expect(b.x - 11 * 2).toBeGreaterThan(g.endX);
+    for (let i = 0; i < 12; i++) { g.tick(IDLE); expect(b.x).toBeGreaterThan(g.endX); }
+  });
+
+  it('does not come when there is too little line left behind him', () => {
+    const g = ready();
+    g.endX = g.wavell.x - 40;
+    const b = backwave(g.neon.camX - 10, 0.01);
+    g.backwaves.push(b);
+    run(g, 0.2);
+    expect(g.backwaves.length).toBe(0);
+    expect(g.wavell.alive).toBe(true);
+  });
+
+  it('is not stopped by a pull facing away from it', () => {
+    const g = ready();
+    holding(g, PULL, 1);
+    const b = coming(g, g.wavell.x - 16);
+    run(g, 0.1);
+    expect(b.dir).toBe(1);
+    expect(g.wavell.alive).toBe(false);
+  });
+});
 
 describe('the game', () => {
   const nativeRandom = Math.random;
@@ -73,20 +318,68 @@ describe('the game', () => {
   describe('walking into an enemy', () => {
     const SIDES = [['over the line', false], ['under the line', true]] as const;
 
-    it.each(SIDES)('a crest hurts him %s', (_name, under) => {
+    /** A Sinepede he walks into, the near segment on the given side of the line. */
+    function bump(under: boolean, side: 1 | -1, count = 2, size = 0) {
       const g = ready();
+      g.wavell.size = size;
       if (under) flipUnder(g);
-      g.sinepedes.push(new Sinepede(g.wavell.x + 30, 0, 1, 1));
-      run(g, 1, { ...IDLE, right: true });
-      expect(g.wavell.alive).toBe(false);
+      const s = new Sinepede(g.wavell.x + 30, 0, count, side);
+      g.sinepedes.push(s);
+      let i = 0;
+      while (s.count === count && !s.recoiling && i++ < 120) g.tick({ ...IDLE, right: true });
+      return { g, s, hitAt: g.wavell.x, sAt: s.x };
+    }
+
+    it.each(SIDES)('on his side, it throws them apart and grows %s', (_name, under) => {
+      const { g, s, hitAt, sAt } = bump(under, under ? -1 : 1);
+      expect(s.count).toBe(3);
+      run(g, 0.5);
+      expect(g.wavell.alive).toBe(true);
+      expect(g.wavell.x).toBeLessThan(hitAt - 30);
+      expect(s.x).toBeGreaterThan(sAt + 50);
+      expect(s.count).toBe(3);
     });
 
-    it.each(SIDES)('a trough hurts him %s', (_name, under) => {
-      const g = ready();
-      if (under) flipUnder(g);
-      g.sinepedes.push(new Sinepede(g.wavell.x + 30, 0, 1, -1));
-      run(g, 1, { ...IDLE, right: true });
+    it.each(SIDES)('on the other side, it throws them apart, loses a segment and costs him a size %s', (_name, under) => {
+      const { g, s, hitAt, sAt } = bump(under, under ? 1 : -1, 2, 1);
+      expect(s.count).toBe(1);
+      expect(g.wavell.size).toBe(0);
+      run(g, 0.5);
+      expect(g.wavell.alive).toBe(true);
+      expect(g.wavell.x).toBeLessThan(hitAt - 30);
+      expect(s.x).toBeGreaterThan(sAt + 50);
+    });
+
+    it.each(SIDES)('on the other side, at his smallest, it costs him his life %s', (_name, under) => {
+      const { g, s } = bump(under, under ? 1 : -1);
       expect(g.wavell.alive).toBe(false);
+      expect(g.wavell.death).toBe('flatten');
+      expect(s.count).toBe(1);
+    });
+
+    it.each(SIDES)('on the other side, a last segment flattens %s', (_name, under) => {
+      const { g, s } = bump(under, under ? 1 : -1, 1, 1);
+      expect(s.harmful).toBe(false);
+      expect(g.wavell.size).toBe(0);
+      expect(g.wavell.alive).toBe(true);
+      run(g, 1);
+      expect(s.state).toBe('done');
+    });
+
+    it('costs him no size on his own side', () => {
+      const g = ready();
+      g.wavell.size = 1;
+      g.sinepedes.push(new Sinepede(g.wavell.x + 2, 0, 1, 1));
+      run(g, 0.2);
+      expect(g.wavell.size).toBe(1);
+    });
+
+    it('can push him into the end of the line', () => {
+      const g = ready();
+      g.endX = g.wavell.x - 30;
+      g.sinepedes.push(new Sinepede(g.wavell.x + 2, 0, 1, 1));
+      run(g, 0.5);
+      expect(g.wavell.death).toBe('fall');
     });
 
     /** A Worm he walks into, from behind it or from ahead. */
@@ -236,9 +529,8 @@ describe('the game', () => {
   describe('his size', () => {
     /** Hits him with a stationary crest, on his side of the line. */
     const hit = (g: ReturnType<typeof ready>) => {
-      g.sinepedes.push(new Sinepede(g.wavell.x + 2, 0, 1, 1));
+      g.wavell.hurt('zap');
       g.tick(IDLE);
-      g.sinepedes = [];
     };
     const grown = (size: number) => {
       const g = ready();
@@ -246,22 +538,56 @@ describe('the game', () => {
       return g;
     };
 
-    it('grows by catching a bonus, at most twice', () => {
+    /** A sparkle right on him, at this offset from the line (negative is above it). */
+    const sparkle = (g: ReturnType<typeof ready>, off = -15) => {
+      const x = g.wavell.x + 2;
+      g.sparkles.push({ x, y: g.line.sample(x) + off, vx: 0, vy: 0, life: 5, max: 5, gold: false, p: 0 });
+      g.tick(IDLE);
+    };
+
+    it('grows a size every ten sparkles, at most three times', () => {
       const g = ready();
-      for (let i = 0; i < 3; i++) {
-        g.growths.push({ x: g.wavell.x + 2, y: 0, side: 1, life: 5, p: 0 });
-        g.tick(IDLE);
-      }
-      expect(g.wavell.size).toBe(DIFF.growMax);
-      expect(DIFF.growMax).toBe(2);
+      expect(DIFF.sparksPerSize).toBe(10);
+      expect(DIFF.growMax).toBe(3);
+      for (let i = 0; i < 9; i++) sparkle(g);
+      expect(g.wavell.size).toBe(0);
+      sparkle(g);
+      expect(g.wavell.size).toBe(1);
+      expect(g.wavell.sparks).toBe(0);
+      for (let i = 0; i < 35; i++) sparkle(g);
+      expect(g.wavell.size).toBe(3);
+      expect(g.wavell.sparks).toBe(0);
     });
 
-    it('only catches a bonus on his own side of the line', () => {
+    it('only catches a sparkle on his own side of the line', () => {
       const g = ready();
-      g.growths.push({ x: g.wavell.x + 2, y: 0, side: -1, life: 5, p: 0 });
-      run(g, 0.1);
-      expect(g.wavell.size).toBe(0);
-      expect(g.growths.length).toBe(1);
+      sparkle(g, 15);
+      expect(g.wavell.sparks).toBe(0);
+      expect(g.sparkles.length).toBe(1);
+    });
+
+    it('sends sparkles to both sides of the line in equal numbers', () => {
+      const random = Math.random;
+      Math.random = seeded(5);
+      try {
+        let above = 0, trials = 0;
+        for (let i = 0; i < 600; i++) {
+          const g = ready();
+          g.quiet = false;
+          g.playTime = 2.5;
+          g.tick(IDLE);
+          // One that starts off screen is gone at once, whichever side it was on.
+          const s = g.sparkles[0];
+          if (!s) continue;
+          trials++;
+          if (s.y < g.line.sample(s.x)) above++;
+        }
+        expect(trials).toBeGreaterThan(200);
+        expect(above / trials).toBeGreaterThan(0.42);
+        expect(above / trials).toBeLessThan(0.58);
+      } finally {
+        Math.random = random;
+      }
     });
 
     it('draws him bigger and walks him faster', () => {
@@ -297,8 +623,7 @@ describe('the game', () => {
       const cases: ((g: ReturnType<typeof ready>) => void)[] = [
         (g) => { const u = new Urchin(g.wavell.x + 2, 0.01, 2); g.urchins.push(u); },
         (g) => { const w = new Worm(g.wavell.x - 5, 0); w.state = 'move'; g.worms.push(w); },
-        (g) => { g.sinepedes.push(new Sinepede(g.wavell.x + 2, 0, 1, -1)); },
-        (g) => { g.backwaves.push({ x: g.wavell.x - 1, dir: 1, warn: 0, done: false }); },
+        (g) => { g.backwaves.push(backwave(g.wavell.x - 1, 0)); },
       ];
       for (const make of cases) {
         const g = grown(1);
@@ -317,7 +642,7 @@ describe('the game', () => {
       expect(g.wavell.death).toBe('fall');
     });
 
-    it('makes a bigger bubble that lasts longer, and popping it costs a life', () => {
+    it('makes a bigger bubble that lasts longer, and popping it ends the game', () => {
       const flight = (size: number) => {
         const g = grown(size);
         run(g, 0.5);
@@ -331,7 +656,7 @@ describe('the game', () => {
       const small = flight(0), big = flight(2);
       expect(big.r).toBeGreaterThan(small.r);
       expect(big.seconds).toBeGreaterThan(small.seconds);
-      expect(big.g.lives).toBe(DIFF.lives - 1);
+      expect(big.g.lives).toBe(0);
     });
 
     it('does not save the bubble from an enemy', () => {
@@ -344,13 +669,94 @@ describe('the game', () => {
       expect(g.wavell.alive).toBe(false);
     });
 
-    it('goes back to the smallest with a lost life', () => {
+    it('is over at a hit with no size left, or at the end of the line or a pop at any size', () => {
+      const over = (size: number, end: (g: ReturnType<typeof ready>) => void) => {
+        const g = grown(size);
+        end(g);
+        run(g, 2);
+        return g.mode;
+      };
+      expect(over(0, (g) => g.wavell.hurt('zap'))).toBe('over');
+      expect(over(3, (g) => { g.endX = g.wavell.x - 4; })).toBe('over');
+      expect(over(3, (g) => { g.wavell.state = 'fly'; g.wavell.hurt('pop'); })).toBe('over');
+    });
+
+    it('keeps the sparkles towards the next size when a hit takes one', () => {
       const g = grown(2);
+      g.wavell.sparks = 4;
+      hit(g);
+      expect(g.wavell.size).toBe(1);
+      expect(g.wavell.sparks).toBe(4);
+    });
+
+    it('goes back to the smallest with a lost life, when there are lives to spare', () => {
+      const g = grown(2);
+      g.lives = 2;
       g.endX = g.wavell.x - 4;
       run(g, 2);
       expect(g.wavell.alive).toBe(true);
       expect(g.wavell.size).toBe(0);
       expect(g.wavell.scale).toBe(1);
+    });
+  });
+
+  describe('sparkles from a kill', () => {
+    /** Plants an enemy ahead, pulls once, and says what it left behind, above and below the line. */
+    const killed = (plant: (g: ReturnType<typeof ready>) => void) => {
+      const g = ready();
+      plant(g);
+      run(g, 0.3);
+      g.tick(PULL);
+      run(g, 0.8);
+      const above = g.sparkles.filter((s) => s.y < g.line.sample(s.x)).length;
+      return { above, below: g.sparkles.length - above };
+    };
+
+    it.each<[string, (g: ReturnType<typeof ready>) => void]>([
+      ['a Sinepede', (g) => { g.sinepedes.push(new Sinepede(g.wavell.x + 60, 0, 1, 1)); }],
+      ['a Worm', (g) => { const w = new Worm(g.wavell.x + 60, 0); w.state = 'move'; g.worms.push(w); }],
+      ['a Sea Urchin', (g) => { g.urchins.push(new Urchin(g.wavell.x + 60, 0.01, 5)); }],
+      ['a Bubble Burst', (g) => { g.bubbles.push(new BubbleBurst(g.wavell.x + 60, 1, 5)); }],
+    ])('%s leaves one on each side of the line', (_name, plant) => {
+      expect(DIFF.sparkleKill).toBe(2);
+      expect(killed(plant)).toEqual({ above: 1, below: 1 });
+    });
+
+    it('a Sinepede leaves none until its last segment goes', () => {
+      expect(killed((g) => { g.sinepedes.push(new Sinepede(g.wavell.x + 60, 0, 2, 1)); })).toEqual({ above: 0, below: 0 });
+    });
+
+    it('a Backwave pulled flat leaves them too', () => {
+      const g = ready();
+      g.wavell.facing = -1;
+      g.backwaves.push(backwave(g.neon.camX + 40, 0.01));
+      run(g, 0.05);
+      g.tick(PULL);
+      run(g, 0.8);
+      expect(g.backwaves.length).toBe(0);
+      expect(g.sparkles.length).toBe(2);
+    });
+
+    it('comes on top of a full screen of them', () => {
+      const g = ready();
+      g.sinepedes.push(new Sinepede(g.wavell.x + 60, 0, 1, 1));
+      run(g, 0.3);
+      for (let i = 0; i < DIFF.sparkleMax; i++) g.sparkles.push({ x: g.wavell.x - 60, y: g.line.sample(g.wavell.x - 60) - 30, vx: 0, vy: 0, life: 4, max: 4, gold: false, p: 0 });
+      g.tick(PULL);
+      run(g, 0.8);
+      expect(g.sparkles.length).toBe(DIFF.sparkleMax + 2);
+    });
+
+    it('makes him glow for a second and a half when he grows', () => {
+      const g = ready();
+      expect(g.wavell.glowing).toBe(0);
+      g.wavell.sparks = DIFF.sparksPerSize - 1;
+      g.wavell.collect();
+      expect(g.wavell.glowing).toBe(1.5);
+      run(g, 1.4);
+      expect(g.wavell.glowing).toBeGreaterThan(0);
+      run(g, 0.2);
+      expect(g.wavell.glowing).toBe(0);
     });
   });
 
@@ -411,22 +817,104 @@ describe('the game', () => {
       expect(s.state).toBe('done');
     });
 
-    it('kills him on contact on his side, and cancels with him on the other', () => {
-      const a = ready();
-      a.sinepedes.push(new Sinepede(a.wavell.x + 40, 100, 1, 1));
-      run(a, 0.6);
-      expect(a.wavell.alive).toBe(false);
-      expect(a.wavell.death).toBe('zap');
+  });
 
-      const b = ready();
-      b.sinepedes.push(new Sinepede(b.wavell.x + 40, 100, 1, -1));
-      run(b, 0.6);
-      expect(b.wavell.alive).toBe(false);
-      expect(b.wavell.death).toBe('flatten');
+  describe('the Worm', () => {
+    const worm = (g: ReturnType<typeof ready>) => {
+      const w = new Worm(g.wavell.x + 60, 0);
+      w.state = 'move';
+      g.worms.push(w);
+      return w;
+    };
+
+    it.each([['from on top', false], ['from under the line', true]])('is flattened by a pull, %s', (_name, under) => {
+      const g = ready();
+      if (under) flipUnder(g);
+      const w = worm(g);
+      g.tick(PULL);
+      run(g, 0.8);
+      expect(w.dead).toBe(true);
+      expect(g.score).toBeGreaterThan(0);
+    });
+
+    it.each([['from on top', false], ['from under the line', true]])('grows and is pushed back by a wipe, %s', (_name, under) => {
+      const g = ready();
+      if (under) flipUnder(g);
+      const w = worm(g), from = w.x;
+      g.tick(WIPE);
+      run(g, 1.2);
+      expect(w.dead).toBe(false);
+      expect(w.size).toBe(1);
+      expect(w.x).toBeGreaterThan(from + 50);
     });
   });
 
   describe('the Sea Urchin', () => {
+    /** Ticks until the wipe has landed on it, or gives up: a wipe that misses must fail, not hang. */
+    const wipeLands = (g: ReturnType<typeof ready>, u: Urchin) => {
+      const { size, hold } = u;
+      g.tick(WIPE);
+      for (let i = 0; i < STEPS_PER_SECOND * 2 && u.size === size && u.hold === hold && !u.moving; i++) g.tick(IDLE);
+      expect(u.moving).toBe(true);
+    };
+
+    it('starts its time over, and lasts longer, when wiped', () => {
+      const g = ready();
+      const u = new Urchin(g.wavell.x + 60, 0.1, 2);
+      g.urchins.push(u);
+      run(g, 0.7);
+      expect(u.state).toBe('spikes');
+      const before = u.t;
+      wipeLands(g, u);
+      expect(u.size).toBe(1);
+      expect(u.hold).toBeCloseTo(2 + DIFF.urchinRenew);
+      expect(u.t).toBeLessThan(before);
+      expect(u.harmful).toBe(true);
+      run(g, 2 + DIFF.urchinRenew - 0.2);
+      expect(u.state).toBe('spikes');
+      run(g, 0.4);
+      expect(u.standing).toBe(false);
+    });
+
+    it('stops getting longer once it can not grow, but still starts over', () => {
+      const g = ready();
+      const u = new Urchin(g.wavell.x + 60, 0.1, 2);
+      u.size = DIFF.maxSize;
+      g.urchins.push(u);
+      run(g, 0.7);
+      const before = u.t;
+      wipeLands(g, u);
+      expect(u.hold).toBe(2);
+      expect(u.t).toBeLessThan(before);
+      expect(u.state).toBe('spikes');
+    });
+
+    it.each([['from on top', false], ['from under the line', true]])('is bounced back a little by a wipe, %s', (_name, under) => {
+      const g = ready();
+      if (under) flipUnder(g);
+      const u = new Urchin(g.wavell.x + 60, 5, 5), from = u.x;
+      g.urchins.push(u);
+      g.tick(WIPE);
+      run(g, 1.5);
+      expect(u.size).toBe(1);
+      expect(u.moving).toBe(false);
+      const moved = u.x - from;
+      expect(moved).toBeGreaterThan(DIFF.urchinKnock / 5 * 0.9);
+      expect(moved).toBeLessThan(DIFF.urchinKnock / 5 * 1.1);
+    });
+
+    it('is not moved by a pull', () => {
+      const g = ready();
+      const u = new Urchin(g.wavell.x + 60, 5, 5);
+      u.size = 2;
+      const from = u.x;
+      g.urchins.push(u);
+      g.tick(PULL);
+      run(g, 1);
+      expect(u.size).toBe(1);
+      expect(u.x).toBe(from);
+    });
+
     it('warns, keeps its spikes out for the time given, then is gone', () => {
       const u = new Urchin(0, 0.5, 1);
       const line = headlessGame().line;
@@ -556,5 +1044,127 @@ describe('the game', () => {
       u.sink();
       expect(hush).toHaveBeenCalledOnce();
     });
+  });
+});
+
+describe('the pull', () => {
+  const bubbleAt = (g: ReturnType<typeof ready>, x: number) => {
+    const b = new BubbleBurst(x, 1, 3);
+    g.bubbles.push(b);
+    g.tick(PULL);
+    run(g, 0.3);
+    return b;
+  };
+
+  it('reaches a creature near the far edge of the view', () => {
+    const g = ready();
+    const b = bubbleAt(g, g.neon.camX + g.neon.viewW - 15);
+    expect(b.harmful).toBe(false);
+  });
+
+  it('does not reach one past the edge of the view', () => {
+    const g = ready();
+    const b = bubbleAt(g, g.neon.camX + g.neon.viewW + 15);
+    expect(b.harmful).toBe(true);
+  });
+
+  it('does not reach one behind him', () => {
+    const g = ready();
+    const b = bubbleAt(g, g.wavell.x - 60);
+    expect(b.harmful).toBe(true);
+  });
+});
+
+describe('a reflux', () => {
+  const coming = (side: 1 | -1, under: boolean, size = 1) => {
+    const g = ready();
+    g.wavell.size = size;
+    if (under) flipUnder(g);
+    run(g, 0.3);
+    g.refluxes.push(reflux(g.wavell.x - g.neon.camX + 60, -1, side, g.wavell));
+    return g;
+  };
+
+  it.each([['above him', 1, false], ['below him', -1, true]] as const)('%s, it hits him', (_name, side, under) => {
+    const g = coming(side, under);
+    run(g, 0.6);
+    expect(g.wavell.size).toBe(0);
+  });
+
+  it.each([['above', 1, true], ['below', -1, false]] as const)('%s the line, it passes him on the other side', (_name, side, under) => {
+    const g = coming(side, under);
+    run(g, 0.6);
+    expect(g.wavell.size).toBe(1);
+    expect(g.score).toBeGreaterThan(0);
+  });
+
+  it('runs half his height from the line, wherever the line goes', () => {
+    const g = coming(1, false);
+    const r = g.refluxes[0];
+    expect(r.dist).toBeCloseTo(g.wavell.height / 2, 5);
+    g.line.impulse(g.neon.camX + r.sx - 30, 150, 12);
+    for (let i = 0; i < 20; i++) {
+      g.tick(IDLE);
+      expect(g.line.sample(g.neon.camX + r.sx) - r.y).toBeCloseTo(r.dist, 0);
+    }
+  });
+});
+
+describe('reaching the end of the line', () => {
+  /** An enemy put right at the end, one step on. */
+  function caught(put: (g: ReturnType<typeof ready>) => void) {
+    const g = ready();
+    g.endX = g.wavell.x - 100;
+    put(g);
+    g.tick(IDLE);
+    return g;
+  }
+  const ENEMIES: [string, (g: ReturnType<typeof ready>) => void][] = [
+    ['Sinepede', (g) => { g.sinepedes.push(new Sinepede(g.endX + 1, 0, 2, 1)); }],
+    ['Worm', (g) => { const w = new Worm(g.endX + 1, 0); w.state = 'move'; g.worms.push(w); }],
+    ['fuzzing Urchin', (g) => { g.urchins.push(new Urchin(g.endX + 1, 5, 5)); }],
+    ['spiked Urchin', (g) => { const u = new Urchin(g.endX + 1, 0, 5); u.state = 'spikes'; u.t = 0.1; g.urchins.push(u); }],
+  ];
+
+  it.each(ENEMIES)('a %s burns along its contour, and the line starts past it', (_name, put) => {
+    const g = caught(put);
+    expect(g.sinepedes.length + g.urchins.length + g.worms.length).toBe(0);
+    expect(g.crumbles.length).toBe(1);
+    const c = g.crumbles[0];
+    expect(g.endX).toBeGreaterThanOrEqual(c.right - 7);
+    const end = g.endX;
+    run(g, 0.2);
+    expect(c.progress).toBeGreaterThan(0);
+    expect(c.progress).toBeLessThan(1);
+    expect(g.endX).toBe(end);
+    run(g, 1.5);
+    expect(g.crumbles.length).toBe(0);
+  });
+
+  it('never takes him with it', () => {
+    const g = ready();
+    g.endX = g.wavell.x - 30;
+    g.wavell.safe = 5;
+    g.sinepedes.push(new Sinepede(g.endX + 1, 0, 3, 1));
+    run(g, 0.1);
+    expect(g.crumbles.length).toBe(1);
+    expect(g.endX).toBeLessThan(g.wavell.x - 5);
+    expect(g.wavell.alive).toBe(true);
+  });
+
+  it('leaves sparks going every way, none of them falling', () => {
+    const g = caught(ENEMIES[0][1]);
+    run(g, 0.3);
+    const fan = (g.fx as unknown as { sparks: { vx: number; vy: number; grav: number; drag: number }[] }).sparks.filter((s) => s.drag === 0);
+    expect(fan.every((s) => s.grav === 0)).toBe(true);
+    expect(fan.some((s) => s.vx > 0)).toBe(true);
+    expect(fan.some((s) => s.vy > 0)).toBe(true);
+    expect(fan.some((s) => s.vy < 0)).toBe(true);
+  });
+
+  it('does not bother him', () => {
+    const g = caught(ENEMIES[0][1]);
+    run(g, 2);
+    expect(g.wavell.alive).toBe(true);
   });
 });

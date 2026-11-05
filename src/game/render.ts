@@ -13,6 +13,7 @@ export function drawGame(g: Game, dt: number) {
   drawBackdrop(g);
   n.world();
   drawLine(g);
+  for (const c of g.crumbles) c.draw(n, g.line);
   for (const s of g.sinepedes) s.drawFeatures(n, g.line);
   for (const u of g.urchins) u.drawFeatures(n, g.line);
   for (const w of g.worms) w.drawFeatures(n, g.line);
@@ -30,7 +31,6 @@ export function drawGame(g: Game, dt: number) {
   for (const e of g.worms) if (e.harmful && e.size > 0) pips(e.centre, g.line.sample(e.centre) + 9 * e.sc * e.squash + 5, e.size + 1);
   drawDrops(g);
   drawSparkles(g);
-  drawGrowths(g);
   drawBackwaves(g);
   drawRefluxes(g);
   g.wavell.drawFeatures(n, g.line);
@@ -70,7 +70,8 @@ function drawBackdrop(g: Game) {
 function drawLine(g: Game) {
   const n = g.neon, L = g.line;
   const right = n.camX + n.viewW + 10;
-  const left = Math.max(g.endX + 7, n.camX - 10);
+  // A creature burning at the end of the line is its end: nothing runs under it.
+  const left = Math.max(g.endX + 7, n.camX - 10, ...g.crumbles.map((c) => c.right));
   const path = new Path2D();
   interface Knot { pts: number[]; x0: number; x1: number; flash: number; solo?: boolean }
   const knots: Knot[] = [];
@@ -91,7 +92,14 @@ function drawLine(g: Game) {
     const pts = b.outline(L);
     knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: 0 });
   }
-  const w = g.wavell.stroke(L);
+  // The bulge of a pull stops short of the next creature ahead.
+  const f = g.wavell.facing;
+  let room = Infinity;
+  for (const k of knots) {
+    const d = f > 0 ? k.x0 - g.wavell.x : g.wavell.x - k.x1;
+    if (d > 0) room = Math.min(room, d - 2);
+  }
+  const w = g.wavell.stroke(L, false, room);
   // While he crumbles, what is left of him no longer joins the line.
   if (w) knots.push({ pts: w, x0: Math.min(w[0], w[w.length - 2]), x1: Math.max(w[0], w[w.length - 2]), flash: 0, solo: g.wavell.burning });
   // Overlapping knots (a Worm biting Wavell) can't share the stroke: they are drawn on their own.
@@ -120,7 +128,7 @@ function drawLine(g: Game) {
   for (const k of splice) if (k.flash > 0.05) n.glow(smoothPath(k.pts), '#ffffff', 0.8, k.flash);
   // The frayed end of the line (not while he burns: then he is its end).
   const W = g.wavell;
-  if (g.endX > n.camX - 20 && !(W.state === 'dead' && W.death === 'fall')) {
+  if (g.endX > n.camX - 20 && !(W.state === 'dead' && W.death === 'fall') && !g.crumbles.length) {
     const fray = new Path2D();
     for (let j = 0; j < 9; j++) {
       if (Math.random() < 0.15 + j * 0.06) continue;
@@ -157,25 +165,12 @@ function drawSparkles(g: Game) {
   }
 }
 
-/** A growth bonus: a ring in his colour with a plus in it, blinking out at the end. */
-function drawGrowths(g: Game) {
-  const n = g.neon;
-  for (const o of g.growths) {
-    if (o.life < 1.5 && Math.floor(o.life * 8) % 2 === 0) continue;
-    const r = 5 + Math.sin(g.time * 6 + o.p) * 0.5, p = new Path2D();
-    p.arc(o.x, o.y, r, 0, Math.PI * 2);
-    p.moveTo(o.x - r * 0.5, o.y); p.lineTo(o.x + r * 0.5, o.y);
-    p.moveTo(o.x, o.y - r * 0.5); p.lineTo(o.x, o.y + r * 0.5);
-    n.glow(p, COLORS.wavell, 0.8, 1.3);
-  }
-}
-
 function drawBackwaves(g: Game) {
   const n = g.neon, L = g.line;
   for (const b of g.backwaves) {
     if (b.warn > 0) {
       if (Math.floor(b.warn * 8) % 2) continue;
-      const x = n.camX + 8, chev = new Path2D();
+      const x = Math.max(n.camX + 8, g.endX + 8), chev = new Path2D();
       for (const o of [0, 5, 10]) {
         chev.moveTo(x + o - 2, -6);
         chev.lineTo(x + o + 2, -1);
@@ -187,13 +182,13 @@ function drawBackwaves(g: Game) {
     if (b.done && b.dir > 0) continue;
     // Paint the crest orange while it is dangerous, white once bounced back.
     const crest: number[] = [];
-    for (let x = b.x - 16; x <= b.x + 16; x += 2) crest.push(x, L.sample(x));
+    for (let x = Math.max(b.x - 16, g.endX); x <= b.x + 16; x += 2) crest.push(x, L.sample(x));
     n.glow(smoothPath(crest), b.dir > 0 ? COLORS.danger : '#ffffff', 1.1, 0.9);
   }
 }
 
 function drawRefluxes(g: Game) {
-  const n = g.neon;
+  const n = g.neon, L = g.line;
   for (const r of g.refluxes) {
     if (r.warn > 0) {
       if (Math.floor(r.warn * 8) % 2) continue;
@@ -209,7 +204,11 @@ function drawRefluxes(g: Game) {
     }
     const x = n.camX + r.sx;
     const pts: number[] = [];
-    for (let k = 0; k <= 14; k++) pts.push(x - r.dir * k * 3, r.y + Math.sin(g.time * 30 + k * 0.9) * k * 0.22);
+    // Its trail keeps the same distance from the line too.
+    for (let k = 0; k <= 14; k++) {
+      const tx = x - r.dir * k * 3;
+      pts.push(tx, L.sample(tx) - r.side * r.dist + Math.sin(g.time * 30 + k * 0.9) * k * 0.22);
+    }
     n.glow(smoothPath(pts), COLORS.danger, 0.8, 0.9);
     const core = new Path2D();
     core.moveTo(x - r.dir * 6, r.y);

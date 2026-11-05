@@ -30,7 +30,15 @@ class Sfx {
   private humGain: GainNode | null = null;
   private buffers = new Map<Sample, AudioBuffer>();
   private nextBeat = 0;
+  /** When the latest click sounds. It is placed just ahead, and what starts with it starts together. */
+  private lastBeat = 0;
   muted = false;
+
+  /** Holds every sound where it is, or lets them carry on. */
+  pause(on: boolean) {
+    if (on) void this.ctx?.suspend();
+    else void this.ctx?.resume();
+  }
 
   unlock() {
     if (this.ctx) { void this.ctx.resume(); return; }
@@ -52,14 +60,16 @@ class Sfx {
     const g = ctx.createGain();
     g.gain.value = volume;
     src.connect(g).connect(ctx.destination);
-    src.start();
+    src.start(this.now(ctx));
   }
+
+  private now(ctx: AudioContext) { return Math.max(ctx.currentTime, this.lastBeat); }
 
   /** One short tone. glide bends it to another pitch by the end; delay places it later. */
   private tone(freq: number, seconds: number, volume: number, glide = freq, delay = 0) {
     const ctx = this.ctx;
     if (!ctx || this.muted) return;
-    const at = ctx.currentTime + delay;
+    const at = this.now(ctx) + delay;
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.frequency.setValueAtTime(freq, at);
     osc.frequency.exponentialRampToValueAtTime(glide, at + seconds);
@@ -84,11 +94,12 @@ class Sfx {
   }
 
   /** The wrong attack: the note bends upward, and the new segment joins in. */
-  /** He grows: a glide upwards, higher for each size. */
+  /** He grows: a bright run up a major chord, ringing on at the top, higher for each size. */
   grew(size: number) {
-    const f = 330 + 110 * size;
-    this.tone(f, 0.14, 0.3, f * 1.5);
-    this.tone(f * 1.5, 0.2, 0.25, f * 2, 0.11);
+    const f = 330 + 55 * size;
+    [1, 1.25, 1.5].forEach((n, i) => this.tone(f * n, 0.14, 0.3, f * n, i * 0.08));
+    this.tone(f * 2, 0.55, 0.35, f * 2, 0.24);
+    this.tone(f * 4, 0.4, 0.12, f * 4, 0.24);
   }
   /** He loses a size: the same glide, falling. */
   shrank(size: number) {
@@ -123,7 +134,7 @@ class Sfx {
   rumble(seconds: number): () => void {
     const ctx = this.ctx;
     if (!ctx || this.muted) return () => {};
-    const at = ctx.currentTime;
+    const at = this.now(ctx);
     const osc = ctx.createOscillator(), g = ctx.createGain(), wobble = ctx.createOscillator(), depth = ctx.createGain();
     osc.frequency.value = 58;
     wobble.frequency.value = 26;
@@ -141,7 +152,7 @@ class Sfx {
   crunch(seconds: number, pitch = 1): () => void {
     const ctx = this.ctx;
     if (!ctx || this.muted) return () => {};
-    const at = ctx.currentTime;
+    const at = this.now(ctx);
     const a = ctx.createOscillator(), b = ctx.createOscillator(), clip = ctx.createWaveShaper(), tone = ctx.createBiquadFilter(), g = ctx.createGain();
     a.type = b.type = 'sawtooth';
     a.frequency.value = 110 * pitch;
@@ -179,6 +190,7 @@ class Sfx {
     const soon = ctx.currentTime + BEAT_AHEAD;
     const at = Math.abs(this.nextBeat - soon) < BEAT_SLACK ? this.nextBeat : soon;
     this.nextBeat = at + seconds;
+    this.lastBeat = at;
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.frequency.value = accent ? 1760 : 1175;
     g.gain.setValueAtTime(accent ? 0.4 : 0.25, at);

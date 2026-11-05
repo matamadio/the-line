@@ -1,15 +1,18 @@
-// The beat (a prototype, see issue #3). Turn it on with `?beat` in the address, or with
-// the first knob of the Beat group in the difficulty editor.
+// The beat (see issue #3). Enemies come in on it, on the beats the level allows, and
+// their sounds fall on it. The first knob of the Beat group in the difficulty editor
+// turns it off.
 //
 // The whole world runs at bpm / BASE_BPM, so everything stays the same length in
 // beats and a faster tempo needs no other numbers changed. At BASE_BPM the walk cycle
 // is exactly half a beat. The beat is counted in simulation steps, never on a clock,
 // so replays stay exact: 96 steps of 1/120 s is one beat at any tempo.
 
-import { at } from '../data/difficulty';
+import { DIFF, at } from '../data/difficulty';
 
 export const BASE_BPM = 75;
 const STEPS_PER_BEAT = 96;
+/** A beat in simulation time, the same at any tempo. */
+export const BEAT_SECONDS = STEPS_PER_BEAT / 120;
 const BEATS_PER_BAR = 4;
 /** How long the line stays lit after a beat, in steps. */
 const FLASH_STEPS = STEPS_PER_BEAT / 4;
@@ -28,6 +31,14 @@ export class BeatClock {
   get speed() { return this.bpm / BASE_BPM; }
   /** Which beat of the bar we are on, 0 to 3. */
   get beatOfBar() { return Math.floor(Math.max(0, this.steps - 1) / STEPS_PER_BEAT) % BEATS_PER_BAR; }
+  /** May an enemy come in on this beat? Beat 4 only, then 2 and 4: never more than two to a bar. */
+  get cueBeats() { return this.cueAt(this.beatOfBar, this.cueLevel); }
+  private cueLevel = 1;
+  /** The same question for any beat (0 to 3) and level. */
+  cueAt(beat: number, level: number) {
+    return beat === 3 || (level >= DIFF.cueTwoFrom && beat === 1);
+  }
+
   /** 1 just after a beat, fading to 0. Stronger on the first beat of a bar. */
   get flash() {
     if (this.steps === 0) return 0;
@@ -41,6 +52,7 @@ export class BeatClock {
    */
   step(level: number): 'bar' | 'beat' | null {
     const n = this.steps++;
+    this.cueLevel = level;
     if (n % STEPS_PER_BEAT !== 0) return null;
     if (n % (STEPS_PER_BEAT * BEATS_PER_BAR) !== 0) return 'beat';
     this.bpm = at('bpm', level);

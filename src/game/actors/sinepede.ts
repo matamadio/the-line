@@ -4,8 +4,10 @@
 // a cosine. It sounds like what it looks like: see sfx.call().
 //
 // The right attack cancels the segment facing Wavell. The wrong one throws the whole
-// thing back and adds a segment at the far end.
+// thing back and adds a segment at the far end. Running into him does the same, and
+// throws him back too: see Game.bump().
 
+import type { Part, Shape } from '../crumble';
 import type { SpringLine } from '../line';
 import { DIFF } from '../../data/difficulty';
 import { COLORS, Neon, polyPath } from '../../core/neon';
@@ -82,8 +84,13 @@ export class Sinepede {
   /** Thrown back along the line, easing to a stop. */
   knock(v: number) { this.kick = v; }
 
+  /** Still flying back faster than it crawls: it can't run into anyone yet. */
+  get recoiling() { return Math.abs(this.kick) > this.speed; }
+
   /** Everything fades into the line (at the end of the line, or after he dies). */
   sink() { for (const s of this.segs) s.gone = true; }
+  /** Gone at once: a Crumble takes over its strokes. */
+  vanish() { this.segs.length = 0; this.state = 'done'; }
 
   update(dt: number) {
     this.time += dt;
@@ -123,24 +130,45 @@ export class Sinepede {
     return false;
   }
 
-  /** Legs along each segment, and an eye on the leading one. */
-  drawFeatures(neon: Neon, line: SpringLine) {
-    if (!this.harmful) return;
-    const legs = new Path2D();
+  private legs(line: SpringLine) {
+    const out: number[][] = [];
     this.segs.forEach((s, i) => {
       if (s.g < 0.3) return;
       LEGS.forEach((t, k) => {
         const x = this.x + (i + t) * SEG_W, y = line.sample(x) - this.height(s, t);
         const stir = Math.sin(this.time * 14 + k + i * 2) * 1.2;
-        polyPath([x, y, x + (t < 0.5 ? -2.4 : 2.4) + stir, y - s.side * 4.4 * s.g], false, legs);
+        out.push([x, y, x + (t < 0.5 ? -2.4 : 2.4) + stir, y - s.side * 4.4 * s.g]);
       });
     });
-    neon.glow(legs, COLORS.enemy, 0.6, this.intensity);
+    return out;
+  }
+
+  /** Where the eye on the leading segment is, if it shows. */
+  private eye(line: SpringLine): [number, number] | null {
     const lead = this.segs.findIndex((s) => !s.gone);
-    if (lead < 0 || this.segs[lead].g < 0.3) return;
+    if (lead < 0 || this.segs[lead].g < 0.3) return null;
     const s = this.segs[lead], t = 0.36, x = this.x + (lead + t) * SEG_W;
+    return [x, line.sample(x) - this.height(s, t) + s.side * 4];
+  }
+
+  /** Everything it is drawn with, for when it comes apart. */
+  parts(line: SpringLine): Shape {
+    const bits: Part[] = this.legs(line).map((pts) => ({ pts, color: COLORS.enemy }));
+    const eye = this.eye(line);
+    if (eye) bits.push({ pts: [eye[0] - 1.3, eye[1], eye[0] + 1.3, eye[1]], color: COLORS.eye });
+    return { contours: [{ pts: this.outline(line), color: COLORS.line }], bits };
+  }
+
+  /** Legs along each segment, and an eye on the leading one. */
+  drawFeatures(neon: Neon, line: SpringLine) {
+    if (!this.harmful) return;
+    const legs = new Path2D();
+    for (const leg of this.legs(line)) polyPath(leg, false, legs);
+    neon.glow(legs, COLORS.enemy, 0.6, this.intensity);
+    const at = this.eye(line);
+    if (!at) return;
     const eye = new Path2D();
-    eye.arc(x, line.sample(x) - this.height(s, t) + s.side * 4, 1.3, 0, Math.PI * 2);
+    eye.arc(at[0], at[1], 1.3, 0, Math.PI * 2);
     neon.glow(eye, COLORS.eye, 1, this.intensity);
   }
 }

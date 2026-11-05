@@ -5,7 +5,59 @@ import { COLORS, Neon, clamp } from '../core/neon';
 import { sfx } from '../core/sfx';
 import { DIFF } from '../data/difficulty';
 import type { Game } from './game';
-import { drawTitle } from './title';
+import { MORPH_TIME, drawFlatlined, drawMorph, drawTitle } from './title';
+
+/** The hints the start screen takes turns showing. */
+const TITLE_HINTS = [
+  'THE LINE IS CONSUMING: RUN FOR YOUR LIFE',
+  'USE PULL OR WIPE',
+  'OPPOSITE WAVES CANCEL EACH OTHER',
+  'SAME-SIDE WAVES SUM UP AND DEFLECT',
+  'SPARKLES GROW IN YOU',
+  'BUBBLE IS FAST BUT NOT SAFE',
+  'THE END OF THE LINE GETS CLOSER AND CLOSER',
+  'BIGGER SIZE MEANS FASTER WALK',
+  'RUN!',
+];
+/** Seconds each hint stays, and how long it takes to fade in and out. */
+const HINT_TIME = 5, HINT_FADE = 0.3;
+
+/** The start screen's box of links for developers, down to the left. */
+const DEV_LINKS = [
+  { label: 'gameplay settings', url: 'difficulty.html' },
+  { label: 'animation editor', url: 'lab.html' },
+];
+
+/** The dev menu's box on screen, and the height of its heading and of each link. */
+function devBox(n: Neon) {
+  const s = Math.max(16, n.unit * 9), row = s, w = s * 6.8, h = row * (DEV_LINKS.length + 1) + s * 0.3, pad = s * 0.8;
+  return { s, row, x: pad, y: n.h - pad - h, w, h };
+}
+
+/** Is this point in the dev menu's box? */
+export function inDevMenu(n: Neon, x: number, y: number) {
+  const b = devBox(n);
+  return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+}
+
+/** The page of the dev menu's link at this point, if any. */
+export function devLinkAt(n: Neon, x: number, y: number): string | null {
+  if (!inDevMenu(n, x, y)) return null;
+  const b = devBox(n);
+  return DEV_LINKS[Math.floor((y - b.y - b.row * 1.15) / b.row)]?.url ?? null;
+}
+
+function drawDevMenu(g: Game) {
+  const n = g.neon, b = devBox(n), c = n.ctx, tx = b.x + b.s * 0.45;
+  n.screen();
+  const box = new Path2D();
+  box.rect(b.x, b.y, b.w, b.h);
+  n.glow(box, '#c9a640', 1, 0.35);
+  n.text('DEV', tx, b.y + b.row * 0.65, b.s * 0.42, '#c9a640', 'left', 0.75);
+  const hover = devLinkAt(n, g.input.mouseX, g.input.mouseY);
+  DEV_LINKS.forEach((l, i) => n.text(l.label, tx, b.y + b.row * (1.65 + i), b.s * 0.5, hover === l.url ? COLORS.hud : '#c9a640', 'left', hover === l.url ? 1 : 0.8));
+  c.canvas.style.cursor = hover ? 'pointer' : '';
+}
 
 /** The mute button on screen: [x, y, radius]. */
 export function muteButton(n: Neon): [number, number, number] {
@@ -42,41 +94,67 @@ function drawLead(g: Game, x: number, y: number, s: number) {
   n.glow(fr, color, 1.2, 0.8);
 }
 
+/**
+ * The size counter: a circle for each size he can reach. A whole one, with a face, is a
+ * hit he can take; the next one draws itself round, a slice for each sparkle caught.
+ */
+function drawSizes(g: Game, x: number, y: number) {
+  const n = g.neon, W = g.wavell, top = -Math.PI / 2;
+  for (let i = 0; i < DIFF.growMax; i++) {
+    const cx = x + i * 11, whole = i < W.size;
+    const ring = new Path2D();
+    ring.arc(cx, y, 4, 0, Math.PI * 2);
+    n.glow(ring, COLORS.wavell, 0.4, whole ? 0 : 0.22);
+    if (whole) {
+      const p = new Path2D();
+      p.arc(cx, y, 4, 0, Math.PI * 2);
+      p.moveTo(cx - 2.2, y - 1.4); p.lineTo(cx - 0.8, y - 0.8);
+      p.moveTo(cx + 2.2, y - 1.4); p.lineTo(cx + 0.8, y - 0.8);
+      n.glow(p, COLORS.wavell, 0.6);
+    } else if (i === W.size && W.sparks > 0) {
+      const p = new Path2D();
+      p.arc(cx, y, 4, top, top + Math.PI * 2 * W.sparks / DIFF.sparksPerSize);
+      n.glow(p, COLORS.wavell, 0.6);
+    }
+  }
+}
+
 export function drawHud(g: Game) {
   const n = g.neon, c = n.ctx, inp = g.input;
   const s = Math.max(16, n.unit * 9), pad = s * 0.9;
   const cx = n.w / 2;
-  if (g.mode === 'title') {
+  if (g.mode === 'title' && g.morphT < MORPH_TIME) drawMorph(n, g.morphT, g.time);
+  else if (g.mode === 'title') {
     drawTitle(n, g.time);
     const blink = 0.55 + 0.45 * Math.sin(g.time * 4);
     n.text(inp.touchUsed || matchMedia('(pointer: coarse)').matches ? 'tap to start' : 'press any key', cx, n.lineY + s * 3.2, s, COLORS.hud, 'center', blink);
     const help = matchMedia('(pointer: coarse)').matches
-      ? ['left thumb: walk  ·  right thumb: tap to wipe, swipe sideways to pull', 'swipe down: through the line  ·  swipe up: float / back up',
-        'pull in what is close on your side, wipe what is on the other']
-      : ['← → walk   ↓ through the line   ↑ float / back up', 'Z wipe   X pull   M mute',
-        'pull in what is close on your side, wipe what is on the other'];
+      ? ['left thumb: walk  ·  right thumb: tap to wipe, swipe sideways to pull', 'swipe down: through the line  ·  swipe up: float / back up']
+      : ['← → walk   ↓ through the line   ↑ float / back up', 'Z wipe   X pull   P pause   Esc menu   M mute'];
     help.forEach((line, i) => n.text(line, cx, n.lineY + s * (5 + i * 1.1), s * 0.55, '#c9a640'));
+    const inHint = g.time % HINT_TIME;
+    const hintAlpha = clamp(Math.min(inHint, HINT_TIME - inHint) / HINT_FADE, 0, 1);
+    n.text(TITLE_HINTS[Math.floor(g.time / HINT_TIME) % TITLE_HINTS.length], cx, n.lineY + s * (5 + help.length * 1.1), s * 0.55, '#c9a640', 'center', hintAlpha);
+    drawDevMenu(g);
   } else {
+    c.canvas.style.cursor = '';
     n.text(String(g.score).padStart(6, '0'), n.w - pad, pad, s, COLORS.hud, 'right');
     n.text('LEVEL ' + g.level + (DIFF.beatOn ? `  ·  ${Math.round(g.beat.bpm)} BPM` : ''), cx, pad, s * 0.7, '#ffb21a');
     if (DIFF.beatOn) drawBar(g, n.w - pad, pad + s * 1.1, s);
     n.world();
-    for (let i = 0; i < g.lives; i++) {
-      const [wx, wy] = [n.camX + (pad / n.unit) + 4 + i * 11, n.viewTop + pad / n.unit + 1];
-      const p = new Path2D();
-      p.arc(wx, wy, 4, 0, Math.PI * 2);
-      p.moveTo(wx - 2.2, wy - 1.4); p.lineTo(wx - 0.8, wy - 0.8);
-      p.moveTo(wx + 2.2, wy - 1.4); p.lineTo(wx + 0.8, wy - 0.8);
-      n.glow(p, COLORS.wavell, 0.6);
-    }
+    drawSizes(g, n.camX + (pad / n.unit) + 4, n.viewTop + pad / n.unit + 1);
     n.screen();
-    drawLead(g, pad, pad + s * 1.4, s);
+    if (g.mode !== 'over') drawLead(g, pad, pad + s * 1.4, s);
     if (g.banner > 0) n.text('LEVEL ' + g.level, cx, n.lineY - n.unit * 70, s * 2.4, COLORS.hud, 'center', Math.min(1, g.banner));
     if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 1.3, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
+    if (g.paused) {
+      n.text('PAUSED', cx, n.lineY - n.unit * 75, s * 2.4, COLORS.hud);
+      n.text('P to carry on   Esc for the menu', cx, n.lineY - n.unit * 50, s * 0.7, '#c9a640');
+    }
     if (g.mode === 'over') {
-      n.text('GAME OVER', cx, n.lineY - n.unit * 75, s * 2.6, '#ff5a3a');
+      drawFlatlined(n, g.time);
       n.text(`score ${g.score}    best ${g.best}`, cx, n.lineY - n.unit * 50, s);
-      if (g.overT > 0.8) n.text(inp.touchUsed ? 'tap to play again' : 'press any key', cx, n.lineY + s * 3, s * 0.8, COLORS.hud, 'center', 0.55 + 0.45 * Math.sin(g.time * 4));
+      if (g.overT > 0.8) n.text(inp.touchUsed ? 'tap to continue' : 'press any key', cx, n.lineY + s * 3, s * 0.8, COLORS.hud, 'center', 0.55 + 0.45 * Math.sin(g.time * 4));
     }
   }
   // Mute toggle.
