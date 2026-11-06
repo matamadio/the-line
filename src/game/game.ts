@@ -1,4 +1,4 @@
-// The game's rules and simulation: the line, Wavell, Sinepedes, Worms, Sea Urchins, Bubble Bursts, Backwaves,
+// The game's rules and simulation: the line, Wavell, Sinepedes, Worms, Disturchins, Bubble Bursts, Backwaves,
 // line refluxes, sparkles and the end of the line crumbling in from the left. Timings and speeds follow the
 // original's events (see docs/original-events.txt) where there is one. Drawing is in
 // render.ts and hud.ts.
@@ -8,7 +8,7 @@
 // his side, a pull hauls the line ahead in taut. A creature is a bulge of the line:
 // a pull flattens one on his side, a wipe one on the other side. The wrong attack
 // feeds it: it grows, is thrown back, and takes one more right attack per size.
-// The Sea Urchin and the Worm have a simpler rule, from either side: a pull is right.
+// The Disturchin and the Worm have a simpler rule, from either side: a pull is right.
 // Meeting one from the other side of the line, the two cancel and both go flat.
 //
 // His size is his armour: enough sparkles make him bigger and faster, and an enemy's hit
@@ -21,6 +21,7 @@
 import { BEAT_SECONDS, BeatClock } from './beat';
 import { Crumble, type Shape } from './crumble';
 import { Fx } from './fx';
+import { canFullscreen, canInstall, promptInstall, toggleFullscreen } from '../core/app';
 import { Input, type Controls } from '../core/input';
 import { SpringLine } from './line';
 import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
@@ -32,9 +33,9 @@ import { Urchin } from './actors/urchin';
 import { BUBBLE_GREEN, BubbleBurst } from './actors/bubble';
 import { Wavell, type Attack } from './actors/wavell';
 import { WORM_W, Worm } from './actors/worm';
-import { devLinkAt, inDevMenu, muteButton } from './hud';
+import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, muteButton } from './hud';
 import { drawGame } from './render';
-import { MORPH_TIME } from './title';
+import { MORPH_TIME, TitleDust } from './title';
 
 type Mode = 'title' | 'play' | 'over';
 
@@ -131,12 +132,16 @@ export class Game {
   paused = false;
   /** Seconds since FLATLINED began turning back into the title. */
   morphT = MORPH_TIME;
+  /** The title coming apart, for a moment after a game starts from the start screen. */
+  titleDust: TitleDust | null = null;
   /** The view jumps into place if the first step is on the title, and eases from then on. */
   private viewSet = false;
   /** Asked for by a key since the last frame. */
   private menuAsked = false;
   private pauseAsked = false;
   private deathHandled = false;
+  /** The time until which the start screen explains how to install by hand. */
+  installNote = -1;
   stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), z: rand(0.04, 0.3), s: rand(0.6, 1.8), p: rand(0, 6) }));
 
   constructor(readonly neon: Neon, readonly input: Input) {
@@ -144,20 +149,29 @@ export class Game {
     input.onKey.set('KeyM', () => sfx.toggleMute());
     input.onKey.set('Escape', () => { this.menuAsked = true; });
     input.onKey.set('KeyP', () => { this.pauseAsked = true; });
-    input.uiTap = (x, y) => {
-      // The dev menu is only there on the start screen, once it has settled.
-      if (this.mode === 'title' && this.morphT >= MORPH_TIME && inDevMenu(this.neon, x, y)) {
-        const page = devLinkAt(this.neon, x, y);
-        if (page) location.href = page;
-        return true;
+    input.onKey.set('KeyF', () => { void toggleFullscreen(); });
+    input.onGesture = () => sfx.unlock();
+    input.uiTap = (cx, cy) => {
+      const n = this.neon, x = cx - n.ox, y = cy - n.oy;
+      const on = ([bx, by, r]: [number, number, number]) => Math.hypot(x - bx, y - by) <= Math.max(r * 1.25, 22);
+      // The dev menu and the install button are only there on the start screen, once it has settled.
+      const title = this.mode === 'title' && this.morphT >= MORPH_TIME;
+      if (title && inDevMenu(n, x, y)) {
+        const page = devLinkAt(n, x, y);
+        return () => { if (page) location.href = page; };
       }
-      const [bx, by, r] = muteButton(this.neon);
-      if (Math.hypot(x - bx, y - by) > r) return false;
-      sfx.toggleMute();
-      return true;
+      if (title && canInstall() && inInstallButton(n, x, y)) return () => { void this.install(); };
+      if (on(muteButton(n))) return () => sfx.toggleMute();
+      if (on(fullscreenButton(n)) && canFullscreen()) return () => { void toggleFullscreen(); };
+      return null;
     };
     this.wavell.rise(0);
     this.neon.camX = -this.neon.viewW * this.neon.focus;
+  }
+
+  /** Offer to install the game, or say how where the browser can't ask by itself. */
+  private async install() {
+    if (!(await promptInstall())) this.installNote = this.time + 6;
   }
 
   start() {
@@ -166,6 +180,7 @@ export class Game {
     if (this.mode === 'title' && this.wavell.alive) this.wavell.hurry();
     else this.wavell.spawn(this.wavell.x);
     this.morphT = MORPH_TIME;
+    this.titleDust = null;
     this.mode = 'play';
     this.score = 0;
     this.lives = DIFF.lives;
@@ -198,7 +213,7 @@ export class Game {
   }
 
   /**
-   * Back to the start screen. What is on the line sinks into it, he goes flat, and he
+   * Back to the start screen. What is on the line sinks into it, and so does he, and he
    * rises again once the line is clear. `morph`: FLATLINED turns into the title first.
    */
   backToTitle(morph: boolean) {
@@ -206,6 +221,7 @@ export class Game {
     this.setPaused(false);
     this.keepBest();
     this.mode = 'title';
+    this.titleDust = null;
     this.morphT = morph ? 0 : MORPH_TIME;
     for (const s of this.sinepedes) s.sink();
     for (const u of this.urchins) u.sink();
@@ -219,7 +235,7 @@ export class Game {
     this.hintT = 0;
     this.banner = 0;
     this.tremor = 0;
-    W.kill('flatten');
+    W.kill('zap');
   }
 
   setPaused(on: boolean) {
@@ -248,9 +264,14 @@ export class Game {
     if (this.menuAsked && this.mode === 'play') this.backToTitle(false);
     else if (this.pauseAsked && this.mode === 'play') this.setPaused(!this.paused);
     else if (ready && (this.menuAsked || this.input.anyPressed)) this.backToTitle(true);
-    else if (this.mode === 'title' && this.morphT >= MORPH_TIME && this.input.anyPressed) this.start();
+    else if (this.mode === 'title' && this.morphT >= MORPH_TIME && this.input.anyPressed) {
+      this.start();
+      this.titleDust = new TitleDust();
+    }
     this.menuAsked = this.pauseAsked = false;
     if (this.paused) { drawGame(this, dt); return; }
+    this.titleDust?.update(dt, this.neon, this.time);
+    if (this.titleDust?.done) this.titleDust = null;
     let controls: Controls = this.mode === 'play' ? { ...this.input } : NO_INPUT;
     this.acc += dt * (DIFF.beatOn && this.mode !== 'title' ? this.beat.speed : 1);
     while (this.acc >= STEP) {
@@ -282,6 +303,11 @@ export class Game {
     const W = this.wavell, L = this.line, n = this.neon;
     this.time += dt;
     W.update(dt, k, L, this.endX < W.x - 10, n.viewTop, this.viewAhead);
+    if (W.eyePop) {
+      for (let i = 0; i < W.eyePop.length; i += 2) this.fx.burst(W.eyePop[i], W.eyePop[i + 1], 12, 55, COLORS.danger, 40, 0.5);
+      sfx.play('pop', 0.6);
+      W.eyePop = null;
+    }
     // On the title he stands in the middle of the screen.
     const target = W.x - n.viewW * (this.mode === 'title' ? 0.5 : n.focus);
     n.camX = !this.viewSet && this.mode === 'title' ? target : n.camX + (target - n.camX) * Math.min(1, dt * 12);
@@ -319,7 +345,7 @@ export class Game {
     this.playTime += dt;
     if (DIFF.beatOn) this.stepBeat();
     for (const e of W.events.splice(0)) {
-      if (e === 'appear') { sfx.play('appear'); this.fx.burst(W.x, L.sample(W.x), 26, 70, COLORS.wavell, 0, 0.5); }
+      if (e === 'appear') sfx.play('appear');
       else if (e === 'drag') sfx.play('drag', W.attack === 'wipe' ? 1 : 0.7);
       else if (e === 'release' && W.attack === 'wipe') this.pulses.push({ x: W.x + W.facing * 8, dir: W.facing, side: W.side, kind: 'wipe', spent: false });
       else if (e === 'haul') this.haul();
@@ -510,7 +536,7 @@ export class Game {
       const s = new Sinepede(n.camX + n.viewW + 30, at('sineSpeed', this.level), Math.floor(at('sineSegs', this.level)), Math.random() < 0.5 ? 1 : -1);
       this.sinepedes.push(s);
       sfx.call(s.sides);
-      this.teach('sinepede', 'SINEPEDE: a crest on your side: SWIPE SIDEWAYS. A trough on the other: TAP', 'SINEPEDE: a crest on your side: X. A trough on the other: Z');
+      this.teach('sinepede', 'SINEPEDE: a crest on your side: SWIPE ↔. A trough on the other: SWIPE ↕', 'SINEPEDE: a crest on your side: X. A trough on the other: Z');
     }
   }
 
@@ -530,7 +556,7 @@ export class Game {
     u.hush = sfx.rumble(this.heard(warn));
     this.urchins.push(u);
     this.cue = false;
-    this.teach('urchin', 'SEA URCHIN: where the line fuzzes, spikes come out. SWIPE SIDEWAYS to pull it flat', 'SEA URCHIN: where the line fuzzes, spikes come out. X pulls it flat');
+    this.teach('urchin', 'DISTURCHIN: where the line fuzzes, spikes come out. SWIPE ↔ to pull it flat', 'DISTURCHIN: where the line fuzzes, spikes come out. X pulls it flat');
   }
 
   private spawnWorms(dt: number) {
@@ -544,7 +570,7 @@ export class Game {
       this.cue = false;
       this.wormClock = rand(-1, 0);
       this.worms.push(new Worm(n.camX + n.viewW + 20, at('wormSpeed', this.level)));
-      this.teach('worm', 'WORM: SWIPE SIDEWAYS to pull it flat', 'WORM: X pulls it flat');
+      this.teach('worm', 'WORM: SWIPE ↔ to pull it flat', 'WORM: X pulls it flat');
     }
   }
 
@@ -639,7 +665,7 @@ export class Game {
       if (Math.random() < at('backChance', this.level)) {
         this.backwaves.push(backwave(this.backwaveStart, this.inBeats(1.1)));
         this.cue = false;
-        this.teach('backwave', 'BACKWAVE: float over it, or face it: TAP sends it back, SWIPE SIDEWAYS cancels it', 'BACKWAVE: float over it (UP), or face it (LEFT): Z sends it back, X cancels it');
+        this.teach('backwave', 'BACKWAVE: float over it, or face it: SWIPE ↕ sends it back, SWIPE ↔ cancels it', 'BACKWAVE: float over it (UP), or face it (LEFT): Z sends it back, X cancels it');
       }
     }
     // Where a wave sent back is gone: just off the screen.
@@ -735,7 +761,7 @@ export class Game {
         this.bubbles.push(new BubbleBurst(x, side, this.inBeats(at('bubbleGrow', this.level), flies ? 2 : 1), flies ? this.inBeats(DIFF.bubbleFlyTime) : 0));
         this.cue = false;
         sfx.play('reflux', 0.25);
-        this.teach('bubble', 'BUBBLE BURST: SWIPE SIDEWAYS on your side, TAP on the other, or keep away', 'BUBBLE BURST: X on your side, Z on the other, or keep away');
+        this.teach('bubble', 'BUBBLE BURST: SWIPE ↔ on your side, SWIPE ↕ on the other, or keep away', 'BUBBLE BURST: X on your side, Z on the other, or keep away');
       }
     }
     for (const b of this.bubbles) {
@@ -948,15 +974,8 @@ export class Game {
       const left = W.stroke(L);
       if (left) this.endX = Math.max(this.endX, left[left.length - 2] - 7);
     }
-    // Once the knot has come undone, what is left flies apart
-    // and the line twangs.
-    if (W.death !== 'pop' && W.t >= W.linger && W.t - STEP < W.linger) {
-      const pts = W.figurePoints(L);
-      if (W.death === 'fall') L.impulse(W.x + 8, 120, 8);
-      // Pressed flat: what is left of him slides off along the line, which stays still.
-      else if (W.death === 'flatten') L.calm(W.x, 14);
-      else { fx.shatter(pts, '#ffffff', 70, 0); fx.shatter(pts, COLORS.danger, 40, 0); L.impulse(W.x, -110, 6); }
-    }
+    // Burnt through, the line twangs.
+    if (W.death === 'fall' && W.t >= W.linger && W.t - STEP < W.linger) L.impulse(W.x + 8, 120, 8);
     if (W.t > 1.7) {
       if (this.lives > 0) {
         for (const s of this.sinepedes) s.sink();
@@ -1028,7 +1047,7 @@ export class Game {
    */
   private hit(e: Sinepede | Urchin | Worm | BubbleBurst, side: number, kind: Attack, from: number, dir: number) {
     const L = this.line, n = this.neon, W = this.wavell;
-    // The Sea Urchin has its own rule, from either side: only a pull hurts it.
+    // The Disturchin has its own rule, from either side: only a pull hurts it.
     if (e instanceof Urchin) {
       const y = L.sample(e.x) - 12 * W.side;
       if (kind === 'wipe') {
@@ -1042,7 +1061,7 @@ export class Game {
         this.fx.burst(e.x, y, 12, 30, COLORS.danger, 0, 0.4);
         n.shake = Math.max(n.shake, 0.3);
         sfx.crunch(0.16, 1.5);
-        this.teach('urchinGrow', 'A WIPE FEEDS THE SEA URCHIN! SWIPE SIDEWAYS to pull it', 'A WIPE FEEDS THE SEA URCHIN! X pulls it');
+        this.teach('urchinGrow', 'A WIPE FEEDS THE DISTURCHIN! SWIPE ↔ to pull it', 'A WIPE FEEDS THE DISTURCHIN! X pulls it');
       } else if (e.size > 0) {
         e.shrink();
         this.fx.burst(e.x, y, 10, 40, '#ffffff', 0, 0.3);
@@ -1089,14 +1108,14 @@ export class Game {
         this.fx.burst(x, y, 12, 30, COLORS.enemy, 0, 0.4);
         n.shake = Math.max(n.shake, 0.3);
         sfx.fed(side);
-        this.teach('grow', 'WRONG ATTACK, IT GREW! Your side: SWIPE SIDEWAYS. Other side: TAP', 'WRONG ATTACK, IT GREW! Your side: X. Other side: Z');
+        this.teach('grow', 'WRONG ATTACK, IT GREW! Your side: SWIPE ↔. Other side: SWIPE ↕', 'WRONG ATTACK, IT GREW! Your side: X. Other side: Z');
       }
       return;
     }
     // The Worm's rule, from either side: a pull flattens it and a wipe feeds it.
     const x = e.centre, y = L.sample(x) + 14 * e.sc;
     if (kind === 'wipe') {
-      this.fed(x, y, () => { e.grow(); e.knock((Math.sign(x - W.x) || 1) * DIFF.knock); }, COLORS.enemy, ['A WIPE FEEDS THE WORM! SWIPE SIDEWAYS to pull it flat', 'A WIPE FEEDS THE WORM! X pulls it flat']);
+      this.fed(x, y, () => { e.grow(); e.knock((Math.sign(x - W.x) || 1) * DIFF.knock); }, COLORS.enemy, ['A WIPE FEEDS THE WORM! SWIPE ↔ to pull it flat', 'A WIPE FEEDS THE WORM! X pulls it flat']);
       // Thrown back, it drags the line with it.
       L.impulse(x, side * 60, 8);
     } else if (e.size > 0) this.shrunk(x, y, () => e.shrink());
@@ -1113,7 +1132,7 @@ export class Game {
   }
 
   /** The wrong wave: the creature takes it in and grows. */
-  private fed(x: number, y: number, grow: () => void, color = COLORS.enemy, hint = ['WRONG ATTACK, IT GREW! Your side: SWIPE SIDEWAYS. Other side: TAP', 'WRONG ATTACK, IT GREW! Your side: X. Other side: Z']) {
+  private fed(x: number, y: number, grow: () => void, color = COLORS.enemy, hint = ['WRONG ATTACK, IT GREW! Your side: SWIPE ↔. Other side: SWIPE ↕', 'WRONG ATTACK, IT GREW! Your side: X. Other side: Z']) {
     grow();
     this.fx.burst(x, y, 12, 30, color, 0, 0.4);
     this.neon.shake = Math.max(this.neon.shake, 0.3);
@@ -1156,7 +1175,7 @@ export class Game {
       L.impulse(x, side * 60, 8);
       this.fx.burst(x, y, 12, 30, COLORS.enemy, 0, 0.4);
       sfx.fed(side);
-      this.teach('bumpGrow', 'ON YOUR SIDE IT THROWS YOU BACK AND GROWS: SWIPE SIDEWAYS to pull it', 'ON YOUR SIDE IT THROWS YOU BACK AND GROWS: X pulls it');
+      this.teach('bumpGrow', 'ON YOUR SIDE IT THROWS YOU BACK AND GROWS: SWIPE ↔ to pull it', 'ON YOUR SIDE IT THROWS YOU BACK AND GROWS: X pulls it');
       this.neon.shake = Math.max(this.neon.shake, 0.5);
     } else {
       this.cancel(x);

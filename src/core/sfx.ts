@@ -130,7 +130,7 @@ class Sfx {
     if (side) { freq.cancelScheduledValues(now); freq.setTargetAtTime(sinePitch(side) / 2, now, 0.03); }
   }
 
-  /** A low tremble under the line's vibration, before a Sea Urchin comes up. Returns how to cut it off. */
+  /** A low tremble under the line's vibration, before a Disturchin comes up. Returns how to cut it off. */
   rumble(seconds: number): () => void {
     const ctx = this.ctx;
     if (!ctx || this.muted) return () => {};
@@ -148,7 +148,7 @@ class Sfx {
     return () => { for (const o of [osc, wobble]) o.stop(); };
   }
 
-  /** A Sea Urchin: harsh and clipped, higher when it grows and lower when it shrinks. Returns how to cut it off. */
+  /** A Disturchin: harsh and clipped, higher when it grows and lower when it shrinks. Returns how to cut it off. */
   crunch(seconds: number, pitch = 1): () => void {
     const ctx = this.ctx;
     if (!ctx || this.muted) return () => {};

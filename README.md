@@ -6,12 +6,12 @@ Your world is a line. You are a wave on it, and the end of the line is coming.
 
 ![The title screen](docs/images/title.png)
 
-**Play it:** <https://matamadio.github.io/the-line/>
+**Play it:** <https://matamadio.github.io/the-line/>. On a phone it can also be [installed as an app](#on-a-phone).
 
 ## Contents
 
 - [Run it](#run-it)
-- [How to play](#how-to-play)
+- [How to play](#how-to-play): [on a phone](#on-a-phone)
 - [The editors](#the-editors): [difficulty editor](#difficulty-editor), [animation lab](#animation-lab), [keyframe editor](#keyframe-editor)
 - [Project layout](#project-layout)
 - [Commands](#commands)
@@ -41,15 +41,27 @@ Keep walking right. The end of the line crumbles in behind you, faster every lev
 | Action | Keyboard | Touch |
 | --- | --- | --- |
 | Walk | ← → or A D | Left thumb, sideways |
-| Go through the line | ↓ or S | Right thumb, swipe down |
-| Float, or come back up | ↑ or W | Right thumb, swipe up |
-| Wipe | Z, Shift or Space | Right thumb, tap |
+| Go through the line | ↓ or S | Left thumb, down |
+| Float, or come back up | ↑ or W | Left thumb, up |
 | Pull | X or Ctrl | Right thumb, swipe sideways |
+| Wipe | Z, Shift or Space | Right thumb, swipe up or down |
 | Mute | M | Speaker icon |
+| Fullscreen | F | Corners icon |
 | Pause | P | |
 | Back to the start screen | Esc | |
 
 The one rule to remember: **pull in what is close on your side, wipe what is on the other.** The wrong attack feeds a creature and it grows. Each enemy is explained the first time it appears, and [docs/DESIGN.md](docs/DESIGN.md) has the full rules.
+
+Every screen shows the same play area, 16:9 and 356x200 world units, so nobody sees further ahead than anyone else. Whatever it doesn't fill stays empty around it.
+
+### On a phone
+
+Hold the phone sideways. The corners icon goes fullscreen, except on iPhones, which don't allow it for web pages.
+
+To install the game as an app, which also lets it play offline:
+
+- **Android and desktop Chrome or Edge:** press **install app** on the start screen. If it isn't there, use the browser's menu.
+- **iPhone and iPad:** press **install app** to see the steps: open the Share menu, then Add to Home Screen.
 
 ## The editors
 
@@ -79,7 +91,7 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | --- | --- |
 | End of the line | Crumble speed, the most lead Wavell can build up, the pause after a respawn |
 | One at a time | Up to which level threats come one at a time, and the clear line between them |
-| Sinepede, Worm, Sea Urchin, Bubble Burst | Speed, how often they come, when they first appear. Also: the Sinepede's segments and its clock rate while Wavell stands, the Worm's while he is under the line, the Urchin's warning and how long its spikes stay out, the Bubble's time to burst, its side, and when it starts floating off the line |
+| Sinepede, Worm, Disturchin, Bubble Burst | Speed, how often they come, when they first appear. Also: the Sinepede's segments and its clock rate while Wavell stands, the Worm's while he is under the line, the Disturchin's warning and how long its spikes stay out, the Bubble's time to burst, its side, and when it starts floating off the line |
 | Backwave, Reflux | Chance per roll, how often it rolls, when it first appears |
 | Fighting | Knockback, the most sizes a creature can grow |
 | Sparkles | How many an enemy leaves, how often one comes on its own and how many at once, how many are gold, the chain window |
@@ -156,7 +168,7 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 index.html, lab.html, difficulty.html    The three pages
 src/
   main.ts          Starts the game
-  core/            Knows nothing about the game: canvas renderer, input, audio
+  core/            Knows nothing about the game: canvas renderer, input, audio, fullscreen and install
   game/
     game.ts        The rules: the simulation, spawning, attacks, scoring
     render.ts      Draws the world
@@ -165,12 +177,12 @@ src/
     line.ts        The line itself: a wave-equation string
     crumble.ts     A creature coming apart at the end of the line
     fx.ts          Sparks, score popups
-    actors/        Wavell, Sinepede, Sea Urchin, Worm, Bubble Burst, and the retired Snawave
+    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, and the retired Snawave
   data/            The tunable numbers and the files the editors save
   editors/         The difficulty editor and the animation lab
 test/              Headless tests: the real simulation, no browser
-tools/             The dev server's save endpoint for the editors
-public/assets/     Sounds
+tools/             The dev server's save endpoint for the editors, the build's service worker
+public/            Sounds, app icons and the app manifest
 docs/              Game design notes and the original game's event list
 ```
 

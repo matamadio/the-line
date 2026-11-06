@@ -2,7 +2,8 @@
 // comes in from one edge of the screen and leaves by the other. It is the line again,
 // so it wiggles slowly.
 
-import { Neon, clamp, lerp, polyPath, smooth } from '../core/neon';
+import { Neon, clamp, lerp, polyPath, rand, smooth } from '../core/neon';
+import { Fx } from './fx';
 
 /** On screen: the most it can fill of the width, its size per world unit, and the title's baseline above the line. */
 const MAX_WIDTH = 0.88, SCALE = 0.36, BASELINE = 78.4;
@@ -18,6 +19,10 @@ const EDGE = 30;
 /** Going from FLATLINED to THE LINE (s): pulled flat, lying flat, rising; and how much of it each end of the stroke lags. */
 const MORPH_MELT = 0.8, MORPH_FLAT = 0.2, MORPH_FORM = 1.2, MORPH_SWEEP = 0.5, MORPH_POINTS = 900;
 export const MORPH_TIME = MORPH_MELT + MORPH_FLAT + MORPH_FORM;
+/** The title coming apart as a game starts: how long the break takes to run along it (s), and how many sparks it leaves. */
+const DUST_TIME = 0.6, DUST_POINTS = 900;
+/** How long those sparks last (s) and how fast they drift (units/s): the end of the line's, but quicker. */
+const DUST_LIFE = [0.3, 0.7] as const, DUST_SPEED = [20, 55] as const;
 
 /** Flat points walked in reverse, leaving out the one it turns back at. */
 const backAlong = (p: number[]): number[] => {
@@ -274,4 +279,54 @@ export function drawMorph(n: Neon, t: number, time: number) {
   const tint = mixTint(FLATLINED_TINT, TITLE_TINT, smooth((t - MORPH_MELT * 0.6) / (MORPH_MELT * 0.4 + MORPH_FLAT)));
   drawHaze(n, w, tint, melting ? 1 - smooth(melt) : smooth(form));
   drawStroke(n, polyPath(pts), tint, strokeWidth(lerp(place(n, FLATLINED_WORD).k, title.k, smooth(t / MORPH_TIME))));
+}
+
+/**
+ * The title coming apart as a game starts: a break runs along the stroke from left to
+ * right, as at the end of the line in the game but far faster, and what it has passed
+ * drifts off as yellow sparks. It stays put on screen while the view moves off.
+ */
+export class TitleDust {
+  private readonly fx = new Fx();
+  private t = 0;
+  /** The stroke this frame, and how many of its points have gone. */
+  private pts: number[] = [];
+  private shed = 0;
+
+  get done() { return this.t >= DUST_TIME + DUST_LIFE[1]; }
+  /** From 0 to 1, how far the break has run. */
+  private get progress() { return clamp(this.t / DUST_TIME, 0, 1); }
+  /** From 0 to 1, how far the game's HUD has faded in: it comes as the title goes. */
+  get hudFade() { return smooth(this.progress); }
+  /** What is left of the stroke, in flat points. */
+  get rest() { return this.pts.slice(this.shed * 2); }
+
+  update(dt: number, n: Neon, time: number) {
+    this.t += dt;
+    this.pts = resample(wordPoints(n, TITLE_WORD, time), DUST_POINTS);
+    const reached = Math.round(this.progress * DUST_POINTS);
+    for (; this.shed < reached; this.shed++) {
+      const a = rand(0, Math.PI * 2), v = rand(...DUST_SPEED);
+      // In world units from the corner of the play area, so that the sparks are the size of the game's.
+      this.fx.spark(this.pts[this.shed * 2] / n.unit, this.pts[this.shed * 2 + 1] / n.unit, Math.cos(a) * v, Math.sin(a) * v,
+        rand(...DUST_LIFE), Math.random() < 0.2 ? '#fff1b0' : css(TITLE_TINT.stroke), 0, 0);
+    }
+    this.fx.update(dt);
+  }
+
+  draw(n: Neon) {
+    const rest = this.rest, width = strokeWidth(place(n, TITLE_WORD).k);
+    if (rest.length >= 4) {
+      drawHaze(n, TITLE_WORD, TITLE_TINT, 1 - this.progress);
+      drawStroke(n, polyPath(rest), TITLE_TINT, width);
+      // The stroke runs hot just ahead of the break, and the break itself is white-hot.
+      n.glow(polyPath(rest.slice(0, 16)), '#fff1b0', width * 1.3, 0.7 + rand(0, 0.5));
+      const core = new Path2D();
+      core.arc(rest[0], rest[1], width * 0.9, 0, Math.PI * 2);
+      n.glow(core, '#ffffff', width, 1.4);
+    }
+    n.ctx.scale(n.unit, n.unit);
+    this.fx.draw(n);
+    n.screen();
+  }
 }

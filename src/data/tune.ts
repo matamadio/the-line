@@ -10,7 +10,7 @@ const knob = (group: string, label: string, def: number, min: number, max: numbe
 
 export const KNOBS = {
   walkSpeed: knob('Wavell', 'Walk speed (u/s)', 100, 20, 200, 1),
-  appearTime: knob('Wavell', 'Appear time (s)', 0.6, 0.1, 2, 0.01),
+  appearTime: knob('Wavell', 'Appear time (s)', 1, 0.3, 3, 0.01),
   riseHold: knob('Wavell', 'On load: flat line first (s)', 0.8, 0, 3, 0.05),
   riseTime: knob('Wavell', 'On load: rise time (s)', 3, 0.5, 8, 0.05),
   flipTime: knob('Wavell', 'Flip time (s)', 0.34, 0.08, 1.5, 0.01),
@@ -22,7 +22,7 @@ export const KNOBS = {
   waveWidth: knob('Wavell', 'Wave width', 9, 3, 30, 0.5),
   dizzyTime: knob('Wavell', 'Dizzy time (s)', 2, 0.3, 5, 0.05),
   dizzyLock: knob('Wavell', 'Dizzy lock (s)', 0.9, 0, 3, 0.05),
-  flattenTime: knob('Wavell', 'Cancelled: flatten (s)', 0.3, 0.05, 1.5, 0.01),
+  sinkTime: knob('Wavell', 'Killed or quit: sinks into the line (s)', 0.6, 0.2, 1.6, 0.01),
 
   burnTime: knob('Burn death', 'Burn time (s)', 1.25, 0.3, 4, 0.05),
   burnShock: knob('Burn death', 'Shock before (s)', 0.15, 0, 1, 0.01),

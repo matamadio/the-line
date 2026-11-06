@@ -1,8 +1,9 @@
 // Canvas 2D renderer for neon-style vector strokes.
 //
-// World units are the original game's pixels: the view always shows at least
-// 320x200 of them and scales them to the screen's real pixel density, so strokes
-// stay sharp on any phone. World y = 0 is the line's rest height; negative y is up.
+// World units are the original game's pixels. Every screen shows the same play area,
+// VIEW_W x VIEW_H of them, scaled to the screen's real pixel density so strokes stay
+// sharp on any phone. Whatever the area doesn't fill is left empty around it, which is
+// where a phone's thumbs go. World y = 0 is the line's rest height; negative y is up.
 
 export const COLORS = {
   line: '#ffd21f',
@@ -42,13 +43,31 @@ export function smoothPath(p: Pts, path = new Path2D(), move = true): Path2D {
   return path;
 }
 
+/** The play area in world units: the same on every platform, so nobody sees further ahead. */
+export const VIEW_H = 200;
+export const VIEW_W = (VIEW_H * 16) / 9;
+
+/** The largest play area that fits a W x H canvas, centred, in CSS pixels. */
+export function fitArea(W: number, H: number) {
+  const w = Math.min(W, (H * VIEW_W) / VIEW_H), h = (w * VIEW_H) / VIEW_W;
+  return { w, h, x: Math.round((W - w) / 2), y: Math.round((H - h) / 2) };
+}
+
 export class Neon {
   readonly ctx: CanvasRenderingContext2D;
+  /** How much of what glow() and text() draw shows, from 0 to 1: for fading a whole group in. */
+  fade = 1;
   /** CSS pixels per world unit. */
   unit = 1;
   dpr = 1;
+  /** The play area's size and where it sits on the canvas, in CSS pixels. */
   w = 0;
   h = 0;
+  ox = 0;
+  oy = 0;
+  /** The whole canvas, in CSS pixels. */
+  fullW = 0;
+  fullH = 0;
   /** World x at the left edge of the screen. */
   camX = 0;
   /** Screen y (CSS px) of world y = 0. */
@@ -58,6 +77,7 @@ export class Neon {
   zoom = 1;
   private sx = 0;
   private sy = 0;
+  private clipped = false;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d', { alpha: false })!;
@@ -67,37 +87,47 @@ export class Neon {
   resize() {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     // A tab opened in the background can report a 0x0 window.
-    this.w = Math.max(1, this.canvas.clientWidth || window.innerWidth);
-    this.h = Math.max(1, this.canvas.clientHeight || window.innerHeight);
-    this.canvas.width = Math.round(this.w * this.dpr);
-    this.canvas.height = Math.round(this.h * this.dpr);
-    // Landscape shows at least 320x200 like the original; portrait zooms in to 240
-    // wide so the figures stay readable.
-    const portrait = this.h > this.w;
-    this.unit = Math.min(this.w / (portrait ? 240 : 320), this.h / 200) * this.zoom;
-    this.lineY = this.h * (portrait ? 0.45 : 0.62);
+    this.fullW = Math.max(1, this.canvas.clientWidth || window.innerWidth);
+    this.fullH = Math.max(1, this.canvas.clientHeight || window.innerHeight);
+    this.canvas.width = Math.round(this.fullW * this.dpr);
+    this.canvas.height = Math.round(this.fullH * this.dpr);
+    this.clipped = false; // Resizing a canvas resets its state.
+    const a = fitArea(this.fullW, this.fullH);
+    this.w = a.w; this.h = a.h; this.ox = a.x; this.oy = a.y;
+    this.unit = (this.h / VIEW_H) * this.zoom;
+    this.lineY = this.h * 0.62;
   }
 
   get viewW() { return this.w / this.unit; }
-  /** Where Wavell stays on screen, as a fraction of the width: more look-ahead in portrait. */
-  get focus() { return this.h > this.w ? 0.3 : 0.42; }
+  /** Where Wavell stays on screen, as a fraction of the width. */
+  get focus() { return 0.42; }
   get viewTop() { return -this.lineY / this.unit; }
   get viewBottom() { return (this.h - this.lineY) / this.unit; }
 
+  /** Screen position inside the play area, the coordinates screen() draws in. */
   toScreen(x: number, y: number): [number, number] {
     return [(x - this.camX) * this.unit + this.sx, this.lineY + y * this.unit + this.sy];
   }
 
   begin(dt: number) {
-    if ((this.canvas.clientWidth || window.innerWidth) !== this.w || (this.canvas.clientHeight || window.innerHeight) !== this.h) this.resize();
+    if ((this.canvas.clientWidth || window.innerWidth) !== this.fullW || (this.canvas.clientHeight || window.innerHeight) !== this.fullH) this.resize();
     this.shake = Math.max(0, this.shake - dt * 12);
     const s = this.shake * this.unit;
     this.sx = (Math.random() - 0.5) * s;
     this.sy = (Math.random() - 0.5) * s;
     const c = this.ctx;
-    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.overlay();
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 1;
+    c.fillStyle = '#020107';
+    c.fillRect(0, 0, this.fullW, this.fullH);
+    // Nothing the world draws may show outside the play area.
+    c.save();
+    this.clipped = true;
+    this.screen();
+    c.beginPath();
+    c.rect(0, 0, this.w, this.h);
+    c.clip();
     const g = c.createLinearGradient(0, 0, 0, this.h);
     g.addColorStop(0, '#05030f');
     g.addColorStop(this.lineY / this.h, '#0b0920');
@@ -115,28 +145,35 @@ export class Neon {
 
   world() {
     const k = this.dpr * this.unit;
-    this.ctx.setTransform(k, 0, 0, k, this.dpr * (-this.camX * this.unit + this.sx), this.dpr * (this.lineY + this.sy));
+    this.ctx.setTransform(k, 0, 0, k, this.dpr * (this.ox - this.camX * this.unit + this.sx), this.dpr * (this.oy + this.lineY + this.sy));
   }
 
-  screen() { this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); }
+  /** Draw in CSS pixels from the play area's top left corner. */
+  screen() { this.ctx.setTransform(this.dpr, 0, 0, this.dpr, this.dpr * this.ox, this.dpr * this.oy); }
+
+  /** Draw in CSS pixels from the canvas's top left corner, free to leave the play area. */
+  overlay() {
+    if (this.clipped) { this.ctx.restore(); this.clipped = false; }
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  }
 
   /** Stroke a path as a glowing tube: wide faint halo, tight glow, solid core, hot centre. */
   glow(path: Path2D, color: string, width = 0.8, intensity = 1) {
-    const c = this.ctx;
+    const c = this.ctx, fade = this.fade;
     c.globalCompositeOperation = 'lighter';
     c.lineCap = 'round';
     c.lineJoin = 'round';
     c.strokeStyle = color;
-    c.globalAlpha = 0.06 * intensity;
+    c.globalAlpha = 0.06 * intensity * fade;
     c.lineWidth = width * 8;
     c.stroke(path);
-    c.globalAlpha = 0.18 * intensity;
+    c.globalAlpha = 0.18 * intensity * fade;
     c.lineWidth = width * 3;
     c.stroke(path);
-    c.globalAlpha = Math.min(1, intensity);
+    c.globalAlpha = Math.min(1, intensity) * fade;
     c.lineWidth = width;
     c.stroke(path);
-    c.globalAlpha = 0.55 * Math.min(1, intensity);
+    c.globalAlpha = 0.55 * Math.min(1, intensity) * fade;
     c.strokeStyle = '#fff';
     c.lineWidth = width * 0.35;
     c.stroke(path);
@@ -153,11 +190,11 @@ export class Neon {
     c.textBaseline = 'middle';
     c.shadowColor = color;
     c.shadowBlur = size * 0.6;
-    c.globalAlpha = alpha;
+    c.globalAlpha = alpha * this.fade;
     c.fillStyle = color;
     c.fillText(s, x, y);
     c.shadowBlur = 0;
-    c.globalAlpha = 0.6 * alpha;
+    c.globalAlpha = 0.6 * alpha * this.fade;
     c.fillStyle = '#fff';
     c.fillText(s, x, y);
     c.globalAlpha = 1;

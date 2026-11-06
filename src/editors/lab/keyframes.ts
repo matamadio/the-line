@@ -14,9 +14,11 @@ import { Wavell } from '../../game/actors/wavell';
 import { Worm } from '../../game/actors/worm';
 
 const STEP = 1 / 120;
-type Target = 'idle' | 'walk' | 'wipe' | 'pull' | 'snawave'
+type Target = 'idle' | 'appear' | 'sink' | 'walk' | 'wipe' | 'pull' | 'snawave'
   | 'snawave.rise' | 'snawave.bite' | 'snawave.sink' | 'worm.rise' | 'worm.bite' | 'worm.sink';
 const TARGETS: [Target, string][] = [
+  ['appear', 'Wavell: climbing out'],
+  ['sink', 'Wavell: sinking (killed)'],
   ['walk', 'Wavell: walk cycle'],
   ['wipe', 'Wavell: wipe'],
   ['pull', 'Wavell: pull'],
@@ -81,7 +83,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
 
   // ---------------------------------------------------------------- helpers
 
-  const isClip = () => target === 'walk' || target === 'wipe' || target === 'pull';
+  const isClip = () => target === 'appear' || target === 'sink' || target === 'walk' || target === 'wipe' || target === 'pull';
   const isMotion = () => target.includes('.');
   /** Has a timeline: a clip or a motion. */
   const timed = () => isClip() || isMotion();
@@ -151,7 +153,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
   const round = (v: number) => Math.round(v * 1000) / 1000;
   const world = (sx: number, sy: number): [number, number] => {
     const r = neon.canvas.getBoundingClientRect();
-    return [(sx - r.left) / neon.unit + neon.camX, (sy - r.top - neon.lineY) / neon.unit];
+    return [(sx - r.left - neon.ox) / neon.unit + neon.camX, (sy - r.top - neon.oy - neon.lineY) / neon.unit];
   };
 
   /** Handle positions in world space: joints of the pose, or the Snawave's outline points. */
@@ -178,7 +180,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
     for (let i = 0; i < h.length / 2; i++) {
       if (target !== 'snawave' && !isMotion() && lockedJoint(JOINTS[i])) continue;
       const [x, y] = neon.toScreen(h[i * 2], h[i * 2 + 1]);
-      const d = Math.hypot(x + r.left - sx, y + r.top - sy);
+      const d = Math.hypot(x + neon.ox + r.left - sx, y + neon.oy + r.top - sy);
       if (d < bd) { bd = d; best = i; }
     }
     return best;

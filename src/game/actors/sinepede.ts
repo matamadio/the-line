@@ -6,18 +6,33 @@
 // The right attack cancels the segment facing Wavell. The wrong one throws the whole
 // thing back and adds a segment at the far end. Running into him does the same, and
 // throws him back too: see Game.bump().
+//
+// All of it is one stroke of the line: its spikes rise out of the curve and come back
+// down to it, and its free ends ease out of the flat line without a corner.
 
 import type { Part, Shape } from '../crumble';
 import type { SpringLine } from '../line';
 import { DIFF } from '../../data/difficulty';
-import { COLORS, Neon, polyPath } from '../../core/neon';
+import { COLORS, Neon, lerp } from '../../core/neon';
 
 /** Length of one segment: half a wavelength (u). */
 export const SEG_W = 34;
 const AMP = 24;
-/** Points per segment in the outline. */
+/** Points per segment when testing for contact. */
 const SEG_POINTS = 8;
-const LEGS = [0.22, 0.4, 0.6, 0.78];
+/** Most of a segment between two points of the drawn curve. */
+const CURVE_STEP = 0.06;
+/** Where the spikes stand along a segment, and how long each is, as a share of SPIKE. */
+const SPIKES: [number, number][] = [[0.18, 0.7], [0.35, 0.9], [0.5, 1], [0.65, 0.9], [0.82, 0.7]];
+/** Length of the longest spike, and half the width of a spike's root (u). */
+const SPIKE = 9, SPIKE_ROOT = 1.3;
+/** Where the eye sits along the leading segment, and how big it is (u). */
+const EYE_T = 0.265, EYE_R = 1.5;
+/** How far a free end's shoulder reaches out along the line, past the segment (u). */
+export const SKIRT = 10;
+/** How far its shoulders may reach to the left and right: less when something else is close. */
+export type Skirts = readonly [number, number];
+const FULL: Skirts = [SKIRT, SKIRT];
 
 export type Side = 1 | -1;
 export interface Segment { side: Side; g: number; gone: boolean; press: number }
@@ -104,71 +119,118 @@ export class Sinepede {
     if (!this.segs.length) this.state = 'done';
   }
 
-  /** Height of a point in a segment (t 0..1), up from the line. */
-  private height(s: Segment, t: number) {
-    return s.side * AMP * s.g * s.press * Math.sin(t * Math.PI);
+  /**
+   * Height of a point up from the line, at t along segment i (t may run past the ends,
+   * onto the shoulders). Next to another segment each half is a sine, so the wave runs
+   * on through the join. Where nothing is next to it, that half is a wider raised cosine,
+   * which reaches past the segment and leaves the flat line level: no corner.
+   */
+  private height(i: number, t: number, sk: Skirts) {
+    const last = this.segs.length - 1;
+    let h = 0;
+    for (let j = i - 1; j <= i + 1; j++) {
+      const s = this.segs[j];
+      if (!s) continue;
+      const rel = i + t - j, left = rel < 0.5, u = Math.abs(rel - 0.5) * SEG_W;
+      const free = 1 - (this.segs[left ? j - 1 : j + 1]?.g ?? 0);
+      const reach = SEG_W / 2 + (left ? (j === 0 ? sk[0] : SKIRT) : (j === last ? sk[1] : SKIRT));
+      const sine = u < SEG_W / 2 ? Math.cos((u / SEG_W) * Math.PI) : 0;
+      const shoulder = u < reach ? 0.5 * (1 + Math.cos((u / reach) * Math.PI)) : 0;
+      h += s.side * AMP * s.g * s.press * lerp(sine, shoulder, free);
+    }
+    return h;
   }
 
-  /** The outline from end to end, on the line's own stroke. */
-  outline(line: SpringLine): number[] {
+  private at(line: SpringLine, i: number, t: number, sk: Skirts = FULL): [number, number] {
+    const x = this.x + (i + t) * SEG_W;
+    return [x, line.sample(x) - this.height(i, t, sk)];
+  }
+
+  /** One spike as part of the stroke: up from the curve, doubled at the tip to keep it sharp, and down again. */
+  private spike(out: number[], line: SpringLine, i: number, k: number, sk: Skirts) {
+    const s = this.segs[i], [t, share] = SPIKES[k], w = SPIKE_ROOT / SEG_W;
+    const [x, y] = this.at(line, i, t, sk), [x0, y0] = this.at(line, i, t - w, sk), [x1, y1] = this.at(line, i, t + w, sk);
+    const d = Math.hypot(x1 - x0, y1 - y0) || 1, tx = (x1 - x0) / d, ty = (y1 - y0) / d;
+    // Straight out of the wave: up from a crest, down from a trough.
+    const nx = ty * s.side, ny = -tx * s.side;
+    const stir = Math.sin(this.time * 14 + k * 1.3 + i * 2);
+    const len = SPIKE * share * s.g * s.press * (1 + 0.08 * stir);
+    const neck = len * 0.2, lean = stir * 0.9 * s.g;
+    // A narrow neck just above the root, so it flows out of the curve and tapers.
+    const nearX = lerp(x0, x, 0.6), nearY = lerp(y0, y, 0.6), farX = lerp(x1, x, 0.6), farY = lerp(y1, y, 0.6);
+    const tipX = x + nx * len + tx * lean, tipY = y + ny * len + ty * lean;
+    out.push(x0, y0, nearX + nx * neck, nearY + ny * neck, tipX, tipY, tipX, tipY, farX + nx * neck, farY + ny * neck, x1, y1);
+  }
+
+  /** The outline from shoulder to shoulder, on the line's own stroke, spikes and all. */
+  outline(line: SpringLine, skirts: Skirts = FULL): number[] {
+    const sk: Skirts = [Math.min(SKIRT, Math.max(0, skirts[0])), Math.min(SKIRT, Math.max(0, skirts[1]))];
     const out: number[] = [];
-    this.segs.forEach((s, i) => {
-      for (let j = 0; j < SEG_POINTS; j++) {
-        const t = j / SEG_POINTS, x = this.x + (i + t) * SEG_W;
-        out.push(x, line.sample(x) - this.height(s, t));
-      }
+    const last = this.segs.length - 1;
+    const curve = (i: number, from: number, to: number, skipFirst: boolean) => {
+      const n = Math.ceil((to - from) / CURVE_STEP);
+      for (let j = skipFirst ? 1 : 0; j < n; j++) out.push(...this.at(line, i, lerp(from, to, j / n), sk));
+    };
+    if (last >= 0) curve(0, -sk[0] / SEG_W, 0, false);
+    this.segs.forEach((_, i) => {
+      let from = 0;
+      SPIKES.forEach(([t], k) => {
+        curve(i, from, t - SPIKE_ROOT / SEG_W, from > 0);
+        this.spike(out, line, i, k, sk);
+        from = t + SPIKE_ROOT / SEG_W;
+      });
+      curve(i, from, 1, true);
     });
-    out.push(this.back, line.sample(this.back));
+    if (last >= 0) curve(last, 1, 1 + sk[1] / SEG_W, false);
+    const end = this.back + sk[1];
+    out.push(end, line.sample(end));
     return out;
   }
 
-  /** Is any point of the outline within r of (cx, cy)? */
+  /** Is any point of the wave within r of (cx, cy)? The spikes are for show: they don't reach any further. */
   touches(line: SpringLine, cx: number, cy: number, r: number) {
     if (!this.harmful) return false;
-    const o = this.outline(line);
-    for (let i = 0; i < o.length; i += 2) if (Math.hypot(o[i] - cx, o[i + 1] - cy) < r + 1) return true;
+    for (let i = 0; i < this.segs.length; i++) {
+      for (let j = 0; j <= SEG_POINTS; j++) {
+        const [x, y] = this.at(line, i, j / SEG_POINTS);
+        if (Math.hypot(x - cx, y - cy) < r + 1) return true;
+      }
+    }
     return false;
   }
 
-  private legs(line: SpringLine) {
-    const out: number[][] = [];
-    this.segs.forEach((s, i) => {
-      if (s.g < 0.3) return;
-      LEGS.forEach((t, k) => {
-        const x = this.x + (i + t) * SEG_W, y = line.sample(x) - this.height(s, t);
-        const stir = Math.sin(this.time * 14 + k + i * 2) * 1.2;
-        out.push([x, y, x + (t < 0.5 ? -2.4 : 2.4) + stir, y - s.side * 4.4 * s.g]);
-      });
-    });
-    return out;
-  }
-
-  /** Where the eye on the leading segment is, if it shows. */
-  private eye(line: SpringLine): [number, number] | null {
+  /** Where the eye on the leading segment is, if it shows: on the wave, between its first two spikes. */
+  private eye(line: SpringLine, sk: Skirts = FULL): [number, number] | null {
     const lead = this.segs.findIndex((s) => !s.gone);
     if (lead < 0 || this.segs[lead].g < 0.3) return null;
-    const s = this.segs[lead], t = 0.36, x = this.x + (lead + t) * SEG_W;
-    return [x, line.sample(x) - this.height(s, t) + s.side * 4];
+    return this.at(line, lead, EYE_T, sk);
   }
 
   /** Everything it is drawn with, for when it comes apart. */
   parts(line: SpringLine): Shape {
-    const bits: Part[] = this.legs(line).map((pts) => ({ pts, color: COLORS.enemy }));
+    const bits: Part[] = [];
     const eye = this.eye(line);
-    if (eye) bits.push({ pts: [eye[0] - 1.3, eye[1], eye[0] + 1.3, eye[1]], color: COLORS.eye });
-    return { contours: [{ pts: this.outline(line), color: COLORS.line }], bits };
+    if (eye) bits.push({ pts: [eye[0] - EYE_R, eye[1], eye[0] + EYE_R, eye[1]], color: COLORS.eye });
+    // Without its shoulders: they are for show, and the end of the line must not gain ground from them.
+    return { contours: [{ pts: this.outline(line, [0, 0]), color: COLORS.line }], bits };
   }
 
-  /** Legs along each segment, and an eye on the leading one. */
-  drawFeatures(neon: Neon, line: SpringLine) {
+  /** The eye: a little ring threaded on the line, on the leading segment. */
+  drawFeatures(neon: Neon, line: SpringLine, skirts: Skirts = FULL) {
     if (!this.harmful) return;
-    const legs = new Path2D();
-    for (const leg of this.legs(line)) polyPath(leg, false, legs);
-    neon.glow(legs, COLORS.enemy, 0.6, this.intensity);
-    const at = this.eye(line);
+    const at = this.eye(line, [Math.min(SKIRT, Math.max(0, skirts[0])), Math.min(SKIRT, Math.max(0, skirts[1]))]);
     if (!at) return;
-    const eye = new Path2D();
-    eye.arc(at[0], at[1], 1.3, 0, Math.PI * 2);
-    neon.glow(eye, COLORS.eye, 1, this.intensity);
+    // The line stops at the ring and carries on after it.
+    const c = neon.ctx;
+    c.globalCompositeOperation = 'source-over';
+    c.globalAlpha = 1;
+    c.fillStyle = '#020107';
+    c.beginPath();
+    c.arc(at[0], at[1], EYE_R, 0, Math.PI * 2);
+    c.fill();
+    const ring = new Path2D();
+    ring.arc(at[0], at[1], EYE_R, 0, Math.PI * 2);
+    neon.glow(ring, COLORS.eye, 0.7, this.intensity);
+    neon.glow(ring, '#ffd9d2', 0.25, this.intensity);
   }
 }

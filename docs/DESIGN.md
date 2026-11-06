@@ -5,8 +5,8 @@
 ## The line and the characters
 
 - **The line is physical** (`src/game/line.ts`). It is a vibrating string simulated with the wave equation. Footsteps dent it, and Wavell's attacks act on it.
-- **The characters are part of the line.** Wavell (`src/game/actors/wavell.ts`) is a knot: one stroke that leaves the line at his back toe, loops through his arms and head and returns at his front toe. He walks by sliding his feet along the line like a wave, rises out of it when he appears (slowly the first time, out of a flat line, when the game loads), turns inside out through it when he flips under, and comes undone when he dies. Floating, the line loops up and ties off into a bubble that changes colour as time runs out. Landing, the bubble dives back in.
-- **Creatures are spliced into the same stroke.** A Sinepede is a stretch of the line itself, bent into a sine wave, and it leaves a ripple as each segment dies.
+- **The characters are part of the line.** Wavell (`src/game/actors/wavell.ts`) is a knot: one stroke that leaves the line at his back toe, loops through his arms and head and returns at his front toe. He walks by sliding his feet along the line like a wave, climbs out of it when he appears, hands first, then his head between them, then a press-up and his legs (slowly the first time, out of a flat line, when the game loads), turns inside out through it when he flips under, and when an enemy kills him he sinks back into it, looking up, until his eyes pop at the line and one raised hand is the last of him. Going up and coming down, the line runs over what shows of him and nothing crosses his face. Floating, the line loops up and ties off into a bubble that changes colour as time runs out. Landing, the bubble dives back in.
+- **Creatures are spliced into the same stroke.** A Sinepede is a stretch of the line itself, bent into a sine wave, with narrow spikes in the same stroke, and it leaves a ripple as each segment dies.
 - **The line has two sides.** Going down through the line leaves Wavell walking upside-down underneath until he goes back up.
 
 ## Time is the pressure
@@ -24,7 +24,7 @@ The wrong attack feeds it instead. It grows and is thrown back along the line, a
 
 ## Opposite waves cancel
 
-Enemies on Wavell's side can hurt him, and the other side is no hiding place. Wavell and an enemy on opposite sides are opposite waves: as they close in, each presses the other down, and if they cross they cancel out and both go flat. A flattened enemy melts into a plain hump of line that rolls on with the wave that hit it and dies away.
+Enemies on Wavell's side can hurt him, and the other side is no hiding place. Wavell and an enemy on opposite sides are opposite waves: as they close in, each presses the other down, and if they cross they cancel out. A flattened enemy melts into a plain hump of line that rolls on with the wave that hit it and dies away. With no size left to lose, Wavell sinks into the line.
 
 ## One at a time
 
@@ -38,10 +38,10 @@ Up to level 3, threats come one at a time, with a second of clear line between t
 | **Worm** (`worm.ts`) | Crawls underneath, sagging the line so you see it coming | Pull it, from either side. A wipe makes it grow and pushes it back. If it reaches you underneath it bites and leaves you dizzy. Walked over from on top, it hurts |
 | **Backwave** | Rolls in from behind | Float over it, or face it and answer it (attacking the other way does nothing). A pull cancels it (+10). A wiped one rolls back off the left of the screen (+10), carrying the end of the line back with it, and the end of the line then stops for 2 seconds |
 | **Line reflux** | Runs parallel to the line, on one side of it, half Wavell's height away | Be on the other side |
-| **Sea Urchin** (`urchin.ts`) | Stays still, on both sides of the line. It starts as a fuzz on the line, then bursts out in spikes for a second | Pull it, or wait it out |
+| **Disturchin** (`urchin.ts`) | Stays still, on both sides of the line. It starts as a fuzz on the line, then bursts out in spikes for a second | Pull it, or wait it out |
 | **Bubble Burst** (`bubble.ts`) | Blisters out of either side of the line, swells and bursts. From level 6, some float off and burst in the air | Pop it early with the right attack, or keep clear |
 
-The rule for opposite sides doesn't apply to the Sea Urchin, which sticks out on both sides of the line: a pull always kills it and a wipe always feeds it. Each wipe bounces it back a little, as the wrong attack does to the other enemies, starts its time over and adds half a second to it, makes it bigger and takes one more pull to undo, with dots showing how many are left. Each size is worth 3 more points.
+The rule for opposite sides doesn't apply to the Disturchin, which sticks out on both sides of the line: a pull always kills it and a wipe always feeds it. Each wipe bounces it back a little, as the wrong attack does to the other enemies, starts its time over and adds half a second to it, makes it bigger and takes one more pull to undo, with dots showing how many are left. Each size is worth 3 more points.
 
 The Sinepede is the basic enemy, and the Snawave's replacement. Each segment is half a wave. They alternate, so one that starts on a crest is a sine and one that starts on a trough is a cosine. It is one segment at level 1 and gets longer with the level. The right attack cancels the segment facing you. The wrong one throws it back and adds a segment at the far end.
 
@@ -62,13 +62,13 @@ This doesn't apply to the bubble. A bigger Wavell makes a bigger bubble, which l
 The music is meant to be generated by the game itself, from the sounds of actions and enemies, so there is no recorded soundtrack. Mechanics stay simple and immediate, and an enemy's sound should say the same thing as its shape.
 
 - **Sinepede:** pure sine tones. It announces itself with one note per segment, high for a crest and low for a trough. Its steady tone gets louder as it closes in, and each segment you cancel plays its own note.
-- **Sea Urchin:** a low tremble under the fuzz on the line, then a harsh, clipped sound for as long as its jagged spikes are out.
+- **Disturchin:** a low tremble under the fuzz on the line, then a harsh, clipped sound for as long as its jagged spikes are out.
 
 ## Sparkles are the bait
 
 Every enemy killed leaves two sparkles behind, one on each side of the line. A few more pop up on their own, as many below the line as above it, often behind Wavell. They drift about at random and blink out after a few seconds. Each one counts towards his next size. Catching them in a quick chain is worth more and more, and gold ones, high up or at the limit of his reach underneath, are worth five times as much. Chasing them means giving ground to the line.
 
-Enemies on the line never overlap. Those that crawl queue up behind whatever is ahead of them, a Sea Urchin or Bubble Burst only appears where there is room, and an enemy thrown back stops at the next one or shoves it along. The Backwave and the Reflux are waves in the line, so they pass through the others, and a bubble in the air is off the line.
+Enemies on the line never overlap. Those that crawl queue up behind whatever is ahead of them, a Disturchin or Bubble Burst only appears where there is room, and an enemy thrown back stops at the next one or shoves it along. The Backwave and the Reflux are waves in the line, so they pass through the others, and a bubble in the air is off the line.
 
 ## The beat
 
@@ -78,7 +78,7 @@ A music-timing core for the game ([issue #3](https://github.com/matamadio/the-li
 - The line lights up on each beat, so the beat can be seen with the sound off.
 - The whole world runs at `BPM / 75`, and the tempo rises by 2 BPM per level, changing only at the start of a bar.
 - Enemies come in on the beat, one to a beat and never more than two to a bar: on beat 4 only up to level 5, and on beats 2 and 4 from level 6. The kinds take turns, the one furthest past its time going next, so the commonest doesn't take every beat.
-- What they do with a sound also waits for the beat: a Sea Urchin's spikes, a Backwave or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses are whole beats.
+- What they do with a sound also waits for the beat: a Disturchin's spikes, a Backwave or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses are whole beats.
 
 Sounds that answer the player, like a hit or a cancelled segment, stay immediate, and the player's timing isn't judged.
 

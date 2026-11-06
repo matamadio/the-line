@@ -34,6 +34,8 @@ const ahead = (g: Game, d: number) => g.wavell.x + d;
 
 export const SCENES: Scene[] = [
   { name: 'Appear', dur: 1.4 },
+  { name: 'Killed: sinks into the line', dur: 2.2, setup: (g) => { ready(g); g.wavell.hurt('zap'); } },
+  { name: 'Killed under the line: sinks into it', dur: 2.2, setup: (g) => { ready(g, true); g.wavell.hurt('zap'); } },
   { name: 'Walk', dur: 2.5, keys: [['right', 0.1, 2.2]], setup: (g) => ready(g) },
   { name: 'Wipe', dur: 1.6, keys: [['dragPressed', 0.2]], setup: (g) => ready(g) },
   { name: 'Pull', dur: 1.6, keys: [['pullPressed', 0.2]], setup: (g) => ready(g) },
@@ -57,24 +59,24 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g); g.sinepedes.push(new Sinepede(ahead(g, 70), 100, 1, 1)); },
   },
   {
-    name: 'Sea Urchin: wait it out', dur: 2.6,
+    name: 'Disturchin: wait it out', dur: 2.6,
     setup: (g) => { ready(g); g.urchins.push(new Urchin(ahead(g, 50), 0.9, 1)); },
   },
   {
-    name: 'Sea Urchin: pulled flat', dur: 2.2, keys: [['pullPressed', 0.5]],
+    name: 'Disturchin: pulled flat', dur: 2.2, keys: [['pullPressed', 0.5]],
     setup: (g) => { ready(g); g.urchins.push(new Urchin(ahead(g, 60), 0.9, 1)); },
   },
   {
-    name: 'Sea Urchin: wiped twice (wrong attack), then pulled', dur: 4.5,
+    name: 'Disturchin: wiped twice (wrong attack), then pulled', dur: 4.5,
     keys: [['dragPressed', 0.2], ['dragPressed', 1], ['pullPressed', 1.8], ['pullPressed', 2.6], ['pullPressed', 3.4]],
     setup: (g) => { ready(g); g.urchins.push(new Urchin(ahead(g, 60), 1.4, 3)); },
   },
   {
-    name: 'Sea Urchin: spiked from under the line', dur: 2.6, keys: [['right', 0.3, 1.2]],
+    name: 'Disturchin: spiked from under the line', dur: 2.6, keys: [['right', 0.3, 1.2]],
     setup: (g) => { ready(g, true); g.urchins.push(new Urchin(ahead(g, 60), 0.9, 1)); },
   },
   {
-    name: 'Sea Urchin: spiked', dur: 2.6, keys: [['right', 0.3, 1.2]],
+    name: 'Disturchin: spiked', dur: 2.6, keys: [['right', 0.3, 1.2]],
     setup: (g) => { ready(g); g.urchins.push(new Urchin(ahead(g, 60), 0.9, 1)); },
   },
   {
@@ -162,7 +164,7 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g); g.endX = g.wavell.x - 78; g.wavell.safe = 1; const s = new Sinepede(g.endX + 4, 100, 2, 1); for (const seg of s.segs) seg.g = 1; g.sinepedes.push(s); },
   },
   {
-    name: 'End of the line: an Urchin comes apart', dur: 3.2, end: true,
+    name: 'End of the line: a Disturchin comes apart', dur: 3.2, end: true,
     setup: (g) => { ready(g); g.endX = g.wavell.x - 75; g.urchins.push(new Urchin(g.endX + 20, 0.1, 5)); },
   },
   {
