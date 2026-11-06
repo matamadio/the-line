@@ -39,7 +39,7 @@ A test plays the game twice and fails if the two runs differ.
 | How things feel (timings, heights) | `src/data/tune.ts`, which adds a slider to the lab |
 | Poses and motions | `src/data/anim.json`, through the keyframe editor |
 
-**World units are the original game's pixels.** The view shows at least 320x200 of them, y = 0 is the line at rest, and negative y is up.
+**World units are the original game's pixels.** Every screen shows the same `VIEW_W` x `VIEW_H` of them (`src/core/neon.ts`), y = 0 is the line at rest, and negative y is up. `n.w` and `n.h` are the play area, not the canvas: draw outside it only after `n.overlay()`.
 
 ## Recipes
 

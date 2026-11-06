@@ -2,7 +2,7 @@
 // play thousands of steps without a browser.
 
 import type { Input } from '../src/core/input';
-import type { Neon } from '../src/core/neon';
+import { VIEW_H, VIEW_W, type Neon } from '../src/core/neon';
 import { Game } from '../src/game/game';
 
 export const IDLE = { left: false, right: false, up: false, down: false, upPressed: false, downPressed: false, dragPressed: false, pullPressed: false };
@@ -17,9 +17,9 @@ export function seeded(a: number) {
   };
 }
 
-/** What the simulation reads of the view: a 320x200 landscape screen. */
+/** What the simulation reads of the view: the play area at one pixel per world unit. */
 function fakeNeon() {
-  return { w: 320, h: 200, unit: 1, zoom: 1, camX: 0, lineY: 124, shake: 0, viewW: 320, focus: 0.42, viewTop: -124, viewBottom: 76 } as unknown as Neon;
+  return { w: VIEW_W, h: VIEW_H, ox: 0, oy: 0, unit: 1, zoom: 1, camX: 0, lineY: 124, shake: 0, viewW: VIEW_W, focus: 0.42, viewTop: -124, viewBottom: 76 } as unknown as Neon;
 }
 
 function fakeInput() {

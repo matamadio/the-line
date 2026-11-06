@@ -1,11 +1,15 @@
 // Everything drawn over the world in screen space: score, lives, the lead gauge,
-// title and game over screens, the mute button and the touch controls.
+// title and game over screens, the on-screen buttons and the touch controls.
 
+import { canFullscreen, canInstall, isFullscreen } from '../core/app';
 import { COLORS, Neon, clamp } from '../core/neon';
 import { sfx } from '../core/sfx';
 import { DIFF } from '../data/difficulty';
 import type { Game } from './game';
 import { MORPH_TIME, drawFlatlined, drawMorph, drawTitle } from './title';
+
+/** The HUD's base size: a share of the play area, so it lays out the same on every screen. */
+const hudSize = (n: Neon) => n.h * 0.045;
 
 /** The hints the start screen takes turns showing. */
 const TITLE_HINTS = [
@@ -30,7 +34,7 @@ const DEV_LINKS = [
 
 /** The dev menu's box on screen, and the height of its heading and of each link. */
 function devBox(n: Neon) {
-  const s = Math.max(16, n.unit * 9), row = s, w = s * 6.8, h = row * (DEV_LINKS.length + 1) + s * 0.3, pad = s * 0.8;
+  const s = hudSize(n), row = s, w = s * 6.8, h = row * (DEV_LINKS.length + 1) + s * 0.3, pad = s * 0.8;
   return { s, row, x: pad, y: n.h - pad - h, w, h };
 }
 
@@ -54,15 +58,112 @@ function drawDevMenu(g: Game) {
   box.rect(b.x, b.y, b.w, b.h);
   n.glow(box, '#c9a640', 1, 0.35);
   n.text('DEV', tx, b.y + b.row * 0.65, b.s * 0.42, '#c9a640', 'left', 0.75);
-  const hover = devLinkAt(n, g.input.mouseX, g.input.mouseY);
+  const hover = devLinkAt(n, g.input.mouseX - n.ox, g.input.mouseY - n.oy);
   DEV_LINKS.forEach((l, i) => n.text(l.label, tx, b.y + b.row * (1.65 + i), b.s * 0.5, hover === l.url ? COLORS.hud : '#c9a640', 'left', hover === l.url ? 1 : 0.8));
   c.canvas.style.cursor = hover ? 'pointer' : '';
 }
 
-/** The mute button on screen: [x, y, radius]. */
+/**
+ * The mute button on screen: [x, y, radius]. Up by the score rather than at the bottom,
+ * where the right thumb swipes.
+ */
 export function muteButton(n: Neon): [number, number, number] {
-  const s = Math.max(16, n.unit * 9);
-  return [n.w - s * 1.4, n.h - s * 1.4, s * 0.9];
+  const s = hudSize(n);
+  return [n.w - s * 1.4, s * 3.3, s * 0.9];
+}
+
+/** The fullscreen button on screen, beside the mute button. */
+export function fullscreenButton(n: Neon): [number, number, number] {
+  const s = hudSize(n);
+  return [n.w - s * 3.6, s * 3.3, s * 0.9];
+}
+
+function drawFullscreen(n: Neon) {
+  const [x, y, r] = fullscreenButton(n), p = new Path2D(), a = r * 0.6, b = r * 0.25;
+  // Four corners, pointing out to go fullscreen and in to come back.
+  const out = isFullscreen() ? -1 : 1;
+  for (const [i, j] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+    const cx = x + i * (out > 0 ? a : b), cy = y + j * (out > 0 ? a : b), d = (a - b) * out;
+    p.moveTo(cx - i * d, cy);
+    p.lineTo(cx, cy);
+    p.lineTo(cx, cy - j * d);
+  }
+  n.glow(p, '#c9a640', 1.4, 0.7);
+}
+
+/** The install button's box on screen, down to the right of the start screen. */
+function installBox(n: Neon) {
+  const s = hudSize(n), w = s * 5.6, h = s * 1.3, pad = s * 0.8;
+  return { s, x: n.w - pad - w, y: n.h - pad - h, w, h };
+}
+
+export function inInstallButton(n: Neon, x: number, y: number) {
+  const b = installBox(n);
+  return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+}
+
+function drawInstall(g: Game) {
+  const n = g.neon, b = installBox(n);
+  const hover = inInstallButton(n, g.input.mouseX - n.ox, g.input.mouseY - n.oy);
+  const box = new Path2D();
+  box.rect(b.x, b.y, b.w, b.h);
+  n.glow(box, '#c9a640', 1, hover ? 0.7 : 0.35);
+  n.screen();
+  n.text('install app', b.x + b.w / 2, b.y + b.h / 2, b.s * 0.5, hover ? COLORS.hud : '#c9a640', 'center', hover ? 1 : 0.8);
+  if (hover) n.ctx.canvas.style.cursor = 'pointer';
+  if (g.time < g.installNote) n.text('Share menu, then Add to Home Screen', b.x + b.w, b.y - b.s * 0.6, b.s * 0.5, COLORS.hud, 'right');
+}
+
+/** A chevron at (x, y), pointing the way (dx, dy) says. */
+function chevron(n: Neon, x: number, y: number, dx: number, dy: number, size: number, color: string, alpha: number) {
+  const p = new Path2D();
+  p.moveTo(x - dx * size * 0.5 - dy * size, y - dy * size * 0.5 - dx * size);
+  p.lineTo(x + dx * size * 0.5, y + dy * size * 0.5);
+  p.lineTo(x - dx * size * 0.5 + dy * size, y - dy * size * 0.5 + dx * size);
+  n.glow(p, color, 1.5, alpha);
+}
+
+/** The thumbs' controls. They may use the empty space around the play area. */
+function drawTouch(g: Game) {
+  const n = g.neon, inp = g.input;
+  n.overlay();
+  const r = Math.min(n.fullW, n.fullH) * 0.11, gap = r * 1.2, size = r * 0.26;
+  // Left thumb: a stick that walks, floats and goes through the line.
+  const st = inp.stick;
+  const ox = st ? st.ox : r * 1.6, oy = st ? st.oy : n.fullH - r * 1.6;
+  const base = new Path2D();
+  base.arc(ox, oy, r, 0, Math.PI * 2);
+  n.glow(base, '#c9a640', 1.5, st ? 0.6 : 0.3);
+  const kx = st ? clamp(st.x - ox, -r, r) + ox : ox, ky = st ? clamp(st.y - oy, -r, r) + oy : oy;
+  const knob = new Path2D();
+  knob.arc(kx, ky, r * 0.38, 0, Math.PI * 2);
+  n.glow(knob, COLORS.hud, 1.5, st ? 0.9 : 0.35);
+  for (const d of [-1, 1]) chevron(n, ox, oy + d * gap, 0, d, size, '#c9a640', 0.3 + (Math.sign(inp.stickFlash) === d ? Math.abs(inp.stickFlash) * 0.7 : 0));
+  inp.stickFlash *= 0.9;
+  // Right thumb: the swipes. They follow the thumb.
+  const sw = inp.swipe;
+  const ax = sw ? sw.ox : n.fullW - r * 1.8, ay = sw ? sw.oy : n.fullH - r * 1.7;
+  const dot = new Path2D();
+  dot.arc(ax, ay, r * 0.3, 0, Math.PI * 2);
+  n.glow(dot, COLORS.hud, 1.5, sw ? 0.7 : 0.3);
+  for (const d of [-1, 1]) {
+    chevron(n, ax, ay + d * gap, 0, d, size, COLORS.hud, 0.3 + inp.dragFlash * 0.7);
+    chevron(n, ax + d * gap, ay, d, 0, size, '#9fe8ff', 0.3 + inp.pullFlash * 0.7);
+  }
+  inp.dragFlash *= 0.9;
+  inp.pullFlash *= 0.9;
+}
+
+/** The edge of the play area, and on a phone held upright, a word about turning it. */
+function drawSurround(g: Game) {
+  const n = g.neon;
+  n.overlay();
+  if (n.ox > 0 || n.oy > 0) {
+    const p = new Path2D();
+    p.rect(n.ox, n.oy, n.w, n.h);
+    n.glow(p, '#5a4a20', 0.8, 0.5);
+  }
+  if (n.fullH > n.fullW) n.text('turn the phone for a bigger view', n.w / 2, -n.oy / 2, Math.max(13, n.unit * 8), '#c9a640', 'center', 0.8);
 }
 
 /** The four beats of the bar, as dots ending at x, with the current one lit. */
@@ -121,23 +222,26 @@ function drawSizes(g: Game, x: number, y: number) {
 
 export function drawHud(g: Game) {
   const n = g.neon, c = n.ctx, inp = g.input;
-  const s = Math.max(16, n.unit * 9), pad = s * 0.9;
-  const cx = n.w / 2;
+  const s = hudSize(n), pad = s * 0.9;
+  const cx = n.w / 2, hudFade = g.titleDust?.hudFade ?? 1;
   if (g.mode === 'title' && g.morphT < MORPH_TIME) drawMorph(n, g.morphT, g.time);
   else if (g.mode === 'title') {
     drawTitle(n, g.time);
     const blink = 0.55 + 0.45 * Math.sin(g.time * 4);
     n.text(inp.touchUsed || matchMedia('(pointer: coarse)').matches ? 'tap to start' : 'press any key', cx, n.lineY + s * 3.2, s, COLORS.hud, 'center', blink);
     const help = matchMedia('(pointer: coarse)').matches
-      ? ['left thumb: walk  ·  right thumb: tap to wipe, swipe sideways to pull', 'swipe down: through the line  ·  swipe up: float / back up']
-      : ['← → walk   ↓ through the line   ↑ float / back up', 'Z wipe   X pull   P pause   Esc menu   M mute'];
+      ? ['left thumb: walk  ·  down: through the line  ·  up: float / back up', 'right thumb: swipe ↔ to pull  ·  swipe ↕ to wipe']
+      : ['← → walk   ↓ through the line   ↑ float / back up', 'Z wipe   X pull   P pause   Esc menu   M mute   F fullscreen'];
     help.forEach((line, i) => n.text(line, cx, n.lineY + s * (5 + i * 1.1), s * 0.55, '#c9a640'));
     const inHint = g.time % HINT_TIME;
     const hintAlpha = clamp(Math.min(inHint, HINT_TIME - inHint) / HINT_FADE, 0, 1);
     n.text(TITLE_HINTS[Math.floor(g.time / HINT_TIME) % TITLE_HINTS.length], cx, n.lineY + s * (5 + help.length * 1.1), s * 0.55, '#c9a640', 'center', hintAlpha);
     drawDevMenu(g);
+    if (canInstall()) drawInstall(g);
   } else {
     c.canvas.style.cursor = '';
+    g.titleDust?.draw(n);
+    n.fade = hudFade;
     n.text(String(g.score).padStart(6, '0'), n.w - pad, pad, s, COLORS.hud, 'right');
     n.text('LEVEL ' + g.level + (DIFF.beatOn ? `  ·  ${Math.round(g.beat.bpm)} BPM` : ''), cx, pad, s * 0.7, '#ffb21a');
     if (DIFF.beatOn) drawBar(g, n.w - pad, pad + s * 1.1, s);
@@ -146,7 +250,7 @@ export function drawHud(g: Game) {
     n.screen();
     if (g.mode !== 'over') drawLead(g, pad, pad + s * 1.4, s);
     if (g.banner > 0) n.text('LEVEL ' + g.level, cx, n.lineY - n.unit * 70, s * 2.4, COLORS.hud, 'center', Math.min(1, g.banner));
-    if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 1.3, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
+    if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 2.4, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
     if (g.paused) {
       n.text('PAUSED', cx, n.lineY - n.unit * 75, s * 2.4, COLORS.hud);
       n.text('P to carry on   Esc for the menu', cx, n.lineY - n.unit * 50, s * 0.7, '#c9a640');
@@ -157,7 +261,9 @@ export function drawHud(g: Game) {
       if (g.overT > 0.8) n.text(inp.touchUsed ? 'tap to continue' : 'press any key', cx, n.lineY + s * 3, s * 0.8, COLORS.hud, 'center', 0.55 + 0.45 * Math.sin(g.time * 4));
     }
   }
-  // Mute toggle.
+  n.fade = 1;
+  // The buttons, the same in every mode.
+  n.screen();
   const [bx, by, br] = muteButton(n);
   const m = new Path2D();
   m.moveTo(bx - br * 0.5, by - br * 0.2); m.lineTo(bx - br * 0.2, by - br * 0.2); m.lineTo(bx + br * 0.15, by - br * 0.5);
@@ -166,43 +272,10 @@ export function drawHud(g: Game) {
   else { m.moveTo(bx + br * 0.4, by - br * 0.3); m.quadraticCurveTo(bx + br * 0.65, by, bx + br * 0.4, by + br * 0.3); }
   n.glow(m, '#c9a640', 1.4, 0.7);
 
-  // Touch controls.
-  if (g.mode === 'play' && (inp.touchUsed || matchMedia('(pointer: coarse)').matches)) {
-    const r = Math.min(n.w, n.h) * 0.11;
-    const st = inp.stick;
-    const ox = st ? st.ox : r * 1.6, oy = st ? st.oy : n.h - r * 1.6;
-    const base = new Path2D();
-    base.arc(ox, oy, r, 0, Math.PI * 2);
-    n.glow(base, '#c9a640', 1.5, st ? 0.6 : 0.3);
-    const kx = st ? clamp(st.x - ox, -r, r) + ox : ox, ky = st ? clamp(st.y - oy, -r, r) + oy : oy;
-    const knob = new Path2D();
-    knob.arc(kx, ky, r * 0.38, 0, Math.PI * 2);
-    n.glow(knob, COLORS.hud, 1.5, st ? 0.9 : 0.35);
-    inp.dragFlash = Math.max(0, inp.dragFlash - 0.06);
-    // The action zone: tap to wipe, swipe sideways to pull, swipe up or down. It follows the thumb.
-    const sw = inp.swipe;
-    const dx = sw ? sw.ox : n.w - r * 1.8, dy = sw ? sw.oy : n.h - r * 1.7;
-    const btn = new Path2D();
-    btn.arc(dx, dy, r * 0.8, 0, Math.PI * 2);
-    btn.moveTo(dx - r * 0.45, dy + r * 0.2);
-    btn.quadraticCurveTo(dx - r * 0.1, dy + r * 0.2, dx, dy - r * 0.25);
-    btn.quadraticCurveTo(dx + r * 0.1, dy + r * 0.2, dx + r * 0.45, dy + r * 0.2);
-    n.glow(btn, COLORS.hud, 1.5, 0.35 + inp.dragFlash * 0.65);
-    inp.swipeFlash *= 0.9;
-    for (const d of [-1, 1]) {
-      const ch = new Path2D(), y = dy + d * r * 1.15;
-      ch.moveTo(dx - r * 0.3, y - d * r * 0.15);
-      ch.lineTo(dx, y + d * r * 0.15);
-      ch.lineTo(dx + r * 0.3, y - d * r * 0.15);
-      n.glow(ch, COLORS.hud, 1.5, 0.3 + (Math.sign(inp.swipeFlash) === d ? Math.abs(inp.swipeFlash) * 0.7 : 0));
-      // Sideways chevrons for the pull.
-      const sc = new Path2D(), x = dx + d * r * 1.15;
-      sc.moveTo(x - d * r * 0.15, dy - r * 0.3);
-      sc.lineTo(x + d * r * 0.15, dy);
-      sc.lineTo(x - d * r * 0.15, dy + r * 0.3);
-      n.glow(sc, '#9fe8ff', 1.5, 0.3 + inp.pullFlash * 0.7);
-    }
-    inp.pullFlash *= 0.9;
-  }
+  if (canFullscreen()) drawFullscreen(n);
+  drawSurround(g);
+  n.fade = hudFade;
+  if (g.mode === 'play' && (inp.touchUsed || matchMedia('(pointer: coarse)').matches)) drawTouch(g);
+  n.fade = 1;
   c.globalCompositeOperation = 'source-over';
 }

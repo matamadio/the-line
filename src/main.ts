@@ -1,6 +1,9 @@
+import { initApp } from './core/app';
 import { Game } from './game/game';
 import { Input } from './core/input';
 import { Neon } from './core/neon';
+
+initApp();
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const neon = new Neon(canvas);

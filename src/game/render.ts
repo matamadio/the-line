@@ -4,6 +4,7 @@
 import { COLORS, rand, smoothPath } from '../core/neon';
 import { DIFF } from '../data/difficulty';
 import { BUBBLE_GREEN } from './actors/bubble';
+import type { Sinepede, Skirts } from './actors/sinepede';
 import type { Game } from './game';
 import { drawHud } from './hud';
 
@@ -12,9 +13,9 @@ export function drawGame(g: Game, dt: number) {
   n.begin(dt);
   drawBackdrop(g);
   n.world();
-  drawLine(g);
+  const skirts = drawLine(g);
   for (const c of g.crumbles) c.draw(n, g.line);
-  for (const s of g.sinepedes) s.drawFeatures(n, g.line);
+  for (const s of g.sinepedes) s.drawFeatures(n, g.line, skirts.get(s));
   for (const u of g.urchins) u.drawFeatures(n, g.line);
   for (const w of g.worms) w.drawFeatures(n, g.line);
   for (const b of g.bubbles) b.drawFeatures(n, g.line);
@@ -67,7 +68,7 @@ function drawBackdrop(g: Game) {
  * The line, with Wavell and every creature spliced into the same stroke: the
  * characters are knots and waves of the line itself.
  */
-function drawLine(g: Game) {
+function drawLine(g: Game): Map<Sinepede, Skirts> {
   const n = g.neon, L = g.line;
   const right = n.camX + n.viewW + 10;
   // A creature burning at the end of the line is its end: nothing runs under it.
@@ -78,10 +79,6 @@ function drawLine(g: Game) {
   for (const u of g.urchins) {
     const pts = u.outline(L);
     knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: 0 });
-  }
-  for (const s of g.sinepedes) {
-    const pts = s.outline(L);
-    knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: s.intensity - 1 });
   }
   for (const wm of g.worms) {
     const pts = wm.outline(L);
@@ -95,13 +92,32 @@ function drawLine(g: Game) {
   // The bulge of a pull stops short of the next creature ahead.
   const f = g.wavell.facing;
   let room = Infinity;
-  for (const k of knots) {
-    const d = f > 0 ? k.x0 - g.wavell.x : g.wavell.x - k.x1;
+  const ahead = (x0: number, x1: number) => {
+    const d = f > 0 ? x0 - g.wavell.x : g.wavell.x - x1;
     if (d > 0) room = Math.min(room, d - 2);
-  }
-  const w = g.wavell.stroke(L, false, room);
+  };
+  for (const k of knots) ahead(k.x0, k.x1);
+  for (const s of g.sinepedes) ahead(s.x, s.back);
+  const w = g.wavell.stroke(L, room);
   // While he crumbles, what is left of him no longer joins the line.
   if (w) knots.push({ pts: w, x0: Math.min(w[0], w[w.length - 2]), x1: Math.max(w[0], w[w.length - 2]), flash: 0, solo: g.wavell.burning });
+  // A Sinepede's shoulders share out the room on each side of it, so they never run into what is next to them.
+  const skirts = new Map<Sinepede, Skirts>();
+  const others = [...knots.map((k): [number, number] => [k.x0, k.x1]), ...g.sinepedes.map((s): [number, number] => [s.x, s.back])];
+  for (const s of g.sinepedes) {
+    let l = Infinity, r = Infinity;
+    for (const [x0, x1] of others) {
+      if (x0 === s.x && x1 === s.back) continue;
+      if (x1 <= s.x) l = Math.min(l, s.x - x1);
+      else if (x0 >= s.back) r = Math.min(r, x0 - s.back);
+      else if (x0 + x1 < s.x + s.back) l = 0;
+      else r = 0;
+    }
+    const sk: Skirts = [l / 2 - 1, r / 2 - 1];
+    skirts.set(s, sk);
+    const pts = s.outline(L, sk);
+    knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: s.intensity - 1 });
+  }
   // Overlapping knots (a Worm biting Wavell) can't share the stroke: they are drawn on their own.
   const splice: Knot[] = [], solo: Knot[] = [];
   let lastEnd = -Infinity;
@@ -138,6 +154,7 @@ function drawLine(g: Game) {
     }
     n.glow(fray, COLORS.line, 0.8, 0.9);
   }
+  return skirts;
 }
 
 function drawDrops(g: Game) {

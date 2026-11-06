@@ -1,4 +1,4 @@
-// The Sea Urchin: it stays where it is. It starts as a fuzz on the line, a fine, fast
+// The Disturchin: it stays where it is. It starts as a fuzz on the line, a fine, fast
 // vibration that spreads and gets stronger, then it bursts out in spikes for a moment
 // with a distorted sound, and sinks back in. Its outline is a clipped, jagged wave, so
 // it looks like what it sounds like.

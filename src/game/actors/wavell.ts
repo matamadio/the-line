@@ -14,7 +14,7 @@ import type { SpringLine } from '../line';
 import { COLORS, Neon, clamp, lerp, polyPath, smooth } from '../../core/neon';
 import { DIFF } from '../../data/difficulty';
 import { TUNE } from '../../data/tune';
-import { ANIM, I, TILT, mark, mix, namedPose, pose, type Joint, type Pose } from '../../data/anim';
+import { ANIM, I, TILT, clipLength, mark, mix, namedPose, pose, type Joint, type Pose } from '../../data/anim';
 
 
 
@@ -31,7 +31,11 @@ const RIB = 0.75;
 export type Attack = 'wipe' | 'pull';
 
 export type State = 'appear' | 'ground' | 'drag' | 'flip' | 'fly' | 'land' | 'dead';
-/** flatten: met an enemy from the other side of the line, and the two opposite waves cancelled out. */
+/**
+ * zap: hit by an enemy on his side, or the player quit. flatten: met an enemy from the
+ * other side of the line, and the two opposite waves cancelled out. He sinks into the
+ * line from both.
+ */
 export type Death = 'fall' | 'zap' | 'pop' | 'flatten';
 export type WavellEvent = 'appear' | 'drag' | 'haul' | 'release' | 'flipDown' | 'flipUp' | 'fly' | 'land' | 'step' | 'dizzy' | 'grow' | 'shrink';
 
@@ -46,8 +50,8 @@ const REACH_FAR = 47.5;
  * Caught by the end of the line, he crumbles with it: the break runs along his
  * stroke from the left root to the right one, after a moment of shock.
  */
-/** How long a dying knot takes to come undone. */
-const unravel = (d: Death) => ({ fall: TUNE.burnTime, zap: 0.25, pop: 0, flatten: TUNE.flattenTime })[d];
+/** How long dying takes. */
+const unravel = (d: Death) => ({ fall: TUNE.burnTime, zap: TUNE.sinkTime, flatten: TUNE.sinkTime, pop: 0 })[d];
 
 /** How tall he stands at his smallest (u). */
 const HEIGHT = 28;
@@ -63,6 +67,12 @@ export class Wavell {
   state: State = 'appear';
   /** How long the current appearing takes (s). */
   private appearFor = TUNE.appearTime;
+  /** Caught before he had climbed out: what was still under the line stays hidden. */
+  private diedClimbing = false;
+  /** Sinking: his eyes have gone under. */
+  private eyesGone = false;
+  /** Where his eyes just popped (flat x, y of each), until the game has looked. */
+  eyePop: number[] | null = null;
   death: Death = 'fall';
   t = 0;
   flip = 0;
@@ -110,6 +120,8 @@ export class Wavell {
   /** How tall he stands on the line. */
   get height() { return HEIGHT * this.scale; }
   get alive() { return this.state !== 'dead'; }
+  /** Hit by an enemy: going down into the line, one hand up to the last. */
+  get sinking() { return this.state === 'dead' && (this.death === 'zap' || this.death === 'flatten'); }
   /** Pressed flat by an opposite wave closing in (1: full height); set by the game. */
   squash = 1;
   /** A bigger Wavell makes a bigger bubble, which lasts longer but is easier to hit. */
@@ -183,7 +195,7 @@ export class Wavell {
     this.events.push('appear');
   }
 
-  /** The first time: the line lies flat for a moment, then he grows slowly out of it, without a sound or a burst. */
+  /** The first time: the line lies flat for a moment, then he climbs slowly out of it, without a sound. */
   rise(x: number) {
     this.spawn(x);
     this.events.length = 0;
@@ -203,6 +215,9 @@ export class Wavell {
     if (this.state === 'dead') return;
     // A bubble caught while the line is still tying it off has no figure left.
     if (this.state === 'fly') kind = 'pop';
+    this.diedClimbing = this.state === 'appear';
+    this.eyesGone = this.cur[I.head + 1] < EYES_UNDER;
+    this.eyePop = null;
     this.death = kind;
     this.linger = unravel(kind);
     this.kick = 0;
@@ -240,6 +255,7 @@ export class Wavell {
     switch (this.state) {
       case 'appear':
         this.vel = 0;
+        this.grip(dt, line);
         if (this.t > this.appearFor) this.go('ground');
         break;
       case 'land':
@@ -335,6 +351,14 @@ export class Wavell {
       case 'dead':
         this.vel = 0;
         if (this.burning) this.burn(line);
+        // The line sags under him and is let go as he goes through it.
+        if (this.sinking) {
+          line.push(this.x, this.side * 2200 * (1 - smooth(this.t / this.linger)), 4);
+          // Pressed down by the wave that got him: he springs back as it lets go.
+          this.squash += (1 - this.squash) * Math.min(1, dt * 12);
+          // Gone under: the line closes over him in a small arch that fades out.
+          if (this.t >= this.linger && this.t - dt < this.linger) line.impulse(this.x + this.facing * 8, -60 * this.side, 6);
+        }
         break;
     }
     this.x += this.vel * TUNE.walkSpeed * dt * (this.state === 'ground' ? this.speedMul : 1);
@@ -358,6 +382,27 @@ export class Wavell {
     }
     this.hair += (this.vel * 0.5 - this.hair) * Math.min(1, dt * 8);
     this.solvePose();
+    if (this.sinking && !this.eyesGone && this.cur[I.head + 1] < EYES_UNDER) {
+      this.eyesGone = true;
+      const tf = this.transform(line), H = this.headTf(), look = this.lookUp;
+      this.eyePop = [];
+      for (const ex of EYES) this.eyePop.push(...tf(...H(ex + look * LOOK_FORWARD, PUPIL_Y + look)));
+    }
+  }
+
+  /** How far through climbing out he is, 0..1. */
+  private get climbed() { return clamp(this.t / this.appearFor, 0, 1); }
+
+  /** Climbing out: each hand slaps down on the line, and it sags under them until he lets go. */
+  private grip(dt: number, line: SpringLine) {
+    const grab = mark('appear', 'grab'), letGo = mark('appear', 'letGo'), k = this.climbed;
+    if (k < grab || k > letGo) return;
+    const slap = (this.t - dt) / this.appearFor < grab;
+    for (const hand of [I.handB, I.handF]) {
+      const x = this.x + this.facing * this.cur[hand];
+      if (slap) line.impulse(x, 26, 3);
+      line.push(x, 1100, 2);
+    }
   }
 
   private solvePose() {
@@ -379,8 +424,19 @@ export class Wavell {
         pose(this.attack, this.t, this.cur, this.from);
         break;
       }
+      case 'appear':
+        pose('appear', this.climbed * clipLength(ANIM.clips.appear), this.cur);
+        break;
       case 'dead':
-        // Frozen where it was hit.
+        if (this.sinking) {
+          const k = clamp(this.t / this.linger, 0, 1), len = clipLength(ANIM.clips.sink);
+          // Caught still climbing out, he slips straight back rather than standing up first.
+          if (this.diedClimbing) mix(this.from, pose('sink', len, target), smooth(k), this.cur);
+          else pose('sink', k * len, this.cur, this.from);
+          // The hand left up waves for help.
+          this.cur[I.handF] += Math.sin(this.time * 17) * 0.7 * smooth(k / 0.5);
+        }
+        // Otherwise frozen where it was hit.
         break;
       default:
         blendIn(namedPose('idle', target), 0.12);
@@ -407,7 +463,10 @@ export class Wavell {
     this.burnt = next;
   }
 
-  /** Pose space to world: squashes for appearing, flipping and dying, and follows the line. */
+  /** Sinking: how far his eyes have turned up, towards the hand he has raised. */
+  private get lookUp() { return this.sinking ? smooth(this.t / this.linger / 0.3) * LOOK_UP : 0; }
+
+  /** Pose space to world: squashes for landing and flipping, and follows the line. */
   private transform(line: SpringLine) {
     const ground = line.sample(this.x);
     // Flipping turns him inside out through the line; under it he stays mirrored.
@@ -416,17 +475,8 @@ export class Wavell {
       sy = k < 0.7 ? smooth(k / 0.7) * 1.12 : lerp(1.12, 1, (k - 0.7) / 0.3);
       sx = lerp(1.6, 1, smooth(k));
     };
-    if (this.state === 'appear') grow(clamp(this.t / this.appearFor, 0, 1));
-    else if (this.state === 'land') grow(clamp((this.t - TUNE.landDive) / (TUNE.landTime - TUNE.landDive), 0, 1));
+    if (this.state === 'land') grow(clamp((this.t - TUNE.landDive) / (TUNE.landTime - TUNE.landDive), 0, 1));
     else if (this.state === 'dead' && this.death === 'fall') jit = 0.3;
-    else if (this.state === 'dead') {
-      // The knot comes undone: it sags back into the line and frays.
-      const k = clamp(this.t / Math.max(0.01, this.linger), 0, 1);
-      sy *= 1 - smooth(k);
-      sx = 1 + 0.9 * k;
-      // Cancelled out: pressed flat into the line, no fraying.
-      jit = this.death === 'flatten' ? 0 : (this.death === 'zap' ? 2.2 : 0.8) * k;
-    }
     const f = this.facing, x0 = this.x, scale = this.scale;
     // Dizzy: the whole figure sways from the feet up.
     const sway = this.dizzy > 0 && this.alive ? Math.sin(this.time * 7) * 0.09 * clamp(this.dizzy / 0.8, 0, 1) : 0;
@@ -526,7 +576,7 @@ export class Wavell {
    * his front hand and the line carries on from there. During a pull it ends in the
    * bulge, which stays within `room` of him.
    */
-  stroke(line: SpringLine, force = false, room = Infinity): number[] | null {
+  stroke(line: SpringLine, room = Infinity): number[] | null {
     if (this.state === 'fly') return this.t < TUNE.takeoff ? this.pinch(line, this.t / TUNE.takeoff, this.bubbleR) : null;
     if (this.state === 'land' && this.t < TUNE.landDive) return this.pinch(line, 1 - this.t / TUNE.landDive, this.landR);
     if (this.state === 'dead' && this.death === 'fall') {
@@ -539,14 +589,14 @@ export class Wavell {
       this.ember = pointAt(pts, lens, d);
       return [...this.ember, ...pts.slice((i + 1) * 2)];
     }
-    if (this.state === 'dead' && (this.death === 'pop' || (this.t >= this.linger && !force))) return null;
+    if (this.state === 'dead' && (this.death === 'pop' || this.t >= this.linger)) return null;
     return this.fullStroke(line, room);
   }
 
   /** The whole figure as a stroke in world space, left to right. */
   private fullStroke(line: SpringLine, room = Infinity): number[] {
     const tf = this.transform(line);
-    const p = this.strokePose();
+    const p = this.state === 'appear' || this.sinking || (this.state === 'dead' && this.diedClimbing) ? aboveLine(this.strokePose()) : this.strokePose();
     const out: number[] = [];
     for (let i = 0; i < p.length; i += 2) out.push(...tf(p[i], p[i + 1]));
     if (this.facing < 0) {
@@ -593,11 +643,6 @@ export class Wavell {
       out.push(s[i], s[i + 1]);
     }
     return out;
-  }
-
-  /** Points of the figure in world space (used to turn him into sparks). */
-  figurePoints(line: SpringLine): number[] {
-    return this.stroke(line, true) ?? [];
   }
 
   /** His shape as he stands, or the bubble's ring: what the aura of growing plays over. */
@@ -661,20 +706,24 @@ export class Wavell {
     if (this.state === 'fly') { if (this.t >= TUNE.takeoff) this.drawBubble(neon); return; }
     if (this.state === 'land' && this.t < TUNE.landDive + 0.08) return;
     if (this.burning) { this.drawBurn(neon, line); if (this.burnt > 0.5) return; }
-    else if (this.state === 'dead') return;
-    if (this.state === 'appear' && this.t < this.appearFor * 0.5) return;
+    else if (this.state === 'dead' && !this.sinking) return;
+    // Under the line: his eyes haven't come up yet, or have gone.
+    if ((this.state === 'appear' && this.cur[I.head + 1] < 1.5) || (this.sinking && this.eyesGone)) return;
     const tf = this.transform(line), H = this.headTf();
     const E = (lx: number, ly: number) => tf(...H(lx, ly));
     const eyes = new Path2D();
     // A slow blink now and then.
     const open = (this.time % 3.7) < 0.12 ? 0.15 : 1;
-    for (const ex of [0.6, 2.9]) {
-      polyPath([...E(ex - 0.7, 1.9 + (ex < 1 ? 0.5 : -0.1)), ...E(ex + 0.7, 1.9 + (ex < 1 ? -0.1 : 0.5))], false, eyes);
-      const [dx, dy] = E(ex, 0.9);
+    const look = this.lookUp;
+    for (const ex of EYES) {
+      // Sinking, the brows go up and the pupils roll up after them.
+      const brow = 1.9 + look * 0.6;
+      polyPath([...E(ex - 0.7, brow + (ex < 1 ? 0.5 : -0.1)), ...E(ex + 0.7, brow + (ex < 1 ? -0.1 : 0.5))], false, eyes);
+      const [dx, dy] = E(ex + look * LOOK_FORWARD, PUPIL_Y + look);
       eyes.moveTo(dx + 0.45, dy);
       eyes.ellipse(dx, dy, 0.45, 0.45 * open, 0, 0, Math.PI * 2);
     }
-    neon.glow(eyes, COLORS.white, 0.5);
+    neon.glow(eyes, this.sinking ? COLORS.danger : COLORS.white, 0.5);
 
     if (this.dizzy > 0 && this.alive) {
       // Three little stars circling his head.
@@ -743,6 +792,57 @@ export class Wavell {
 
 /** The aura of growing: its ripples, the share of it each takes and comes after the last, how far they spread, and the runs of light. */
 const AURA_RIPPLES = 3, AURA_RIPPLE = 0.5, AURA_GAP = 0.22, AURA_REACH = 1.1, AURA_RUNS = 2;
+
+/** His eyes, across the head; the pupils' height; how far they roll up and forward when sinking. */
+const EYES = [0.6, 2.9], PUPIL_Y = 0.9, LOOK_UP = 0.75, LOOK_FORWARD = 0.4;
+/** How low his head can go, sinking, before his eyes are at the line and pop. */
+const EYES_UNDER = -0.85;
+
+/**
+ * A stroke in pose space, as the line would draw what is above it: each part that shows
+ * is a hump, and they run one after the other from left to right. So the line goes up
+ * and over him and carries on, with nothing across his face where it passes behind him.
+ */
+function aboveLine(p: number[]): number[] {
+  const humps: number[][] = [];
+  let hump: number[] | null = null;
+  for (let i = 0; i < p.length; i += 2) {
+    const x = p[i], y = p[i + 1], above = y > 0;
+    if (i > 0 && above !== p[i - 1] > 0) {
+      const at = lerp(p[i - 2], x, p[i - 1] / (p[i - 1] - y));
+      if (above) humps.push(hump = [at, 0]);
+      else { hump?.push(at, 0); hump = null; }
+    }
+    if (above) {
+      if (!hump) humps.push(hump = []);
+      hump.push(x, y);
+    }
+  }
+  for (const h of humps) {
+    if (h[0] <= h[h.length - 2]) continue;
+    for (let i = 0, j = h.length - 2; i < j; i += 2, j -= 2) {
+      [h[i], h[j]] = [h[j], h[i]];
+      [h[i + 1], h[j + 1]] = [h[j + 1], h[i + 1]];
+    }
+  }
+  humps.sort((a, b) => a[0] - b[0]);
+  const out = [humps.length ? Math.min(p[0], humps[0][0]) : p[0], 0];
+  let end = -Infinity, last: number[] | null = null;
+  for (const h of humps) {
+    // One that lies within the last is behind it.
+    if (h[h.length - 2] <= end) continue;
+    // One that starts under the last: getting back to its start would draw a piece of
+    // line that isn't there, so go back over the last hump instead, if that leaves less.
+    if (last && h[0] < end && Math.abs(h[0] - last[0]) < end - h[0]) {
+      for (let i = last.length - 4; i >= 0; i -= 2) out.push(last[i], last[i + 1]);
+    }
+    out.push(...h);
+    end = h[h.length - 2];
+    last = h;
+  }
+  out.push(Math.max(p[p.length - 2], end), 0);
+  return out;
+}
 
 /** Running length along flat [x, y, ...] points, one entry per point. */
 export function arcLengths(p: number[]): number[] {

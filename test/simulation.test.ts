@@ -4,8 +4,9 @@
 import { DIFF } from '../src/data/difficulty';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Controls } from '../src/core/input';
+import { I } from '../src/data/anim';
 import { TUNE } from '../src/data/tune';
-import { MORPH_TIME } from '../src/game/title';
+import { MORPH_TIME, TitleDust } from '../src/game/title';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 // No audio in tests. start() would otherwise open an AudioContext.
@@ -97,6 +98,139 @@ describe('the rise on load', () => {
     expect(g.wavell.state).toBe('ground');
   });
 
+  it('climbs out of the line hands first, and nothing shows below it', () => {
+    const g = headlessGame();
+    g.start();
+    const W = g.wavell;
+    /** How high he stands above the line and how far he shows below it. */
+    const extent = () => {
+      const o = W.stroke(g.line)!;
+      let up = 0, down = 0;
+      for (let i = 0; i < o.length; i += 2) {
+        const h = g.line.sample(o[i]) - o[i + 1];
+        up = Math.max(up, h);
+        down = Math.max(down, -h);
+      }
+      return { up, down };
+    };
+    const seen: number[] = [];
+    while (W.state === 'appear') {
+      run(g, 0.1);
+      if (W.state !== 'appear') break;
+      const e = extent();
+      seen.push(e.up);
+      expect(e.down).toBeLessThan(2.5);
+    }
+    // Only the fists at first, then the head, then all of him.
+    expect(seen[0]).toBeLessThan(3);
+    expect(seen[2]).toBeLessThan(4);
+    expect(seen[seen.length - 1]).toBeGreaterThan(25);
+  });
+
+  it.each([['on top of the line', 1], ['under the line', -1]])('hit by an enemy %s, he sinks into it with one hand up to the last', (_name, side) => {
+    const g = headlessGame();
+    g.start();
+    const W = g.wavell;
+    W.state = 'ground';
+    if (side < 0) { W.side = -1; W.flip = 1; }
+    W.hurt('zap');
+    /** The furthest point out from the line on his side, and how far he shows on the other. */
+    const reach = () => {
+      const o = W.stroke(g.line)!;
+      let out = 0, x = 0, wrong = 0;
+      for (let i = 0; i < o.length; i += 2) {
+        const h = side * (g.line.sample(o[i]) - o[i + 1]);
+        if (h > out) { out = h; x = o[i]; }
+        wrong = Math.max(wrong, -h);
+      }
+      return { out, x, wrong };
+    };
+    const seen: { out: number; x: number }[] = [];
+    while (W.t < W.linger - 0.05) {
+      run(g, 0.05);
+      const r = reach();
+      seen.push(r);
+      expect(r.wrong).toBeLessThan(3);
+    }
+    // Late on, what still shows is the raised hand, off to one side of him.
+    const late = seen[Math.floor(seen.length * 0.88)];
+    expect(late.out).toBeGreaterThan(2);
+    expect(late.out).toBeLessThan(10);
+    expect(Math.abs(late.x - W.x)).toBeGreaterThan(5);
+    run(g, 0.1);
+    expect(W.stroke(g.line)).toBeNull();
+    expect(g.lives).toBeGreaterThanOrEqual(0);
+  });
+
+  it('leaves no line across his face as he sinks, and his eyes pop once, in red', () => {
+    const g = headlessGame();
+    g.start();
+    const W = g.wavell;
+    W.state = 'ground';
+    W.hurt('zap');
+    const sparks = () => (g.fx as unknown as { sparks: { color: string }[] }).sparks.length;
+    let pops = 0, last = sparks();
+    while (W.t < W.linger) {
+      run(g, 1 / STEPS_PER_SECOND);
+      const now = sparks();
+      if (now >= last + 20) pops++;
+      last = now;
+      const head = (W as unknown as { cur: Float32Array }).cur[I.head + 1];
+      if (head < 1 && head > -2) {
+        // The head is cut by the line: nothing lies on the line under it.
+        const o = W.stroke(g.line)!;
+        for (let i = 0; i < o.length; i += 2) {
+          const onLine = Math.abs(g.line.sample(o[i]) - o[i + 1]) < 0.05;
+          if (onLine) expect(Math.abs(o[i] - (W.x - 2))).toBeGreaterThan(1.5);
+        }
+      }
+    }
+    expect(pops).toBe(1);
+  });
+
+  it('shows his body as soon as it is above the line, not all at once when the hands let go', () => {
+    const g = headlessGame();
+    g.start();
+    const W = g.wavell;
+    const length = () => {
+      const o = W.stroke(g.line)!;
+      let d = 0;
+      for (let i = 2; i < o.length; i += 2) d += Math.hypot(o[i] - o[i - 2], o[i + 1] - o[i - 1]);
+      return d;
+    };
+    run(g, TUNE.appearTime * 0.52);
+    const elbow = (W as unknown as { cur: Float32Array }).cur[I.elbowF + 1];
+    expect(elbow).toBeGreaterThan(3);
+    // The arms are in the stroke already: well over what the head and the line alone would take.
+    expect(length()).toBeGreaterThan(90);
+    let last = length(), jump = 0;
+    while (W.state === 'appear') {
+      run(g, 1 / 120);
+      if (W.state !== 'appear') break;
+      const now = length();
+      jump = Math.max(jump, now - last);
+      last = now;
+    }
+    expect(jump).toBeLessThan(6);
+  });
+
+  it.each([['climbing out', false], ['sinking', true]])('never draws a stray piece of line back along the line, %s', (_name, sink) => {
+    const g = headlessGame();
+    g.start();
+    const W = g.wavell;
+    if (sink) { W.state = 'ground'; W.hurt('zap'); }
+    const busy = () => (sink ? W.t < W.linger - 0.01 : W.state === 'appear');
+    while (busy()) {
+      run(g, 1 / 120);
+      if (!busy()) break;
+      const o = W.stroke(g.line)!;
+      const on = (i: number) => Math.abs(g.line.sample(o[i]) - o[i + 1]) < 0.05;
+      for (let i = 2; i < o.length; i += 2) {
+        if (on(i) && on(i - 2)) expect(o[i - 2] - o[i]).toBeLessThan(3);
+      }
+    }
+  });
+
   it('does not appear again when the game starts', () => {
     const g = headlessGame();
     run(g, TUNE.riseHold + TUNE.riseTime + 0.1);
@@ -131,14 +265,19 @@ describe('going back to the start screen', () => {
     for (let i = 0; i < seconds * STEPS_PER_SECOND; i++) g.tick(IDLE);
   };
 
-  it('flattens him and lets him rise again in the middle of the screen, with the line whole', () => {
+  it('sinks him into the line and lets him rise again in the middle of the screen, with the line whole', () => {
     const g = headlessGame();
     g.start();
     run(g, 2);
     g.backToTitle(false);
     expect(g.mode).toBe('title');
     expect(g.wavell.state).toBe('dead');
-    run(g, 1);
+    expect(g.wavell.sinking).toBe(true);
+    run(g, TUNE.sinkTime - 0.05);
+    expect(g.wavell.stroke(g.line)).not.toBeNull();
+    run(g, 0.1);
+    expect(g.wavell.stroke(g.line)).toBeNull();
+    run(g, 0.35);
     expect(g.wavell.state).toBe('appear');
     run(g, TUNE.riseHold + TUNE.riseTime);
     expect(g.wavell.state).toBe('ground');
@@ -189,9 +328,14 @@ describe('going back to the start screen', () => {
 });
 
 describe('the dev menu', () => {
-  // The fake view is 320x200: the box sits down to the left, with its links under a heading.
-  const tap = (g: ReturnType<typeof headlessGame>, x: number, y: number) => g.input.uiTap!(x, y);
-  const links = { settings: [40, 163], animation: [40, 179], heading: [40, 148] } as const;
+  // The box sits down to the left of the fake view, with its links under a heading.
+  // A button acts when the finger lifts: true if the tap landed on one.
+  const tap = (g: ReturnType<typeof headlessGame>, x: number, y: number) => {
+    const run = g.input.uiTap!(x, y);
+    run?.();
+    return run !== null;
+  };
+  const links = { settings: [20, 178], animation: [20, 187], heading: [20, 165] } as const;
 
   beforeEach(() => vi.stubGlobal('location', { href: '' }));
   afterEach(() => vi.unstubAllGlobals());
@@ -217,5 +361,22 @@ describe('the dev menu', () => {
     g.backToTitle(true);
     expect(tap(g, ...links.settings)).toBe(false);
     expect(location.href).toBe('');
+  });
+});
+
+describe('the title coming apart', () => {
+  it('goes from left to right, quickly, and is gone', () => {
+    const g = headlessGame(), dust = new TitleDust();
+    dust.update(0.1, g.neon, 0);
+    const early = dust.rest;
+    dust.update(0.2, g.neon, 0);
+    const later = dust.rest;
+    expect(later.length).toBeLessThan(early.length);
+    expect(later[0]).toBeGreaterThan(early[0]);
+    expect(dust.done).toBe(false);
+    dust.update(0.3, g.neon, 0);
+    expect(dust.rest.length).toBe(0);
+    dust.update(0.8, g.neon, 0);
+    expect(dust.done).toBe(true);
   });
 });

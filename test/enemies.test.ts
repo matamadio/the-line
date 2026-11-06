@@ -1,4 +1,4 @@
-// The Sinepede and the Sea Urchin, played through the real game with scripted keys.
+// The Sinepede and the Disturchin, played through the real game with scripted keys.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DIFF, at } from '../src/data/difficulty';
@@ -65,7 +65,7 @@ describe('enemies on the line', () => {
     expect(sine.x - worm.back).toBeLessThan(10);
   });
 
-  it('one waits behind a Sea Urchin, then carries on', () => {
+  it('one waits behind a Disturchin, then carries on', () => {
     const g = ready();
     const u = new Urchin(g.wavell.x + 90, 0.5, 0.5), sine = new Sinepede(u.x + 40, 100, 1);
     g.urchins.push(u);
@@ -152,7 +152,7 @@ describe('the Backwave', () => {
       const g = ready();
       if (withWave) g.backwaves.push(backwave(g.neon.camX - 10, 0.01));
       run(g, 0.05);
-      const from = g.wavell.x - 20;
+      const from = g.wavell.x - 35;
       g.line.pulse(from, 10, 11, -1);
       run(g, 0.33);
       const x = from - g.line.c * 0.33;
@@ -354,6 +354,7 @@ describe('the game', () => {
       const { g, s } = bump(under, under ? 1 : -1);
       expect(g.wavell.alive).toBe(false);
       expect(g.wavell.death).toBe('flatten');
+      expect(g.wavell.sinking).toBe(true);
       expect(s.count).toBe(1);
     });
 
@@ -715,7 +716,7 @@ describe('the game', () => {
     it.each<[string, (g: ReturnType<typeof ready>) => void]>([
       ['a Sinepede', (g) => { g.sinepedes.push(new Sinepede(g.wavell.x + 60, 0, 1, 1)); }],
       ['a Worm', (g) => { const w = new Worm(g.wavell.x + 60, 0); w.state = 'move'; g.worms.push(w); }],
-      ['a Sea Urchin', (g) => { g.urchins.push(new Urchin(g.wavell.x + 60, 0.01, 5)); }],
+      ['a Disturchin', (g) => { g.urchins.push(new Urchin(g.wavell.x + 60, 0.01, 5)); }],
       ['a Bubble Burst', (g) => { g.bubbles.push(new BubbleBurst(g.wavell.x + 60, 1, 5)); }],
     ])('%s leaves one on each side of the line', (_name, plant) => {
       expect(DIFF.sparkleKill).toBe(2);
@@ -761,6 +762,37 @@ describe('the game', () => {
   });
 
   describe('the Sinepede', () => {
+    it('is one unbroken stroke that leaves the flat line level at both ends', () => {
+      const g = headlessGame();
+      const s = new Sinepede(200, 0, 3, 1);
+      s.update(10);
+      const o = s.outline(g.line), n = o.length / 2;
+      for (let i = 1; i < n; i++) expect(Math.hypot(o[i * 2] - o[i * 2 - 2], o[i * 2 + 1] - o[i * 2 - 1])).toBeLessThan(12);
+      const slope = (a: number, b: number) => Math.abs((o[b * 2 + 1] - o[a * 2 + 1]) / (o[b * 2] - o[a * 2]));
+      expect(o[1]).toBeCloseTo(g.line.sample(o[0]));
+      expect(o[n * 2 - 1]).toBeCloseTo(g.line.sample(o[n * 2 - 2]));
+      expect(slope(0, 1)).toBeLessThan(0.2);
+      expect(slope(n - 2, n - 1)).toBeLessThan(0.2);
+    });
+
+    it('draws its shoulders back to leave room for what is next to it', () => {
+      const g = headlessGame();
+      const s = new Sinepede(200, 0, 1, 1);
+      s.update(10);
+      expect(s.outline(g.line, [0, 4])[0]).toBe(200);
+      expect(s.outline(g.line, [0, 4]).at(-2)).toBe(s.back + 4);
+    });
+
+    it('only hurts where the wave is: the spikes reach no further', () => {
+      const g = headlessGame();
+      const s = new Sinepede(200, 0, 1, 1);
+      s.update(10);
+      const top = Math.min(...s.outline(g.line).filter((_, i) => i % 2 === 1));
+      expect(top).toBeLessThan(-26);
+      expect(s.touches(g.line, s.centre, top, 0)).toBe(false);
+      expect(s.touches(g.line, s.centre, -24, 0)).toBe(true);
+    });
+
     it('is one segment at level 1 and gets longer with the level, up to its limit', () => {
       expect(Math.floor(at('sineSegs', 1))).toBe(1);
       expect(Math.floor(at('sineSegs', 3))).toBe(2);
@@ -849,7 +881,7 @@ describe('the game', () => {
     });
   });
 
-  describe('the Sea Urchin', () => {
+  describe('the Disturchin', () => {
     /** Ticks until the wipe has landed on it, or gives up: a wipe that misses must fail, not hang. */
     const wipeLands = (g: ReturnType<typeof ready>, u: Urchin) => {
       const { size, hold } = u;
