@@ -2,6 +2,7 @@
 // title and game over screens, the on-screen buttons and the touch controls.
 
 import { canFullscreen, canInstall, isFullscreen } from '../core/app';
+import { keyLabel } from '../core/controls';
 import { COLORS, Neon, clamp } from '../core/neon';
 import { sfx } from '../core/sfx';
 import { DIFF } from '../data/difficulty';
@@ -9,7 +10,7 @@ import type { Game } from './game';
 import { MORPH_TIME, drawFlatlined, drawMorph, drawTitle } from './title';
 
 /** The HUD's base size: a share of the play area, so it lays out the same on every screen. */
-const hudSize = (n: Neon) => n.h * 0.045;
+export const hudSize = (n: Neon) => n.h * 0.045;
 
 /** How far down the buttons sit, and how far from the right the score ends to leave them room, in HUD sizes. */
 const BUTTON_Y = 1.1, SCORE_RIGHT = 7.2;
@@ -27,7 +28,7 @@ const RETRO = {
 } as const;
 
 /** One of those pictures, centred on a point given in the coordinates screen() draws in. */
-function retroSprite(n: Neon, rows: readonly string[], x: number, y: number, color: string, alpha = 1) {
+export function retroSprite(n: Neon, rows: readonly string[], x: number, y: number, color: string, alpha = 1) {
   const [px, py] = n.toPixel(x, y);
   n.sprite(rows, px - (rows[0].length >> 1), py - (rows.length >> 1), color, alpha);
 }
@@ -159,7 +160,7 @@ function drawInstall(g: Game) {
 }
 
 /** A chevron at (x, y), pointing the way (dx, dy) says. */
-function chevron(n: Neon, x: number, y: number, dx: number, dy: number, size: number, color: string, alpha: number) {
+export function chevron(n: Neon, x: number, y: number, dx: number, dy: number, size: number, color: string, alpha: number) {
   const p = new Path2D();
   p.moveTo(x - dx * size * 0.5 - dy * size, y - dy * size * 0.5 - dx * size);
   p.lineTo(x + dx * size * 0.5, y + dy * size * 0.5);
@@ -296,17 +297,15 @@ export function drawHud(g: Game) {
   if (g.mode === 'title' && g.morphT < MORPH_TIME) drawMorph(n, g.morphT, g.time);
   else if (g.mode === 'title') {
     drawTitle(n, g.time);
-    const blink = 0.55 + 0.45 * Math.sin(g.time * 4);
-    n.text(inp.touchUsed || matchMedia('(pointer: coarse)').matches ? 'tap to start' : 'press any key', cx, n.lineY + s * 3.2, s, COLORS.hud, 'center', blink);
-    const help = matchMedia('(pointer: coarse)').matches
-      ? ['left thumb: walk  ·  down: through the line  ·  up: float / back up', 'right thumb: swipe ↔ to pull  ·  swipe ↕ to wipe']
-      : ['← → walk   ↓ through the line   ↑ float / back up', 'Z wipe   X pull   P pause   Esc menu', 'M mute   F fullscreen   N nostalgia'];
-    help.forEach((line, i) => n.text(line, cx, n.lineY + s * (4.7 + i), s * 0.55, '#c9a640'));
-    const inHint = g.time % HINT_TIME;
-    const hintAlpha = clamp(Math.min(inHint, HINT_TIME - inHint) / HINT_FADE, 0, 1);
-    n.text(TITLE_HINTS[Math.floor(g.time / HINT_TIME) % TITLE_HINTS.length], cx, n.lineY + s * (4.7 + help.length), s * 0.55, '#c9a640', 'center', hintAlpha);
-    drawDevMenu(g);
-    if (canInstall()) drawInstall(g);
+    g.menu.drawHud();
+    c.canvas.style.cursor = '';
+    if (g.menu.page === 'main') {
+      const inHint = g.time % HINT_TIME;
+      const hintAlpha = clamp(Math.min(inHint, HINT_TIME - inHint) / HINT_FADE, 0, 1);
+      n.text(TITLE_HINTS[Math.floor(g.time / HINT_TIME) % TITLE_HINTS.length], cx, n.lineY + s * 3.9, s * 0.55, '#c9a640', 'center', hintAlpha);
+      drawDevMenu(g);
+      if (canInstall()) drawInstall(g);
+    }
   } else {
     c.canvas.style.cursor = '';
     g.titleDust?.draw(n);
@@ -322,7 +321,7 @@ export function drawHud(g: Game) {
     if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 2.4, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
     if (g.paused) {
       n.text('PAUSED', cx, n.lineY - n.unit * 75, s * 2.4, COLORS.hud);
-      n.text('P to carry on   Esc for the menu', cx, n.lineY - n.unit * 50, s * 0.7, '#c9a640');
+      n.text(`${keyLabel(inp.binds.keys.pause[0])} to carry on   Esc for the menu`, cx, n.lineY - n.unit * 50, s * 0.7, '#c9a640');
     }
     if (g.mode === 'over') {
       drawFlatlined(n, g.time);

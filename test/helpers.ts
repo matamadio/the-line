@@ -1,6 +1,7 @@
 // A headless game: the real simulation with a stand-in for the canvas, so tests can
 // play thousands of steps without a browser.
 
+import { defaultBindings } from '../src/core/controls';
 import type { Input } from '../src/core/input';
 import { VIEW_H, VIEW_W, type Neon } from '../src/core/neon';
 import { Game } from '../src/game/game';
@@ -23,7 +24,7 @@ function fakeNeon() {
 }
 
 function fakeInput() {
-  return { onKey: new Map(), uiTap: null, touchUsed: false, poll() {}, anyPressed: false, ...IDLE } as unknown as Input;
+  return { onKey: new Map(), uiTap: null, touchUsed: false, poll() {}, setBindings() {}, binds: defaultBindings(), anyPressed: false, ...IDLE } as unknown as Input;
 }
 
 export function headlessGame() {

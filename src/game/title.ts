@@ -65,7 +65,7 @@ const THE_LINE: number[] = [
 ];
 
 /** A centripetal Catmull-Rom curve through flat points: it can't overshoot into kinks or stray loops. */
-function spline(p: number[], perSegment: number): number[] {
+export function spline(p: number[], perSegment: number): number[] {
   const out: number[] = [p[0], p[1]];
   const n = p.length / 2;
   const at = (i: number) => Math.max(0, Math.min(n - 1, i)) * 2;
@@ -89,7 +89,7 @@ function spline(p: number[], perSegment: number): number[] {
 }
 
 /** Evenly spaced points along a flat polyline, then averaged along it so no turn stays tight. The ends stay put. */
-function rounded(p: number[], step: number, reach: number): number[] {
+export function rounded(p: number[], step: number, reach: number): number[] {
   const pts: number[] = [p[0], p[1]];
   let left = step;
   for (let i = 2; i < p.length; i += 2) {

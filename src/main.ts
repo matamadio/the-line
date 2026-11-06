@@ -9,6 +9,7 @@ const canvas = document.getElementById('view') as HTMLCanvasElement;
 const neon = new Neon(canvas);
 const game = new Game(neon, new Input(canvas));
 game.loadNostalgia();
+game.loadControls();
 
 let last = performance.now();
 function loop(now: number) {

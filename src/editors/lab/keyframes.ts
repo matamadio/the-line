@@ -14,11 +14,13 @@ import { Wavell } from '../../game/actors/wavell';
 import { Worm } from '../../game/actors/worm';
 
 const STEP = 1 / 120;
-type Target = 'idle' | 'appear' | 'sink' | 'walk' | 'wipe' | 'pull' | 'snawave'
+type Target = 'idle' | 'appear' | 'sink' | 'inflate' | 'deflate' | 'walk' | 'wipe' | 'pull' | 'snawave'
   | 'snawave.rise' | 'snawave.bite' | 'snawave.sink' | 'worm.rise' | 'worm.bite' | 'worm.sink';
 const TARGETS: [Target, string][] = [
   ['appear', 'Wavell: climbing out'],
   ['sink', 'Wavell: sinking (killed)'],
+  ['inflate', 'Wavell: filling up to float'],
+  ['deflate', 'Wavell: landing'],
   ['walk', 'Wavell: walk cycle'],
   ['wipe', 'Wavell: wipe'],
   ['pull', 'Wavell: pull'],
@@ -83,7 +85,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
 
   // ---------------------------------------------------------------- helpers
 
-  const isClip = () => target === 'appear' || target === 'sink' || target === 'walk' || target === 'wipe' || target === 'pull';
+  const isClip = () => target === 'appear' || target === 'sink' || target === 'inflate' || target === 'deflate' || target === 'walk' || target === 'wipe' || target === 'pull';
   const isMotion = () => target.includes('.');
   /** Has a timeline: a clip or a motion. */
   const timed = () => isClip() || isMotion();

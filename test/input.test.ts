@@ -146,6 +146,61 @@ describe('on-screen buttons', () => {
   });
 });
 
+describe('in menus', () => {
+  it('a finger that lifts where it landed is a tap, and one that travels is not', () => {
+    const { input, send } = touchScreen();
+    send('pointerdown', 1, RIGHT.x, RIGHT.y);
+    send('pointerup', 1, RIGHT.x + 1, RIGHT.y);
+    input.poll();
+    expect(input.tap).toEqual([RIGHT.x + 1, RIGHT.y]);
+    input.poll();
+    expect(input.tap).toBeNull();
+    send('pointerdown', 2, LEFT.x, LEFT.y);
+    send('pointerup', 2, LEFT.x, LEFT.y + 60);
+    input.poll();
+    expect(input.tap).toBeNull();
+    expect(input.swipeV).toBe(1);
+  });
+
+  it('keys go where the bindings say, and the next one can be captured instead', () => {
+    const { input } = touchScreen();
+    const press = (code: string) => window.dispatchEvent(Object.assign(new Event('keydown'), { code, repeat: false }));
+    press('KeyZ');
+    input.poll();
+    expect(input.dragPressed).toBe(true);
+    expect(input.confirm).toBe(true);
+    const got: unknown[] = [];
+    input.capture = (e) => got.push(e);
+    press('KeyZ');
+    input.poll();
+    expect(got).toEqual([{ key: 'KeyZ' }]);
+    expect(input.dragPressed).toBe(false);
+  });
+
+  it('a joypad presses and holds like the keys, once per press', () => {
+    const { input } = touchScreen();
+    const buttons = Array.from({ length: 16 }, () => ({ pressed: false }));
+    const pad = { connected: true, buttons, axes: [0, 0] };
+    vi.stubGlobal('navigator', { getGamepads: () => [null, pad] });
+    buttons[0].pressed = true;
+    input.poll();
+    expect(input.padFound).toBe(true);
+    expect(input.dragPressed && input.confirm && input.anyPressed).toBe(true);
+    input.poll();
+    expect(input.dragPressed).toBe(false);
+    pad.axes[1] = -1;
+    pad.axes[0] = 1;
+    input.poll();
+    expect(input.upPressed && input.up && input.right && input.menuUp).toBe(true);
+    input.poll();
+    expect(input.upPressed).toBe(false);
+    expect(input.up).toBe(true);
+    buttons[9].pressed = true;
+    input.poll();
+    expect(input.pausePressed).toBe(true);
+  });
+});
+
 describe('the play area', () => {
   const RATIO = VIEW_W / VIEW_H;
 

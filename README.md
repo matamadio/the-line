@@ -38,18 +38,22 @@ npm start
 
 Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your size counter shows how much lead is left.
 
-| Action | Keyboard | Touch |
-| --- | --- | --- |
-| Walk | ← → or A D | Left thumb, sideways |
-| Go through the line | ↓ or S | Left thumb, down |
-| Float, or come back up | ↑ or W | Left thumb, up |
-| Pull | X or Ctrl | Right thumb, swipe sideways |
-| Wipe | Z, Shift or Space | Right thumb, swipe up or down |
-| Mute | M | Speaker icon |
-| Fullscreen | F | Corners icon |
-| Nostalgia (low resolution look) | N | Checkerboard icon |
-| Pause | P | |
-| Back to the start screen | Esc | |
+On a computer, the keys and the joypad's buttons can be changed from CONTROL in the menu. The defaults:
+
+| Action | Keyboard | Joypad | Touch |
+| --- | --- | --- | --- |
+| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways |
+| Go through the line | Towards it: ↓ or S on top, ↑ or W underneath | Towards it | Left thumb, towards it |
+| Float | Away from it: ↑ or W on top, ↓ or S underneath | Away from it | Left thumb, away from it |
+| Pull | X or Ctrl | X | Right thumb, swipe sideways |
+| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down |
+| Mute | M | | Speaker icon |
+| Fullscreen | F | | Corners icon |
+| Nostalgia (low resolution look) | N | | Checkerboard icon |
+| Pause | P | Start | |
+| Back to the start screen | Esc | Back | |
+
+In the menu, ↑ goes to the line behind and ↓ to the one before, round and round; Enter (or a wipe or a pull, or A) picks the line at the front: Wavell pulls it in, and that opens it. On a phone, swipe up or down and tap.
 
 The one rule to remember: **pull in what is close on your side, wipe what is on the other.** The wrong attack feeds a creature and it grows. Each enemy is explained the first time it appears, and [docs/DESIGN.md](docs/DESIGN.md) has the full rules.
 

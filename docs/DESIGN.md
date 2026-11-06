@@ -5,9 +5,9 @@
 ## The line and the characters
 
 - **The line is physical** (`src/game/line.ts`). It is a vibrating string simulated with the wave equation. Footsteps dent it, and Wavell's attacks act on it.
-- **The characters are part of the line.** Wavell (`src/game/actors/wavell.ts`) is a knot: one stroke that leaves the line at his back toe, loops through his arms and head and returns at his front toe. He walks by sliding his feet along the line like a wave, climbs out of it when he appears, hands first, then his head between them, then a press-up and his legs (slowly the first time, out of a flat line, when the game loads), turns inside out through it when he flips under, and when an enemy kills him he sinks back into it, looking up, until his eyes pop at the line and one raised hand is the last of him. Going up and coming down, the line runs over what shows of him and nothing crosses his face. Floating, the line loops up and ties off into a bubble that changes colour as time runs out. Landing, the bubble dives back in.
+- **The characters are part of the line.** Wavell (`src/game/actors/wavell.ts`) is a knot: one stroke that leaves the line at his back toe, loops through his arms and head and returns at his front toe. He walks by sliding his feet along the line like a wave, climbs out of it when he appears, hands first, then his head between them, then a press-up and his legs (slowly the first time, out of a flat line, when the game loads), turns inside out through it when he flips under, fills his head up into a bubble to float off, the rest of him shrinking into the knot under it until the bubble snaps free and the line closes behind it, and lands the same way backwards: the bubble touches down, ties into the line, and he grows out of the knot as his head empties. When an enemy kills him he sinks back into it, looking up, until his eyes pop at the line and one raised hand is the last of him. Going up and coming down, the line runs over what shows of him and nothing crosses his face. Floating, the line loops away and ties off into a bubble that changes colour as time runs out. Landing, the bubble dives back in.
 - **Creatures are spliced into the same stroke.** A Sinepede is a stretch of the line itself, bent into a sine wave, with narrow spikes in the same stroke, and it leaves a ripple as each segment dies.
-- **The line has two sides.** Going down through the line leaves Wavell walking upside-down underneath until he goes back up.
+- **The line has two sides.** Going down through the line leaves Wavell walking upside-down underneath until he goes back up. Everything works the same from there: pressing towards the line goes through it, and pressing away from it floats off in a bubble, which stays on its side of the line.
 
 ## Time is the pressure
 
@@ -24,7 +24,7 @@ The wrong attack feeds it instead. It grows and is thrown back along the line, a
 
 ## Opposite waves cancel
 
-Enemies on Wavell's side can hurt him, and the other side is no hiding place. Wavell and an enemy on opposite sides are opposite waves: as they close in, each presses the other down, and if they cross they cancel out. A flattened enemy melts into a plain hump of line that rolls on with the wave that hit it and dies away. With no size left to lose, Wavell sinks into the line.
+Enemies on Wavell's side can hurt him, and the other side is no hiding place. Wavell and an enemy on opposite sides are opposite waves: as they close in, the enemy is pressed down while Wavell keeps his shape, and if they cross they cancel out. A flattened enemy melts into a plain hump of line that rolls on with the wave that hit it and dies away. With no size left to lose, Wavell sinks into the line.
 
 ## One at a time
 
@@ -45,7 +45,7 @@ The rule for opposite sides doesn't apply to the Disturchin, which sticks out on
 
 The Sinepede is the basic enemy, and the Snawave's replacement. Each segment is half a wave. They alternate, so one that starts on a crest is a sine and one that starts on a trough is a cosine. It is one segment at level 1 and gets longer with the level. The right attack cancels the segment facing you. The wrong one throws it back and adds a segment at the far end.
 
-Running into it, you both bounce back, away from each other, and you lose that ground to the end of the line. On your side of the line it gains a segment, at no other cost. On the other side the two waves cancel: it loses one, or flattens if that was its last, and you lose a size, or the game with no size left. A bubble always pops on it.
+Running into it, you both bounce back, away from each other, and you lose that ground to the end of the line. On your side of the line it gains a segment, at no other cost. On the other side the two waves cancel: it loses one and is thrown back, or if that was its last it flattens where it is, and you lose a size, or the game with no size left. A bubble always pops on it.
 
 A Bubble Burst sprays drops that make Wavell dizzy: no moves for a moment and slow walking for two seconds. The wrong attack makes it swell and burst sooner. Walking into one, from either side, pops it but leaves him dizzy too.
 

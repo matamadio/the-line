@@ -27,6 +27,21 @@ export class SpringLine {
     this.f = new Float32Array(n);
   }
 
+  /** Another line, in the same shape and state as this one. */
+  clone() {
+    const c = new SpringLine(this.n);
+    c.base = this.base;
+    c.y.set(this.y);
+    c.v.set(this.v);
+    return c;
+  }
+
+  /** Dead flat and still. */
+  clear() {
+    this.y.fill(0);
+    this.v.fill(0);
+  }
+
   get spacing() { return H; }
   get count() { return this.n; }
   xAt(i: number) { return this.base + i * H; }

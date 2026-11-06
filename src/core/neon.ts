@@ -57,6 +57,10 @@ export function fitArea(W: number, H: number) {
 
 /** Nostalgia mode: how many pixels the play area is wide, how many shades each colour channel has, and how much text size makes each step of the pixel font (px). */
 const RETRO_W = 320, RETRO_SHADES = 32, RETRO_TEXT_STEP = 7;
+/** The same for a word standing on a line, which is meant to be big. */
+const RETRO_WORD_STEP = 4.5;
+/** How many strokes make up a line out of focus, and how much of its light they keep at their centre. */
+const BLUR_STROKES = 6, BLUR_GAIN = 1.3;
 const RETRO_LUT = Uint8ClampedArray.from({ length: 256 }, (_, v) => {
   const step = 255 / (RETRO_SHADES - 1);
   return Math.round(v / step) * step;
@@ -68,6 +72,8 @@ export class Neon {
   retro = false;
   /** How much of what glow() and text() draw shows, from 0 to 1: for fading a whole group in. */
   fade = 1;
+  /** How out of focus what glow() draws is, in widths of its stroke. */
+  blur = 0;
   /** CSS pixels per world unit. */
   unit = 1;
   dpr = 1;
@@ -86,6 +92,9 @@ export class Neon {
   shake = 0;
   /** Extra magnification on top of the fit-to-screen scale (the animation lab zooms in). */
   zoom = 1;
+  /** What world() draws is this much smaller, around the middle of the screen, and this far down (CSS px): a line further away. */
+  private depthK = 1;
+  private depthY = 0;
   private sx = 0;
   private sy = 0;
   private clipped = false;
@@ -156,8 +165,64 @@ export class Neon {
   }
 
   world() {
-    const k = this.dpr * this.unit;
-    this.ctx.setTransform(k, 0, 0, k, this.dpr * (this.ox - this.camX * this.unit + this.sx), this.dpr * (this.oy + this.lineY + this.sy));
+    const u = this.unit * this.depthK, k = this.dpr * u;
+    this.ctx.setTransform(k, 0, 0, k, this.dpr * (this.ox + this.w / 2 - (this.camX + this.viewW / 2) * u + this.sx), this.dpr * (this.oy + this.lineY + this.depthY + this.sy));
+  }
+
+  /** How far away what world() draws is. With no arguments, right here. */
+  setDepth(k = 1, y = 0) {
+    this.depthK = k;
+    this.depthY = y;
+  }
+
+  /** How much wider than the view the line has to be drawn for it to reach the edges of the screen. */
+  get depthPad() { return this.depthK < 1 ? (this.viewW * (1 / this.depthK - 1)) / 2 : 0; }
+
+  /** How wide wordOnLine() writes this, in CSS px. */
+  wordWidth(s: string, size: number) {
+    if (this.retro) return (pixelTextWidth(s) * this.wordScale(size)) / this.dpr;
+    this.ctx.font = `${size}px Audiowide, "Arial Black", sans-serif`;
+    return this.ctx.measureText(s).width;
+  }
+
+  private wordScale(size: number) { return Math.max(1, Math.floor((size * this.dpr) / RETRO_WORD_STEP)); }
+
+  /**
+   * A word standing on a line, in screen space (CSS px): y is where the line runs. Drawn in
+   * outline, like the line itself, and filled in once it is too small for that to read.
+   */
+  wordOnLine(s: string, x: number, y: number, size: number, color = COLORS.line) {
+    const c = this.ctx;
+    if (this.retro) {
+      const scale = this.wordScale(size), sx = (x + this.ox) * this.dpr, path = new Path2D();
+      pixelText(path, s, Math.round(sx - (pixelTextWidth(s) * scale) / 2), Math.round((y + this.oy) * this.dpr) - GLYPH_H * scale, scale);
+      this.fillPixels(path, color);
+      return;
+    }
+    this.screen();
+    c.globalCompositeOperation = 'lighter';
+    c.font = `${size}px Audiowide, "Arial Black", sans-serif`;
+    c.textAlign = 'center';
+    c.textBaseline = 'alphabetic';
+    c.lineJoin = 'round';
+    c.shadowColor = color;
+    c.shadowBlur = size * 0.25;
+    c.strokeStyle = color;
+    c.lineWidth = Math.max(1, size * 0.04);
+    c.globalAlpha = this.fade;
+    c.strokeText(s, x, y);
+    c.shadowBlur = 0;
+    const fill = clamp((28 - size) / 14, 0, 1);
+    if (fill > 0) {
+      c.fillStyle = color;
+      c.globalAlpha = fill * this.fade;
+      c.fillText(s, x, y);
+    }
+    c.strokeStyle = '#fff';
+    c.lineWidth = Math.max(0.5, size * 0.012);
+    c.globalAlpha = 0.5 * this.fade;
+    c.strokeText(s, x, y);
+    c.globalAlpha = 1;
   }
 
   /** Text in nostalgia mode: the pixel font on whole pixels, with no glow to smear it. */
@@ -232,6 +297,19 @@ export class Neon {
     c.lineCap = 'round';
     c.lineJoin = 'round';
     c.strokeStyle = color;
+    if (this.blur > 0) {
+      // Out of focus, a line is a wider and fainter one, with soft edges: nested strokes, whatever the browser can filter.
+      let share = 0;
+      for (let i = 0; i < BLUR_STROKES; i++) share += 1 / (1 + (this.blur * i) / (BLUR_STROKES - 1));
+      for (let i = BLUR_STROKES - 1; i >= 0; i--) {
+        const wide = 1 + (this.blur * i) / (BLUR_STROKES - 1);
+        c.globalAlpha = Math.min(1, ((BLUR_GAIN * intensity) / (wide * share))) * fade;
+        c.lineWidth = width * wide;
+        c.stroke(path);
+      }
+      c.globalAlpha = 1;
+      return;
+    }
     c.globalAlpha = 0.06 * intensity * fade;
     c.lineWidth = width * 8;
     c.stroke(path);
