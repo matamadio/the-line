@@ -5,6 +5,8 @@
 // sharp on any phone. Whatever the area doesn't fill is left empty around it, which is
 // where a phone's thumbs go. World y = 0 is the line's rest height; negative y is up.
 
+import { GLYPH_H, pixelText, pixelTextWidth } from './pixelfont';
+
 export const COLORS = {
   line: '#ffd21f',
   wavell: '#ffe34d',
@@ -53,8 +55,17 @@ export function fitArea(W: number, H: number) {
   return { w, h, x: Math.round((W - w) / 2), y: Math.round((H - h) / 2) };
 }
 
+/** Nostalgia mode: how many pixels the play area is wide, how many shades each colour channel has, and how much text size makes each step of the pixel font (px). */
+const RETRO_W = 320, RETRO_SHADES = 32, RETRO_TEXT_STEP = 7;
+const RETRO_LUT = Uint8ClampedArray.from({ length: 256 }, (_, v) => {
+  const step = 255 / (RETRO_SHADES - 1);
+  return Math.round(v / step) * step;
+});
+
 export class Neon {
   readonly ctx: CanvasRenderingContext2D;
+  /** Nostalgia mode: everything is drawn at a low resolution, with few colours, and blown up. Call resize() after changing it. */
+  retro = false;
   /** How much of what glow() and text() draw shows, from 0 to 1: for fading a whole group in. */
   fade = 1;
   /** CSS pixels per world unit. */
@@ -85,14 +96,15 @@ export class Neon {
   }
 
   resize() {
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     // A tab opened in the background can report a 0x0 window.
     this.fullW = Math.max(1, this.canvas.clientWidth || window.innerWidth);
     this.fullH = Math.max(1, this.canvas.clientHeight || window.innerHeight);
+    const a = fitArea(this.fullW, this.fullH);
+    this.dpr = this.retro ? RETRO_W / a.w : Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(this.fullW * this.dpr);
     this.canvas.height = Math.round(this.fullH * this.dpr);
+    this.canvas.style.imageRendering = this.retro ? 'pixelated' : '';
     this.clipped = false; // Resizing a canvas resets its state.
-    const a = fitArea(this.fullW, this.fullH);
     this.w = a.w; this.h = a.h; this.ox = a.x; this.oy = a.y;
     this.unit = (this.h / VIEW_H) * this.zoom;
     this.lineY = this.h * 0.62;
@@ -148,6 +160,62 @@ export class Neon {
     this.ctx.setTransform(k, 0, 0, k, this.dpr * (this.ox - this.camX * this.unit + this.sx), this.dpr * (this.oy + this.lineY + this.sy));
   }
 
+  /** Text in nostalgia mode: the pixel font on whole pixels, with no glow to smear it. */
+  private retroText(s: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign, alpha: number) {
+    const scale = Math.max(1, Math.floor((size * this.dpr) / RETRO_TEXT_STEP));
+    const w = pixelTextWidth(s) * scale, sx = (x + this.ox) * this.dpr, sy = (y + this.oy) * this.dpr;
+    const left = Math.round(align === 'center' ? sx - w / 2 : align === 'right' ? sx - w : sx);
+    const path = new Path2D();
+    pixelText(path, s, left, Math.round(sy - (GLYPH_H * scale) / 2), scale);
+    this.fillPixels(path, color, alpha);
+  }
+
+  /** Nostalgia mode: the whole pixel at a point given in the coordinates screen() draws in. */
+  toPixel(x: number, y: number): [number, number] {
+    return [Math.round((x + this.ox) * this.dpr), Math.round((y + this.oy) * this.dpr)];
+  }
+
+  /** Nostalgia mode: fills a path made of whole pixels, with no glow. */
+  fillPixels(path: Path2D, color: string, alpha = 1) {
+    const c = this.ctx;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = 'lighter';
+    c.globalAlpha = alpha * this.fade;
+    c.fillStyle = color;
+    c.fill(path);
+    c.globalAlpha = 1;
+    this.screen();
+  }
+
+  /** Nostalgia mode: a picture whose rows of '#' are pixels, with its top left corner on this whole pixel. */
+  sprite(rows: readonly string[], px: number, py: number, color: string, alpha = 1) {
+    const path = new Path2D();
+    rows.forEach((row, r) => { for (let i = 0; i < row.length; i++) if (row[i] === '#') path.rect(px + i, py + r, 1, 1); });
+    this.fillPixels(path, color, alpha);
+  }
+
+  /** Nostalgia mode: a one pixel outline of a box given in the coordinates screen() draws in. */
+  pixelFrame(x: number, y: number, w: number, h: number, color: string, alpha = 1) {
+    const [x0, y0] = this.toPixel(x, y), [x1, y1] = this.toPixel(x + w, y + h), path = new Path2D();
+    path.rect(x0, y0, x1 - x0 + 1, 1);
+    path.rect(x0, y1, x1 - x0 + 1, 1);
+    path.rect(x0, y0 + 1, 1, y1 - y0 - 1);
+    path.rect(x1, y0 + 1, 1, y1 - y0 - 1);
+    this.fillPixels(path, color, alpha);
+  }
+
+  /** Call when the frame is drawn: nostalgia mode brings it down to its few colours. */
+  finish() {
+    if (!this.retro) return;
+    const { width, height } = this.canvas, image = this.ctx.getImageData(0, 0, width, height), d = image.data;
+    for (let i = 0; i < d.length; i += 4) {
+      d[i] = RETRO_LUT[d[i]];
+      d[i + 1] = RETRO_LUT[d[i + 1]];
+      d[i + 2] = RETRO_LUT[d[i + 2]];
+    }
+    this.ctx.putImageData(image, 0, 0);
+  }
+
   /** Draw in CSS pixels from the play area's top left corner. */
   screen() { this.ctx.setTransform(this.dpr, 0, 0, this.dpr, this.dpr * this.ox, this.dpr * this.oy); }
 
@@ -183,6 +251,7 @@ export class Neon {
   /** Neon text in screen space (CSS px). */
   text(s: string, x: number, y: number, size: number, color = COLORS.hud, align: CanvasTextAlign = 'center', alpha = 1) {
     const c = this.ctx;
+    if (this.retro) { this.retroText(s, x, y, size, color, align, alpha); return; }
     this.screen();
     c.globalCompositeOperation = 'lighter';
     c.font = `${size}px Audiowide, "Arial Black", sans-serif`;

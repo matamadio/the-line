@@ -39,6 +39,7 @@ export function drawGame(g: Game, dt: number) {
   n.screen();
   c.globalCompositeOperation = 'source-over';
   drawHud(g);
+  n.finish();
 }
 
 function drawBackdrop(g: Game) {

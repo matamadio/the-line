@@ -47,6 +47,7 @@ Keep walking right. The end of the line crumbles in behind you, faster every lev
 | Wipe | Z, Shift or Space | Right thumb, swipe up or down |
 | Mute | M | Speaker icon |
 | Fullscreen | F | Corners icon |
+| Nostalgia (low resolution look) | N | Checkerboard icon |
 | Pause | P | |
 | Back to the start screen | Esc | |
 
@@ -71,7 +72,7 @@ The game comes with two editors, each running the real game inside a page. They 
 | --- | --- | --- |
 | **Open with** | `npm run difficulty` | `npm run lab` |
 | **Page** | `/difficulty.html` | `/lab.html` |
-| **From the game** | Dev box on the start screen: gameplay settings | Dev box on the start screen: animation editor |
+| **From the game** | Dev box on the start screen: settings | Dev box on the start screen: editor |
 | **For** | How hard the game is, level by level | How things move and feel |
 | **Edits** | [`src/data/difficulty.json`](src/data/difficulty.json) | [`src/data/anim.json`](src/data/anim.json) and the numbers in [`src/data/tune.ts`](src/data/tune.ts) |
 

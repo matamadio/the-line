@@ -7,6 +7,8 @@ import type { Controls } from '../src/core/input';
 import { I } from '../src/data/anim';
 import { TUNE } from '../src/data/tune';
 import { MORPH_TIME, TitleDust } from '../src/game/title';
+import { TITLE_HINTS, nostalgiaButton } from '../src/game/hud';
+import { hasGlyph } from '../src/core/pixelfont';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 // No audio in tests. start() would otherwise open an AudioContext.
@@ -378,5 +380,27 @@ describe('the title coming apart', () => {
     expect(dust.rest.length).toBe(0);
     dust.update(0.8, g.neon, 0);
     expect(dust.done).toBe(true);
+  });
+});
+
+describe('nostalgia mode', () => {
+  it('has a pixel font for every character the game writes', () => {
+    const texts = [...TITLE_HINTS, '← → walk   ↓ through the line   ↑ float / back up', 'left thumb: walk  ·  down: through the line', 'SWIPE ↔ to pull  ·  swipe ↕ to wipe',
+      'WRONG ATTACK, IT GREW! BACKWAVE: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM'];
+    for (const t of texts) for (const ch of t) expect(hasGlyph(ch), ch).toBe(true);
+  });
+
+  it('goes on and off from its key and its button, and redraws at the new size', () => {
+    vi.stubGlobal('document', { fullscreenEnabled: false });
+    const g = headlessGame(), resize = vi.fn();
+    Object.assign(g.neon, { resize, retro: false });
+    g.input.onKey.get('KeyN')!();
+    expect(g.neon.retro).toBe(true);
+    expect(resize).toHaveBeenCalledTimes(1);
+    const [x, y] = nostalgiaButton(g.neon);
+    g.input.uiTap!(x, y)!();
+    expect(g.neon.retro).toBe(false);
+    expect(resize).toHaveBeenCalledTimes(2);
+    vi.unstubAllGlobals();
   });
 });

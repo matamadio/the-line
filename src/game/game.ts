@@ -33,7 +33,7 @@ import { Urchin } from './actors/urchin';
 import { BUBBLE_GREEN, BubbleBurst } from './actors/bubble';
 import { Wavell, type Attack } from './actors/wavell';
 import { WORM_W, Worm } from './actors/worm';
-import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, muteButton } from './hud';
+import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, muteButton, nostalgiaButton } from './hud';
 import { drawGame } from './render';
 import { MORPH_TIME, TitleDust } from './title';
 
@@ -68,6 +68,7 @@ export interface Drop { x: number; y: number; vx: number; vy: number; side: numb
 
 const STEP = 1 / 120;
 const STORE = 'the-line-best';
+const NOSTALGIA_STORE = 'the-line-nostalgia';
 /** How many drops a bursting bubble sprays, on the line and in the air. */
 const SPRAY = 48;
 const AIR_SPRAY = 28;
@@ -150,6 +151,7 @@ export class Game {
     input.onKey.set('Escape', () => { this.menuAsked = true; });
     input.onKey.set('KeyP', () => { this.pauseAsked = true; });
     input.onKey.set('KeyF', () => { void toggleFullscreen(); });
+    input.onKey.set('KeyN', () => this.setNostalgia(!this.neon.retro));
     input.onGesture = () => sfx.unlock();
     input.uiTap = (cx, cy) => {
       const n = this.neon, x = cx - n.ox, y = cy - n.oy;
@@ -163,10 +165,23 @@ export class Game {
       if (title && canInstall() && inInstallButton(n, x, y)) return () => { void this.install(); };
       if (on(muteButton(n))) return () => sfx.toggleMute();
       if (on(fullscreenButton(n)) && canFullscreen()) return () => { void toggleFullscreen(); };
+      if (on(nostalgiaButton(n))) return () => this.setNostalgia(!n.retro);
       return null;
     };
     this.wavell.rise(0);
     this.neon.camX = -this.neon.viewW * this.neon.focus;
+  }
+
+  /** Nostalgia mode: the game looks low resolution. It stays as it was left, from one visit to the next. */
+  setNostalgia(on: boolean) {
+    this.neon.retro = on;
+    this.neon.resize();
+    try { localStorage.setItem(NOSTALGIA_STORE, on ? '1' : '0'); } catch { /* storage blocked */ }
+  }
+
+  /** Back to how the player left it last time. */
+  loadNostalgia() {
+    try { if (localStorage.getItem(NOSTALGIA_STORE) === '1') this.setNostalgia(true); } catch { /* storage blocked */ }
   }
 
   /** Offer to install the game, or say how where the browser can't ask by itself. */
