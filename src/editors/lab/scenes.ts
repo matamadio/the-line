@@ -41,6 +41,7 @@ export const SCENES: Scene[] = [
   { name: 'Pull', dur: 1.6, keys: [['pullPressed', 0.2]], setup: (g) => ready(g) },
   { name: 'Flip under and back', dur: 2.2, keys: [['downPressed', 0.2], ['upPressed', 1.2]], setup: (g) => ready(g) },
   { name: 'Float and land', dur: 3, keys: [['upPressed', 0.2], ['up', 0.4, 0.9], ['down', 1.6, 2.8]], setup: (g) => ready(g) },
+  { name: 'Float and land under the line', dur: 3, keys: [['downPressed', 0.2], ['down', 0.4, 0.9], ['up', 1.6, 2.8]], setup: (g) => ready(g, true) },
   {
     name: 'Sinepede: crest pulled flat', dur: 2, keys: [['pullPressed', 0.35]],
     setup: (g) => { ready(g); g.sinepedes.push(new Sinepede(ahead(g, 110), 100, 1, 1)); },

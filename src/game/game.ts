@@ -22,7 +22,8 @@ import { BEAT_SECONDS, BeatClock } from './beat';
 import { Crumble, type Shape } from './crumble';
 import { Fx } from './fx';
 import { canFullscreen, canInstall, promptInstall, toggleFullscreen } from '../core/app';
-import { Input, type Controls } from '../core/input';
+import { loadBindings } from '../core/controls';
+import { Input, usesTouch, type Controls } from '../core/input';
 import { SpringLine } from './line';
 import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
 import { sfx } from '../core/sfx';
@@ -35,6 +36,7 @@ import { Wavell, type Attack } from './actors/wavell';
 import { WORM_W, Worm } from './actors/worm';
 import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, muteButton, nostalgiaButton } from './hud';
 import { drawGame } from './render';
+import { MENU_FOCUS, Menu, pressFor } from './menu';
 import { MORPH_TIME, TitleDust } from './title';
 
 type Mode = 'title' | 'play' | 'over';
@@ -135,11 +137,12 @@ export class Game {
   morphT = MORPH_TIME;
   /** The title coming apart, for a moment after a game starts from the start screen. */
   titleDust: TitleDust | null = null;
+  readonly menu = new Menu(this);
+  readonly morphEnd = MORPH_TIME;
   /** The view jumps into place if the first step is on the title, and eases from then on. */
   private viewSet = false;
   /** Asked for by a key since the last frame. */
   private menuAsked = false;
-  private pauseAsked = false;
   private deathHandled = false;
   /** The time until which the start screen explains how to install by hand. */
   installNote = -1;
@@ -149,7 +152,6 @@ export class Game {
     try { this.best = Number(localStorage.getItem(STORE)) || 0; } catch { /* storage blocked */ }
     input.onKey.set('KeyM', () => sfx.toggleMute());
     input.onKey.set('Escape', () => { this.menuAsked = true; });
-    input.onKey.set('KeyP', () => { this.pauseAsked = true; });
     input.onKey.set('KeyF', () => { void toggleFullscreen(); });
     input.onKey.set('KeyN', () => this.setNostalgia(!this.neon.retro));
     input.onGesture = () => sfx.unlock();
@@ -157,7 +159,7 @@ export class Game {
       const n = this.neon, x = cx - n.ox, y = cy - n.oy;
       const on = ([bx, by, r]: [number, number, number]) => Math.hypot(x - bx, y - by) <= Math.max(r * 1.25, 22);
       // The dev menu and the install button are only there on the start screen, once it has settled.
-      const title = this.mode === 'title' && this.morphT >= MORPH_TIME;
+      const title = this.mode === 'title' && this.morphT >= MORPH_TIME && this.menu.page === 'main';
       if (title && inDevMenu(n, x, y)) {
         const page = devLinkAt(n, x, y);
         return () => { if (page) location.href = page; };
@@ -182,6 +184,15 @@ export class Game {
   /** Back to how the player left it last time. */
   loadNostalgia() {
     try { if (localStorage.getItem(NOSTALGIA_STORE) === '1') this.setNostalgia(true); } catch { /* storage blocked */ }
+  }
+
+  /** The keys and buttons the player left last time. */
+  loadControls() { this.input.setBindings(loadBindings()); }
+
+  /** The start of a game, from the menu: the title comes apart as it starts. */
+  startFromMenu() {
+    this.start();
+    this.titleDust = new TitleDust();
   }
 
   /** Offer to install the game, or say how where the browser can't ask by itself. */
@@ -237,6 +248,7 @@ export class Game {
     this.keepBest();
     this.mode = 'title';
     this.titleDust = null;
+    this.menu.reset();
     this.morphT = morph ? 0 : MORPH_TIME;
     for (const s of this.sinepedes) s.sink();
     for (const u of this.urchins) u.sink();
@@ -277,13 +289,13 @@ export class Game {
     this.input.poll();
     const ready = this.mode === 'over' && this.overT > 0.8;
     if (this.menuAsked && this.mode === 'play') this.backToTitle(false);
-    else if (this.pauseAsked && this.mode === 'play') this.setPaused(!this.paused);
+    else if (this.input.pausePressed && this.mode === 'play') this.setPaused(!this.paused);
     else if (ready && (this.menuAsked || this.input.anyPressed)) this.backToTitle(true);
-    else if (this.mode === 'title' && this.morphT >= MORPH_TIME && this.input.anyPressed) {
-      this.start();
-      this.titleDust = new TitleDust();
+    else if (this.mode === 'title' && this.morphT >= MORPH_TIME) {
+      if (this.menuAsked || this.input.backPressed) this.menu.back();
+      else this.menu.handle(this.input);
     }
-    this.menuAsked = this.pauseAsked = false;
+    this.menuAsked = false;
     if (this.paused) { drawGame(this, dt); return; }
     this.titleDust?.update(dt, this.neon, this.time);
     if (this.titleDust?.done) this.titleDust = null;
@@ -317,17 +329,18 @@ export class Game {
   private step(dt: number, k: Controls) {
     const W = this.wavell, L = this.line, n = this.neon;
     this.time += dt;
-    W.update(dt, k, L, this.endX < W.x - 10, n.viewTop, this.viewAhead);
+    W.update(dt, this.mode === 'title' ? this.menu.controls(k) : k, L, this.endX < W.x - 10, n.viewTop, n.viewBottom, this.viewAhead);
     if (W.eyePop) {
       for (let i = 0; i < W.eyePop.length; i += 2) this.fx.burst(W.eyePop[i], W.eyePop[i + 1], 12, 55, COLORS.danger, 40, 0.5);
       sfx.play('pop', 0.6);
       W.eyePop = null;
     }
-    // On the title he stands in the middle of the screen.
-    const target = W.x - n.viewW * (this.mode === 'title' ? 0.5 : n.focus);
+    // On the title he stands to the left of the menu's word.
+    const target = W.x - n.viewW * (this.mode === 'title' ? MENU_FOCUS : n.focus);
     n.camX = !this.viewSet && this.mode === 'title' ? target : n.camX + (target - n.camX) * Math.min(1, dt * 12);
     this.viewSet = true;
-    L.cover(n.camX - 70, n.camX + n.viewW + 70);
+    const pad = this.mode === 'title' ? this.menu.linePad : 0;
+    L.cover(n.camX - 70 - pad, n.camX + n.viewW + 70 + pad);
     L.step(dt / 2);
     L.step(dt / 2);
     this.fx.update(dt);
@@ -350,9 +363,10 @@ export class Game {
       this.updateSinepedes(dt);
       this.updateUrchins(dt);
       this.updateWorms(dt);
-      if (W.state === 'dead' && W.t > W.linger + 0.3) W.rise(W.x);
-      // The line lies flat until he has risen out of it.
-      if (W.state === 'ground' && Math.random() < dt * 1.5) L.impulse(n.camX + Math.random() * n.viewW, rand(-50, 50), 5);
+      if (W.state === 'dead' && W.t > W.linger + 0.3 && !this.menu.holdsHimDown) W.rise(W.x);
+      // The line lies flat until he has risen out of it, or while the names run along it.
+      if ((W.state === 'ground' || this.menu.page === 'credits') && Math.random() < dt * 1.5) L.impulse(n.camX + Math.random() * n.viewW, rand(-50, 50), 5);
+      this.menu.step(dt);
       return;
     }
     if (this.mode === 'over') { this.overT += dt; this.updateSinepedes(dt); this.updateUrchins(dt); this.keepApart(); return; }
@@ -366,7 +380,7 @@ export class Game {
       else if (e === 'haul') this.haul();
       else if (e === 'flipDown') sfx.play('flipDown');
       else if (e === 'flipUp') sfx.play('flipUp');
-      else if (e === 'fly') this.fx.burst(W.x, W.by, 20, 45, COLORS.wavell, 0, 0.35);
+      else if (e === 'fly') this.fx.burst(W.x, L.sample(W.x), 20, 45, COLORS.wavell, 0, 0.35);
       else if (e === 'land') this.fx.burst(W.x, L.sample(W.x), 14, 50, COLORS.wavell, 60, 0.4);
       else if (e === 'dizzy') sfx.play('offline', 0.6);
       else if (e === 'grow') {
@@ -418,8 +432,6 @@ export class Game {
       if (this.mode === 'play') this.strike(p);
     }
     this.pulses = this.pulses.filter((p) => !p.spent && p.x < n.camX + n.viewW + 60 && p.x > n.camX - 60);
-    // Opposite waves closing in on him press each other flat (see interfere).
-    if (W.alive) W.squash = 1;
     this.updateSinepedes(dt);
     this.updateUrchins(dt);
     this.updateWorms(dt);
@@ -551,7 +563,7 @@ export class Game {
       const s = new Sinepede(n.camX + n.viewW + 30, at('sineSpeed', this.level), Math.floor(at('sineSegs', this.level)), Math.random() < 0.5 ? 1 : -1);
       this.sinepedes.push(s);
       sfx.call(s.sides);
-      this.teach('sinepede', 'SINEPEDE: a crest on your side: SWIPE ↔. A trough on the other: SWIPE ↕', 'SINEPEDE: a crest on your side: X. A trough on the other: Z');
+      this.teach('sinepede', 'SINEPEDE: a crest on your side: SWIPE ↔. A trough on the other: SWIPE ↕', 'SINEPEDE: a crest on your side: {pull}. A trough on the other: {drag}');
     }
   }
 
@@ -571,7 +583,7 @@ export class Game {
     u.hush = sfx.rumble(this.heard(warn));
     this.urchins.push(u);
     this.cue = false;
-    this.teach('urchin', 'DISTURCHIN: where the line fuzzes, spikes come out. SWIPE ↔ to pull it flat', 'DISTURCHIN: where the line fuzzes, spikes come out. X pulls it flat');
+    this.teach('urchin', 'DISTURCHIN: where the line fuzzes, spikes come out. SWIPE ↔ to pull it flat', 'DISTURCHIN: where the line fuzzes, spikes come out. {pull} pulls it flat');
   }
 
   private spawnWorms(dt: number) {
@@ -585,7 +597,7 @@ export class Game {
       this.cue = false;
       this.wormClock = rand(-1, 0);
       this.worms.push(new Worm(n.camX + n.viewW + 20, at('wormSpeed', this.level)));
-      this.teach('worm', 'WORM: SWIPE ↔ to pull it flat', 'WORM: X pulls it flat');
+      this.teach('worm', 'WORM: SWIPE ↔ to pull it flat', 'WORM: {pull} pulls it flat');
     }
   }
 
@@ -650,6 +662,8 @@ export class Game {
       if (w.harmful) L.push(w.x + WORM_W / 2, 350, 5);
       if (this.mode !== 'play') continue;
       if (w.harmful) w.squash = this.interfere(w.x + WORM_W / 2, !W.under);
+      // It hangs under the line, so only a bubble down there can run into it.
+      if (W.flying && W.side < 0 && w.touches(L, W.x, W.by, W.bubbleR)) W.hurt('pop');
       // On his own side it bites, which leaves him dizzy, and that is the end of it.
       const crawling = (w.state === 'move' || w.state === 'rise') && W.alive && W.onLine && W.safe <= 0;
       if (crawling && W.under && w.x < W.x + 14 && w.back > W.x - 6) {
@@ -680,7 +694,7 @@ export class Game {
       if (Math.random() < at('backChance', this.level)) {
         this.backwaves.push(backwave(this.backwaveStart, this.inBeats(1.1)));
         this.cue = false;
-        this.teach('backwave', 'BACKWAVE: float over it, or face it: SWIPE ↕ sends it back, SWIPE ↔ cancels it', 'BACKWAVE: float over it (UP), or face it (LEFT): Z sends it back, X cancels it');
+        this.teach('backwave', 'BACKWAVE: float over it, or face it: SWIPE ↕ sends it back, SWIPE ↔ cancels it', 'BACKWAVE: float over it ({up}), or face it ({left}): {drag} sends it back, {pull} cancels it');
       }
     }
     // Where a wave sent back is gone: just off the screen.
@@ -776,7 +790,7 @@ export class Game {
         this.bubbles.push(new BubbleBurst(x, side, this.inBeats(at('bubbleGrow', this.level), flies ? 2 : 1), flies ? this.inBeats(DIFF.bubbleFlyTime) : 0));
         this.cue = false;
         sfx.play('reflux', 0.25);
-        this.teach('bubble', 'BUBBLE BURST: SWIPE ↔ on your side, SWIPE ↕ on the other, or keep away', 'BUBBLE BURST: X on your side, Z on the other, or keep away');
+        this.teach('bubble', 'BUBBLE BURST: SWIPE ↔ on your side, SWIPE ↕ on the other, or keep away', 'BUBBLE BURST: {pull} on your side, {drag} on the other, or keep away');
       }
     }
     for (const b of this.bubbles) {
@@ -855,11 +869,11 @@ export class Game {
 
   /**
    * A sparkle over this point of the line, above it or below. Gold ones are the hard ones
-   * to reach: high up for the bubble, or at his fingertips underneath.
+   * to reach: far off the line, for the bubble.
    */
   private addSparkle(x: number, below: boolean) {
     const gold = Math.random() < DIFF.sparkleGold;
-    const off = below ? (gold ? rand(20, 28) : rand(6, 26)) : -(gold ? rand(45, 75) : rand(6, 40));
+    const off = (below ? 1 : -1) * (gold ? rand(45, 65) : rand(6, 40));
     const life = rand(3, 4.5);
     this.sparkles.push({ x, y: this.line.sample(x) + off, vx: rand(-20, 20), vy: rand(-10, 10), life, max: life, gold, p: rand(0, 6) });
   }
@@ -920,7 +934,7 @@ export class Game {
   private teach(key: string, touch: string, keys: string) {
     if (this.quiet || this.taught.has(key)) return;
     this.taught.add(key);
-    this.hint = this.input.touchUsed || matchMedia('(pointer: coarse)').matches ? touch : keys;
+    this.hint = usesTouch(this.input) ? touch : keys.replace(/\{(\w+)\}/g, (_, action) => pressFor(this.input, action));
     this.hintT = 3.5;
   }
 
@@ -1044,15 +1058,20 @@ export class Game {
     const W = this.wavell, f = W.facing, reach = this.viewAhead;
     const ahead = (t: { x0: number; x1: number }) => (f > 0 ? t.x0 - W.x : W.x - t.x1);
     const t = this.targets().filter((t) => ahead(t) > -6 && ahead(t) < reach).sort((a, b) => ahead(a) - ahead(b))[0];
-    // The line streams in towards his hands.
-    for (let i = 0; i < 14; i++) {
-      const x = W.x + f * rand(14, reach);
-      this.fx.spark(x, this.line.sample(x), -f * rand(120, 220), rand(-6, 6), 0.3, '#9fe8ff', 0);
-    }
+    this.lineStreams();
     // Facing a Backwave on its way, the pull takes that, if nothing is nearer.
     const wave = f < 0 ? this.backwaves.find((b) => b.warn <= 0 && b.dir > 0 && !b.done && !b.gone && W.x - b.x > -6 && W.x - b.x < reach) : undefined;
     if (wave && (!t || W.x - wave.x < ahead(t))) this.cancelBackwave(wave);
     else if (t) this.hit(t.e, t.side, 'pull', W.side, -f);
+  }
+
+  /** A pull: the line streams in towards his hands. */
+  lineStreams() {
+    const W = this.wavell, f = W.facing, reach = this.viewAhead;
+    for (let i = 0; i < 14; i++) {
+      const x = W.x + f * rand(14, reach);
+      this.fx.spark(x, this.line.sample(x), -f * rand(120, 220), rand(-6, 6), 0.3, '#9fe8ff', 0);
+    }
   }
 
   /**
@@ -1076,7 +1095,7 @@ export class Game {
         this.fx.burst(e.x, y, 12, 30, COLORS.danger, 0, 0.4);
         n.shake = Math.max(n.shake, 0.3);
         sfx.crunch(0.16, 1.5);
-        this.teach('urchinGrow', 'A WIPE FEEDS THE DISTURCHIN! SWIPE ↔ to pull it', 'A WIPE FEEDS THE DISTURCHIN! X pulls it');
+        this.teach('urchinGrow', 'A WIPE FEEDS THE DISTURCHIN! SWIPE ↔ to pull it', 'A WIPE FEEDS THE DISTURCHIN! {pull} pulls it');
       } else if (e.size > 0) {
         e.shrink();
         this.fx.burst(e.x, y, 10, 40, '#ffffff', 0, 0.3);
@@ -1123,14 +1142,14 @@ export class Game {
         this.fx.burst(x, y, 12, 30, COLORS.enemy, 0, 0.4);
         n.shake = Math.max(n.shake, 0.3);
         sfx.fed(side);
-        this.teach('grow', 'WRONG ATTACK, IT GREW! Your side: SWIPE ↔. Other side: SWIPE ↕', 'WRONG ATTACK, IT GREW! Your side: X. Other side: Z');
+        this.teach('grow', 'WRONG ATTACK, IT GREW! Your side: SWIPE ↔. Other side: SWIPE ↕', 'WRONG ATTACK, IT GREW! Your side: {pull}. Other side: {drag}');
       }
       return;
     }
     // The Worm's rule, from either side: a pull flattens it and a wipe feeds it.
     const x = e.centre, y = L.sample(x) + 14 * e.sc;
     if (kind === 'wipe') {
-      this.fed(x, y, () => { e.grow(); e.knock((Math.sign(x - W.x) || 1) * DIFF.knock); }, COLORS.enemy, ['A WIPE FEEDS THE WORM! SWIPE ↔ to pull it flat', 'A WIPE FEEDS THE WORM! X pulls it flat']);
+      this.fed(x, y, () => { e.grow(); e.knock((Math.sign(x - W.x) || 1) * DIFF.knock); }, COLORS.enemy, ['A WIPE FEEDS THE WORM! SWIPE ↔ to pull it flat', 'A WIPE FEEDS THE WORM! {pull} pulls it flat']);
       // Thrown back, it drags the line with it.
       L.impulse(x, side * 60, 8);
     } else if (e.size > 0) this.shrunk(x, y, () => e.shrink());
@@ -1147,7 +1166,7 @@ export class Game {
   }
 
   /** The wrong wave: the creature takes it in and grows. */
-  private fed(x: number, y: number, grow: () => void, color = COLORS.enemy, hint = ['WRONG ATTACK, IT GREW! Your side: SWIPE ↔. Other side: SWIPE ↕', 'WRONG ATTACK, IT GREW! Your side: X. Other side: Z']) {
+  private fed(x: number, y: number, grow: () => void, color = COLORS.enemy, hint = ['WRONG ATTACK, IT GREW! Your side: SWIPE ↔. Other side: SWIPE ↕', 'WRONG ATTACK, IT GREW! Your side: {pull}. Other side: {drag}']) {
     grow();
     this.fx.burst(x, y, 12, 30, color, 0, 0.4);
     this.neon.shake = Math.max(this.neon.shake, 0.3);
@@ -1164,15 +1183,13 @@ export class Game {
 
   /**
    * An enemy centred at ex on the other side of the line from him (opposite) is the
-   * opposite wave: as the two close in they press each other flat, like two pulses
-   * passing through each other. Returns the enemy's height factor, and lowers his.
+   * opposite wave: as he closes in it is pressed flat. Returns its height factor. He
+   * keeps his shape, as nothing has happened to him until they actually meet.
    */
   private interfere(ex: number, opposite: boolean): number {
     const W = this.wavell;
     if (!opposite || !W.alive || !W.onLine) return 1;
-    const k = 1 - TUNE.cancelDepth * smooth(clamp((TUNE.cancelStart - Math.abs(ex - W.x)) / TUNE.cancelSpan, 0, 1));
-    W.squash = Math.min(W.squash, k);
-    return k;
+    return 1 - TUNE.cancelDepth * smooth(clamp((TUNE.cancelStart - Math.abs(ex - W.x)) / TUNE.cancelSpan, 0, 1));
   }
 
   /**
@@ -1183,18 +1200,20 @@ export class Game {
   private bump(s: Sinepede, side: Side) {
     const W = this.wavell, L = this.line, x = s.frontCentre(W.x), y = L.sample(x) - side * 24;
     const away = Math.sign(s.centre - W.x) || 1;
-    s.knock(away * DIFF.knock);
     W.bounce(-away * DIFF.bounce);
     if (side === (W.under ? -1 : 1)) {
+      s.knock(away * DIFF.knock);
       s.grow(W.x);
       L.impulse(x, side * 60, 8);
       this.fx.burst(x, y, 12, 30, COLORS.enemy, 0, 0.4);
       sfx.fed(side);
-      this.teach('bumpGrow', 'ON YOUR SIDE IT THROWS YOU BACK AND GROWS: SWIPE ↔ to pull it', 'ON YOUR SIDE IT THROWS YOU BACK AND GROWS: X pulls it');
+      this.teach('bumpGrow', 'ON YOUR SIDE IT THROWS YOU BACK AND GROWS: SWIPE ↔ to pull it', 'ON YOUR SIDE IT THROWS YOU BACK AND GROWS: {pull} pulls it');
       this.neon.shake = Math.max(this.neon.shake, 0.5);
     } else {
       this.cancel(x);
       s.cancel(W.x);
+      // Flattened, it just melts where it is. Only what is left of it gets thrown back.
+      if (s.count > 0) s.knock(away * DIFF.knock);
       L.pulse(x, -side * 5, 10, away);
       sfx.cancelled(side, s.count === 0);
       if (s.count === 0) this.dropSparkles(x);

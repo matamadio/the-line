@@ -135,6 +135,14 @@ export class Worm {
   }
 
   /** The body from the head (left root) to the tail (right root), in world space. */
+  /** Does a circle touch its body? */
+  touches(line: SpringLine, cx: number, cy: number, r: number) {
+    if (!this.harmful) return false;
+    const o = this.outline(line);
+    for (let i = 0; i < o.length; i += 2) if (Math.hypot(o[i] - cx, o[i + 1] - cy) < r + 1) return true;
+    return false;
+  }
+
   outline(line: SpringLine): number[] {
     const P = this.tf(line);
     const out: number[] = [];

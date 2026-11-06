@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DIFF, at } from '../src/data/difficulty';
+import { TUNE } from '../src/data/tune';
 import { SEG_W, Sinepede } from '../src/game/actors/sinepede';
 import { BubbleBurst } from '../src/game/actors/bubble';
 import { Urchin } from '../src/game/actors/urchin';
@@ -330,6 +331,28 @@ describe('the game', () => {
       return { g, s, hitAt: g.wavell.x, sAt: s.x };
     }
 
+    it.each(SIDES)('on the other side, it is pressed flat as it comes, and he keeps his shape %s', (_name, under) => {
+      const g = ready();
+      if (under) flipUnder(g);
+      const W = g.wavell;
+      const height = () => {
+        const o = W.stroke(g.line)!;
+        let h = 0;
+        for (let i = 0; i < o.length; i += 2) h = Math.max(h, Math.abs(o[i + 1] - g.line.sample(o[i])));
+        return h;
+      };
+      const standing = height();
+      const s = new Sinepede(W.x + 120, 60, 2, under ? 1 : -1);
+      g.sinepedes.push(s);
+      let press = 1;
+      for (let i = 0; i < STEPS_PER_SECOND * 3 && !s.recoiling && W.alive; i++) {
+        g.tick(IDLE);
+        press = Math.min(press, s.front(W.x)?.press ?? 1);
+        expect(height()).toBeGreaterThan(standing * 0.85);
+      }
+      expect(press).toBeLessThan(0.5);
+    });
+
     it.each(SIDES)('on his side, it throws them apart and grows %s', (_name, under) => {
       const { g, s, hitAt, sAt } = bump(under, under ? -1 : 1);
       expect(s.count).toBe(3);
@@ -359,10 +382,14 @@ describe('the game', () => {
     });
 
     it.each(SIDES)('on the other side, a last segment flattens %s', (_name, under) => {
-      const { g, s } = bump(under, under ? 1 : -1, 1, 1);
+      const { g, s, sAt } = bump(under, under ? 1 : -1, 1, 1);
       expect(s.harmful).toBe(false);
       expect(g.wavell.size).toBe(0);
       expect(g.wavell.alive).toBe(true);
+      // It melts where it is, with no throw back.
+      expect(s.recoiling).toBe(false);
+      run(g, 0.05);
+      expect(Math.abs(s.x - sAt)).toBeLessThan(1);
       run(g, 1);
       expect(s.state).toBe('done');
     });
@@ -509,8 +536,8 @@ describe('the game', () => {
     it('pops his bubble when it bursts near it', () => {
       const g = ready();
       g.tick({ ...IDLE, upPressed: true });
-      run(g, 0.3);
-      const b = floating(g, 40);
+      run(g, TUNE.takeoff + 0.05);
+      const b = floating(g, 28);
       expect(g.wavell.flying).toBe(true);
       run(g, 1.2);
       expect(b.harmful).toBe(false);
@@ -663,7 +690,7 @@ describe('the game', () => {
     it('does not save the bubble from an enemy', () => {
       const g = grown(2);
       g.tick({ ...IDLE, upPressed: true });
-      run(g, 0.4);
+      run(g, TUNE.takeoff + 0.05);
       g.sinepedes.push(new Sinepede(g.wavell.x + 2, 0, 1, 1));
       g.wavell.by = g.line.sample(g.wavell.x) - 20;
       run(g, 0.6);
@@ -698,6 +725,99 @@ describe('the game', () => {
       expect(g.wavell.alive).toBe(true);
       expect(g.wavell.size).toBe(0);
       expect(g.wavell.scale).toBe(1);
+    });
+  });
+
+  describe('his bubble below the line', () => {
+    const DOWN = { ...IDLE, downPressed: true }, UP = { ...IDLE, upPressed: true };
+    const under = () => {
+      const g = ready();
+      g.tick(DOWN);
+      run(g, 1);
+      expect(g.wavell.under).toBe(true);
+      expect(g.wavell.state).toBe('ground');
+      return g;
+    };
+    const floating = () => {
+      const g = under();
+      g.tick(DOWN);
+      run(g, TUNE.takeoff + 0.05);
+      expect(g.wavell.flying).toBe(true);
+      return g;
+    };
+
+    it('floats off with down, staying below the line', () => {
+      const g = floating();
+      expect(g.wavell.by).toBeGreaterThan(g.line.sample(g.wavell.x));
+      const y = g.wavell.by;
+      run(g, 0.2, { ...IDLE, down: true });
+      expect(g.wavell.by).toBeGreaterThan(y);
+    });
+
+    it('still goes back through the line with up', () => {
+      const g = under();
+      g.tick(UP);
+      run(g, 1);
+      expect(g.wavell.under).toBe(false);
+      expect(g.wavell.flying).toBe(false);
+    });
+
+    it('on top, down still goes through the line and up still floats', () => {
+      const g = ready();
+      g.tick(UP);
+      run(g, 0.4);
+      expect(g.wavell.flying).toBe(true);
+      expect(g.wavell.by).toBeLessThan(g.line.sample(g.wavell.x));
+    });
+
+    it('lands with up, still under the line', () => {
+      const g = floating();
+      run(g, 1, { ...IDLE, up: true });
+      expect(g.wavell.flying).toBe(false);
+      expect(g.wavell.alive).toBe(true);
+      run(g, 0.5);
+      expect(g.wavell.state).toBe('ground');
+      expect(g.wavell.under).toBe(true);
+    });
+
+    it('comes out of the line on his own side as he lands', () => {
+      const g = floating();
+      while (g.wavell.flying) g.tick({ ...IDLE, up: true });
+      expect(g.wavell.state).toBe('land');
+      let frames = 0;
+      while (g.wavell.state === 'land') {
+        g.tick(IDLE);
+        const W = g.wavell, pts = W.stroke(g.line) ?? [], ground = g.line.sample(W.x);
+        // Never more than a ripple of the line above it.
+        for (let i = 1; i < pts.length; i += 2) expect(pts[i]).toBeGreaterThan(ground - 4);
+        frames++;
+      }
+      expect(frames).toBeGreaterThan(0);
+    });
+
+    it('stops at the bottom of the view', () => {
+      const g = floating();
+      for (let i = 0; i < 2 * STEPS_PER_SECOND && g.wavell.flying; i++) g.tick({ ...IDLE, down: true });
+      expect(g.wavell.by + g.wavell.bubbleR).toBeLessThanOrEqual(g.neon.viewBottom);
+    });
+
+    it('is popped by a Worm down there, but not over it on top', () => {
+      const worm = (g: ReturnType<typeof ready>) => {
+        const w = new Worm(g.wavell.x - 10, 0);
+        w.state = 'move';
+        g.worms.push(w);
+      };
+      const below = floating();
+      worm(below);
+      below.wavell.by = below.line.sample(below.wavell.x) + below.wavell.bubbleR;
+      run(below, 0.1);
+      expect(below.wavell.alive).toBe(false);
+      const above = ready();
+      above.tick(UP);
+      run(above, 0.4);
+      worm(above);
+      run(above, 0.1);
+      expect(above.wavell.alive).toBe(true);
     });
   });
 

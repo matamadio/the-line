@@ -40,9 +40,11 @@ export type Death = 'fall' | 'zap' | 'pop' | 'flatten';
 export type WavellEvent = 'appear' | 'drag' | 'haul' | 'release' | 'flipDown' | 'flipUp' | 'fly' | 'land' | 'step' | 'dizzy' | 'grow' | 'shrink';
 
 /** Units per second for each step of `vel` (the original scrolled 1 px every 10 ms). */
-const FLY_TIME = 3.6;
-/** The line loops up and ties off into the bubble... */
-/** ...and on landing the bubble dives back in, then the knot rises out of it. */
+const FLY_TIME = 3.85;
+/** Just let go of the line: how long it stays broken, and how far the ends spring apart. */
+const SNAP_TIME = 0.2, SNAP_GAP = 6;
+/** Landing: the head height the deflate clip is keyed for, as a bubble of this radius (pose units) touches down. */
+const DEFLATE_R = 11.5;
 /** How far ahead of his hand the held line reaches the ground. */
 const REACH_FAR = 47.5;
 /** Dizzy (from a Bubble Burst's spray): no moves at all for TUNE.dizzyLock, slow walking for all of TUNE.dizzyTime. */
@@ -84,6 +86,8 @@ export class Wavell {
   private time = 0;
   private hair = 0;
   private landR = 9;
+  /** The bubble's colour when it touched down: it fades from his stroke as he comes out. */
+  private landColor = '';
   /** How much of his stroke has crumbled (0..1, by length), while dying at the end of the line. */
   private burnt = 0;
   /** Pieces broken off since the game last looked: flat x0, y0, x1, y1 quads in world space. */
@@ -123,7 +127,6 @@ export class Wavell {
   /** Hit by an enemy: going down into the line, one hand up to the last. */
   get sinking() { return this.state === 'dead' && (this.death === 'zap' || this.death === 'flatten'); }
   /** Pressed flat by an opposite wave closing in (1: full height); set by the game. */
-  squash = 1;
   /** A bigger Wavell makes a bigger bubble, which lasts longer but is easier to hit. */
   get bubbleR() { return lerp(9, 14, clamp(this.t / this.flyTime, 0, 1)) * this.scale; }
   get flyTime() { return FLY_TIME * (1 + DIFF.growBubble * this.size); }
@@ -228,6 +231,18 @@ export class Wavell {
     this.go('dead');
   }
 
+  /** Takes over from another Wavell where he is and as he is: the menu's second figure. */
+  mirror(o: Wavell) {
+    this.x = o.x; this.by = o.by; this.facing = o.facing; this.flip = o.flip; this.side = o.side;
+    this.size = o.size; this.scale = o.scale; this.state = o.state; this.t = o.t;
+    this.appearFor = o.appearFor; this.time = o.time; this.phase = o.phase; this.hair = o.hair;
+    this.cur.set(o.cur);
+    this.from.set(o.from);
+  }
+
+  /** How long sinking into the line takes (s). */
+  get sinkTime() { return unravel('zap'); }
+
   /** Show this pose (the animation lab's editor). */
   showPose(p: Pose) { this.cur.set(p); this.from.set(p); }
 
@@ -237,7 +252,7 @@ export class Wavell {
     this.t = 0;
   }
 
-  update(dt: number, k: Controls, line: SpringLine, canLand: boolean, top: number, ahead: number) {
+  update(dt: number, k: Controls, line: SpringLine, canLand: boolean, top: number, bottom: number, ahead: number) {
     this.time += dt;
     this.t += dt;
     this.dizzy = Math.max(0, this.dizzy - dt);
@@ -271,15 +286,15 @@ export class Wavell {
         this.buffered = null;
         const drag = k.dragPressed || b === 'drag', pull = k.pullPressed || b === 'pull', down = k.downPressed || b === 'down', up = k.upPressed || b === 'up';
         if (drag || pull) { this.vel = 0; this.attack = drag ? 'wipe' : 'pull'; this.go('drag'); this.events.push('drag'); break; }
-        // Down always goes through the line; up goes back through it from underneath.
-        if (down || (up && this.side < 0)) {
+        // Towards the line goes through it; away from it, on either side, floats off.
+        if (this.side > 0 ? down : up) {
           this.vel = 0;
           this.side = -this.side as 1 | -1;
           this.go('flip');
           this.events.push(this.side < 0 ? 'flipDown' : 'flipUp');
           break;
         }
-        if (up) { this.vel = 0; this.go('fly'); this.by = ground - 15; break; }
+        if (this.side > 0 ? up : down) { this.vel = 0; this.go('fly'); this.by = ground - this.side * this.cur[I.head + 1] * this.scale; break; }
         break;
       }
       case 'drag': {
@@ -325,24 +340,26 @@ export class Wavell {
       }
       case 'fly': {
         this.vel = k.right && !k.left ? 2 : k.left && !k.right ? -2 : 0;
+        const s = this.side;
         if (this.t < TUNE.takeoff) {
-          this.by -= 40 * dt;
-          // The loop pulls the line up until it lets go.
-          line.push(this.x, -2400 * smooth(this.t / TUNE.takeoff), 5);
-          if (this.t + dt >= TUNE.takeoff) { line.impulse(this.x, 70, 6); this.events.push('fly'); }
+          // He pulls the line his way until it lets go. Until then the bubble is his head.
+          line.push(this.x, -s * 2400 * smooth(this.t / TUNE.takeoff), 5);
+          if (this.t + dt >= TUNE.takeoff) { line.impulse(this.x, s * 70, 6); this.events.push('fly'); }
           break;
         }
         if (k.up) this.by -= 50 * dt;
         if (k.down) this.by += 50 * dt;
         const r = this.bubbleR;
-        this.by = Math.max(top + r + 2, this.by);
-        if (this.by + r >= ground) {
-          this.by = ground - r;
-          if (k.down && canLand) {
+        this.by = clamp(this.by, top + r + 2, bottom - r - 2);
+        // It stays on its own side of the line, and pushing against the line lands it.
+        if (s * (this.by - ground) + r >= 0) {
+          this.by = ground - s * r;
+          if ((s > 0 ? k.down : k.up) && canLand) {
             this.landR = r;
+            this.landColor = this.bubbleColor;
             this.go('land');
             this.events.push('land');
-            line.impulse(this.x, 60, 5);
+            line.impulse(this.x, s * 60, 5);
           }
         }
         if (this.state === 'fly' && this.t >= this.flyTime) this.kill('pop');
@@ -354,8 +371,6 @@ export class Wavell {
         // The line sags under him and is let go as he goes through it.
         if (this.sinking) {
           line.push(this.x, this.side * 2200 * (1 - smooth(this.t / this.linger)), 4);
-          // Pressed down by the wave that got him: he springs back as it lets go.
-          this.squash += (1 - this.squash) * Math.min(1, dt * 12);
           // Gone under: the line closes over him in a small arch that fades out.
           if (this.t >= this.linger && this.t - dt < this.linger) line.impulse(this.x + this.facing * 8, -60 * this.side, 6);
         }
@@ -382,12 +397,30 @@ export class Wavell {
     }
     this.hair += (this.vel * 0.5 - this.hair) * Math.min(1, dt * 8);
     this.solvePose();
+    if (this.puffing) this.by = line.sample(this.x) - this.side * this.cur[I.head + 1] * this.scale;
     if (this.sinking && !this.eyesGone && this.cur[I.head + 1] < EYES_UNDER) {
       this.eyesGone = true;
       const tf = this.transform(line), H = this.headTf(), look = this.lookUp;
       this.eyePop = [];
       for (const ex of EYES) this.eyePop.push(...tf(...H(ex + look * LOOK_FORWARD, PUPIL_Y + look)));
     }
+  }
+
+  /** Floating off, still tied to the line: his head fills up as the rest of him shrinks. */
+  private get puffing() { return this.state === 'fly' && this.t < TUNE.takeoff; }
+  /** How far through coming back out of the bubble he is, 0..1. */
+  private get landed() { return clamp(this.t / TUNE.landTime, 0, 1); }
+  /** How far his head is filled up into the bubble, 0..1. */
+  private get puff() {
+    if (this.puffing) return smooth(this.t / TUNE.takeoff);
+    return this.state === 'land' ? 1 - smooth(this.landed / 0.85) : 0;
+  }
+  /** The radius of the bubble his head is filling up to, or emptying from (pose units). */
+  private get puffR() { return (this.state === 'land' ? this.landR : this.bubbleR) / this.scale; }
+  /** How far the ends of the line are apart around him, just after he let go (0: whole). */
+  get snap() {
+    if (this.state !== 'fly' || this.puffing) return 0;
+    return SNAP_GAP * (1 - smooth((this.t - TUNE.takeoff) / SNAP_TIME));
   }
 
   /** How far through climbing out he is, 0..1. */
@@ -426,6 +459,15 @@ export class Wavell {
       }
       case 'appear':
         pose('appear', this.climbed * clipLength(ANIM.clips.appear), this.cur);
+        break;
+      case 'land':
+        pose('deflate', this.landed * clipLength(ANIM.clips.deflate), this.cur);
+        // It touches down wherever its size puts it: his head starts from the bubble's centre.
+        this.cur[I.head + 1] += (this.puffR - DEFLATE_R) * this.puff;
+        break;
+      case 'fly':
+        if (this.puffing) pose('inflate', (this.t / TUNE.takeoff) * clipLength(ANIM.clips.inflate), this.cur, this.from);
+        else blendIn(namedPose('idle', target), 0.12);
         break;
       case 'dead':
         if (this.sinking) {
@@ -466,17 +508,12 @@ export class Wavell {
   /** Sinking: how far his eyes have turned up, towards the hand he has raised. */
   private get lookUp() { return this.sinking ? smooth(this.t / this.linger / 0.3) * LOOK_UP : 0; }
 
-  /** Pose space to world: squashes for landing and flipping, and follows the line. */
+  /** Pose space to world: squashes for flipping, and follows the line. */
   private transform(line: SpringLine) {
     const ground = line.sample(this.x);
     // Flipping turns him inside out through the line; under it he stays mirrored.
-    let sy = Math.cos(this.flip * Math.PI) * this.squash, sx = 1 + 0.45 * Math.sin(this.flip * Math.PI), jit = 0;
-    const grow = (k: number) => {
-      sy = k < 0.7 ? smooth(k / 0.7) * 1.12 : lerp(1.12, 1, (k - 0.7) / 0.3);
-      sx = lerp(1.6, 1, smooth(k));
-    };
-    if (this.state === 'land') grow(clamp((this.t - TUNE.landDive) / (TUNE.landTime - TUNE.landDive), 0, 1));
-    else if (this.state === 'dead' && this.death === 'fall') jit = 0.3;
+    let sy = Math.cos(this.flip * Math.PI), sx = 1 + 0.45 * Math.sin(this.flip * Math.PI), jit = 0;
+    if (this.state === 'dead' && this.death === 'fall') jit = 0.3;
     const f = this.facing, x0 = this.x, scale = this.scale;
     // Dizzy: the whole figure sways from the feet up.
     const sway = this.dizzy > 0 && this.alive ? Math.sin(this.time * 7) * 0.09 * clamp(this.dizzy / 0.8, 0, 1) : 0;
@@ -498,23 +535,23 @@ export class Wavell {
 
   /** The figure as one stroke in pose space, from the back toe to the front toe. */
   private strokePose(): number[] {
-    const p = this.cur, o: number[] = [];
+    const p = this.cur, o: number[] = [], puff = this.puff, rib = RIB * (1 - 0.5 * puff), fist = 1 - 0.6 * puff;
     const J = (j: Joint): [number, number] => [p[I[j]], p[I[j] + 1]];
     const add = (x: number, y: number) => { o.push(x, y); };
     const [hx, hy] = J('hip'), [nx, ny] = J('neck');
     const sd = Math.hypot(nx - hx, ny - hy) || 1;
     // The spine's normal, pointing backwards: up one side of the ribbon, down the other.
-    const ux = (-(ny - hy) / sd) * RIB, uy = ((nx - hx) / sd) * RIB;
+    const ux = (-(ny - hy) / sd) * rib, uy = ((nx - hx) / sd) * rib;
 
     // Out along one side to the hand, round the fist, back along the other side.
     const arm = (e: Joint, h: Joint) => {
       const [ex, ey] = J(e), [px, py] = J(h);
       const ad = Math.hypot(px - ex, py - ey) || 1;
-      const dx = (px - ex) / ad, dy = (py - ey) / ad, mx = -dy * RIB, my = dx * RIB;
+      const dx = (px - ex) / ad, dy = (py - ey) / ad, mx = -dy * rib, my = dx * rib;
       add(ex + mx, ey + my);
       add(px + mx, py + my);
       const a0 = Math.atan2(my, mx);
-      for (let i = 1; i < 5; i++) { const a = a0 - (i / 5) * Math.PI; add(px + dx * 0.6 + Math.cos(a) * 1.6, py + dy * 0.6 + Math.sin(a) * 1.6); }
+      for (let i = 1; i < 5; i++) { const a = a0 - (i / 5) * Math.PI; add(px + (dx * 0.6 + Math.cos(a) * 1.6) * fist, py + (dy * 0.6 + Math.sin(a) * 1.6) * fist); }
       add(px - mx, py - my);
       add(ex - mx, ey - my);
       add(nx, ny);
@@ -523,7 +560,12 @@ export class Wavell {
     // Round the head from the chin, front side first; the hair is a zig-zag in the
     // same loop. The stroke crosses itself at the chin: the knot.
     const head = () => {
-      const H = this.headTf();
+      // Filling up, every point of it heads out to the ring of the bubble.
+      const local = this.headTf(), R = this.puffR;
+      const H = (lx: number, ly: number) => {
+        const d = Math.hypot(lx, ly) || 1, r = lerp(d, R, puff) / d;
+        return local(lx * r, ly * r);
+      };
       const egg = (th: number) => {
         const w = 0.42 + 0.58 * Math.pow((1 - Math.cos(th)) / 2, 0.6);
         return H(4.3 * Math.sin(th) * w + 1.1 * Math.max(0, Math.cos(th)) ** 3, -6.1 * Math.cos(th));
@@ -552,24 +594,6 @@ export class Wavell {
     return o;
   }
 
-  /** The line looping up into a bubble: k = 0 flat on the line, 1 tied off. */
-  private pinch(line: SpringLine, k: number, r: number): number[] {
-    const x = this.x, g = line.sample(x), s = smooth(k);
-    const rr = r * lerp(0.3, 1, s);
-    const cy = lerp(g - rr * 0.5, this.by, s);
-    const root = lerp(10, 0.8, s);
-    const out = [x - root, line.sample(x - root)];
-    // Start at the lower right and go the long way round, so the stroke crosses
-    // itself under the loop.
-    const a0 = Math.PI / 2 - 0.55, a1 = a0 - Math.PI * 2 + 1.1;
-    for (let i = 0; i <= 16; i++) {
-      const a = lerp(a0, a1, i / 16);
-      out.push(x + Math.cos(a) * rr, cy + Math.sin(a) * rr);
-    }
-    out.push(x + root, line.sample(x + root));
-    return out;
-  }
-
   /**
    * The stroke to splice into the line, in world space and left to right, or null
    * when Wavell is not part of the line. While he holds the line up, it ends at
@@ -577,8 +601,7 @@ export class Wavell {
    * bulge, which stays within `room` of him.
    */
   stroke(line: SpringLine, room = Infinity): number[] | null {
-    if (this.state === 'fly') return this.t < TUNE.takeoff ? this.pinch(line, this.t / TUNE.takeoff, this.bubbleR) : null;
-    if (this.state === 'land' && this.t < TUNE.landDive) return this.pinch(line, 1 - this.t / TUNE.landDive, this.landR);
+    if (this.state === 'fly' && !this.puffing) return null;
     if (this.state === 'dead' && this.death === 'fall') {
       // Only what the break hasn't reached yet, starting at the burning point.
       if (this.burnt >= 1) { this.ember = null; return null; }
@@ -647,7 +670,7 @@ export class Wavell {
 
   /** His shape as he stands, or the bubble's ring: what the aura of growing plays over. */
   auraPoints(line: SpringLine): number[] {
-    if (!this.flying) return this.stroke(line) ?? [];
+    if (!this.flying || this.puffing) return this.stroke(line) ?? [];
     const out: number[] = [];
     for (let i = 0; i <= 48; i++) {
       const a = -Math.PI / 2 + (i / 48) * Math.PI * 2;
@@ -703,8 +726,15 @@ export class Wavell {
       const s = this.stroke(line);
       if (s) neon.glow(polyPath(s), COLORS.danger, 0.9, 1);
     }
-    if (this.state === 'fly') { if (this.t >= TUNE.takeoff) this.drawBubble(neon); return; }
-    if (this.state === 'land' && this.t < TUNE.landDive + 0.08) return;
+    if (this.puffing) { this.drawPuffEyes(neon, line, this.t / TUNE.takeoff); return; }
+    if (this.state === 'land') {
+      // The same, backwards, with the bubble's colour draining out of him.
+      const left = 1 - this.landed / 0.35, s = this.stroke(line);
+      if (left > 0 && s) neon.glow(polyPath(s), this.landColor, 0.85, left);
+      this.drawPuffEyes(neon, line, 1 - this.landed);
+      return;
+    }
+    if (this.state === 'fly') { this.drawBubble(neon); return; }
     if (this.burning) { this.drawBurn(neon, line); if (this.burnt > 0.5) return; }
     else if (this.state === 'dead' && !this.sinking) return;
     // Under the line: his eyes haven't come up yet, or have gone.
@@ -753,13 +783,45 @@ export class Wavell {
     neon.glow(core, '#ffffff', 1.2, 1.4);
   }
 
+  /** Filling up (k, 0..1): his eyes spread apart and go wide, then screw shut as he gets tight, then settle into the bubble's. */
+  private drawPuffEyes(neon: Neon, line: SpringLine, k: number) {
+    const tf = this.transform(line), H = this.headTf(), sc = this.scale;
+    const spread = smooth(k / 0.5), eyes = new Path2D();
+    EYES.forEach((e, i) => {
+      const end = BUBBLE_EYE_X * (i ? 1 : -1) / sc, ex = lerp(e, end, spread), ey = lerp(PUPIL_Y, BUBBLE_EYE_Y / sc, spread);
+      const P = (dx: number, dy: number) => tf(...H(ex + dx, ey + dy));
+      if (k < 0.62) {
+        // Wide open: a ring around the pupil.
+        const r = lerp(0.45, 1.9, smooth(k / 0.4)), [cx, cy] = P(0, 0);
+        eyes.moveTo(cx + r * sc, cy);
+        eyes.ellipse(cx, cy, r * sc, r * sc, 0, 0, Math.PI * 2);
+        eyes.moveTo(cx + 0.45 * sc, cy);
+        eyes.ellipse(cx, cy, 0.45 * sc, 0.45 * sc, 0, 0, Math.PI * 2);
+      } else if (k < 0.9) {
+        // Screwed shut: > <
+        const out = i ? 1 : -1;
+        polyPath([...P(out * 1.3, 0.9), ...P(-out * 1.1, 0), ...P(out * 1.3, -0.9)], false, eyes);
+      } else polyPath([...P(-0.9, i ? 0.5 : -0.4), ...P(0.9, i ? -0.4 : 0.5)], false, eyes);
+    });
+    neon.glow(eyes, COLORS.white, 0.5);
+  }
+
+  /** Yellow, green, blue, then red just before it pops (as in the original). It starts from his own yellow, the moment it lets go. */
+  private get bubbleColor() {
+    const c = clamp((this.t - TUNE.takeoff) / (this.flyTime - TUNE.takeoff), 0, 1);
+    const hue = c < 0.45 ? lerp(52, 140, c / 0.45) : c < 0.82 ? lerp(140, 235, (c - 0.45) / 0.37) : lerp(235, 360, (c - 0.82) / 0.18);
+    return `hsl(${hue % 360} 100% 60%)`;
+  }
+
   private drawBubble(neon: Neon) {
     const f = clamp(this.t / this.flyTime, 0, 1);
-    // Yellow, green, blue, then red and blinking just before it pops (as in the original).
-    const hue = f < 0.45 ? lerp(52, 140, f / 0.45) : f < 0.82 ? lerp(140, 235, (f - 0.45) / 0.37) : lerp(235, 360, (f - 0.82) / 0.18);
-    const color = `hsl(${hue % 360} 100% 60%)`;
-    const r = this.bubbleR + Math.sin(this.time * 9) * 0.35;
-    const x = this.x, y = this.by + Math.sin(this.time * 4) * 0.8;
+    const aloft = this.t - TUNE.takeoff, settled = smooth(aloft / 0.3);
+    const color = this.bubbleColor;
+    const r = this.bubbleR + Math.sin(this.time * 9) * 0.35 * settled;
+    const x = this.x, y = this.by + Math.sin(this.time * 4) * 0.8 * settled;
+    // Below the line the whole of it is mirrored, tied off towards the line, as he is.
+    const mirror = () => { if (this.side < 0) neon.ctx.transform(1, 0, 0, -1, 0, 2 * y); };
+    mirror();
     const ring = new Path2D();
     if (f > 0.82) {
       const dashes = 14;
@@ -771,6 +833,14 @@ export class Wavell {
     } else {
       // One loop of line, crossed and tied off at the bottom, with two loose ends.
       const sw = Math.sin(this.time * 5) * 0.8;
+      // What is left of his body hangs from the knot for a moment, and is drawn up into it.
+      if (settled < 1) {
+        const left = 1 - settled;
+        for (const [dx, dy] of TASSEL) {
+          ring.moveTo(x, y + r);
+          ring.lineTo(x + dx * left * this.scale, y + r + dy * left * this.scale);
+        }
+      }
       ring.moveTo(x - 2.4 + sw, y + r + 3.6);
       ring.quadraticCurveTo(x - 0.4, y + r + 1.2, x + Math.cos(Math.PI / 2 - 0.3) * r, y + Math.sin(Math.PI / 2 - 0.3) * r);
       ring.ellipse(x, y, r, r * (1 - Math.sin(this.time * 6) * 0.03), 0, Math.PI / 2 - 0.3, Math.PI / 2 + 0.3 - Math.PI * 2, true);
@@ -782,16 +852,21 @@ export class Wavell {
     shine.arc(x, y, r * 0.72, -2.5, -1.9);
     neon.glow(shine, '#ffffff', 0.45, 0.6);
     const eyes = new Path2D();
-    for (const ex of [-3.4, 3.4]) {
-      eyes.moveTo(x + ex - 0.9, y - 2.6 + (ex < 0 ? -0.5 : 0.4));
-      eyes.lineTo(x + ex + 0.9, y - 2.6 + (ex < 0 ? 0.4 : -0.5));
+    for (const ex of [-BUBBLE_EYE_X, BUBBLE_EYE_X]) {
+      eyes.moveTo(x + ex - 0.9, y - BUBBLE_EYE_Y + (ex < 0 ? -0.5 : 0.4));
+      eyes.lineTo(x + ex + 0.9, y - BUBBLE_EYE_Y + (ex < 0 ? 0.4 : -0.5));
     }
     neon.glow(eyes, COLORS.white, 0.55);
+    mirror();
   }
 }
 
 /** The aura of growing: its ripples, the share of it each takes and comes after the last, how far they spread, and the runs of light. */
 const AURA_RIPPLES = 3, AURA_RIPPLE = 0.5, AURA_GAP = 0.22, AURA_REACH = 1.1, AURA_RUNS = 2;
+
+/** The bubble's eyes, from its centre. What hangs from its knot just after it lets go. */
+const BUBBLE_EYE_X = 3.4, BUBBLE_EYE_Y = 2.6;
+const TASSEL = [[-2.6, 2.4], [-0.9, 4], [0.9, 4], [2.6, 2.4]];
 
 /** His eyes, across the head; the pupils' height; how far they roll up and forward when sinking. */
 const EYES = [0.6, 2.9], PUPIL_Y = 0.9, LOOK_UP = 0.75, LOOK_FORWARD = 0.4;

@@ -7,11 +7,18 @@ import { BUBBLE_GREEN } from './actors/bubble';
 import type { Sinepede, Skirts } from './actors/sinepede';
 import type { Game } from './game';
 import { drawHud } from './hud';
+import { BACK_LINES, backWave, depthScale } from './menu';
 
 export function drawGame(g: Game, dt: number) {
   const n = g.neon, c = n.ctx;
   n.begin(dt);
   drawBackdrop(g);
+  g.menu.drawBehind();
+  // On the menu the real line may be on its way to the front, or past it.
+  const z = g.mode === 'title' ? g.menu.z : 0;
+  n.setDepth(depthScale(z), g.menu.riseAt(z) * n.unit);
+  n.fade = g.menu.alphaAt(z);
+  n.blur = g.menu.blurAt(z);
   n.world();
   const skirts = drawLine(g);
   for (const c of g.crumbles) c.draw(n, g.line);
@@ -36,6 +43,11 @@ export function drawGame(g: Game, dt: number) {
   drawRefluxes(g);
   g.wavell.drawFeatures(n, g.line);
   g.fx.draw(n);
+  n.setDepth();
+  n.fade = 1;
+  n.blur = 0;
+  n.screen();
+  g.menu.drawFront();
   n.screen();
   c.globalCompositeOperation = 'source-over';
   drawHud(g);
@@ -53,16 +65,17 @@ function drawBackdrop(g: Game) {
     c.fillRect(x, s.y * n.lineY * 0.95, s.s, s.s);
   }
   c.globalAlpha = 1;
-  // Two faint lines far away, scrolling slower: depth without clutter.
-  for (const [off, par, amp, alpha] of [[70, 0.25, 7, 0.16], [42, 0.5, 4, 0.22]]) {
+  // Two faint lines far away, scrolling slower: depth without clutter. The menu has lines of its own.
+  n.fade = g.quiet || g.menu.backdropShows ? 1 : 0;
+  for (const line of BACK_LINES) {
     const p = new Path2D();
     for (let x = -10; x <= n.w + 10; x += 6) {
-      const wx = x / n.unit + n.camX * par;
-      const y = n.lineY - off * n.unit + Math.sin(wx / 37 + g.time * 0.7) * amp * n.unit * Math.sin(wx / 113 + g.time * 0.3);
+      const y = n.lineY - line.off * n.unit + backWave(line, x / n.unit + n.camX, n.camX, g.time) * n.unit;
       if (x === -10) p.moveTo(x, y); else p.lineTo(x, y);
     }
-    n.glow(p, COLORS.line, n.unit * 0.5, alpha);
+    n.glow(p, COLORS.line, n.unit * 0.5, line.alpha);
   }
+  n.fade = 1;
 }
 
 /**
@@ -71,9 +84,9 @@ function drawBackdrop(g: Game) {
  */
 function drawLine(g: Game): Map<Sinepede, Skirts> {
   const n = g.neon, L = g.line;
-  const right = n.camX + n.viewW + 10;
+  const right = n.camX + n.viewW + 10 + n.depthPad;
   // A creature burning at the end of the line is its end: nothing runs under it.
-  const left = Math.max(g.endX + 7, n.camX - 10, ...g.crumbles.map((c) => c.right));
+  const left = Math.max(g.endX + 7, n.camX - 10 - n.depthPad, ...g.crumbles.map((c) => c.right));
   const path = new Path2D();
   interface Knot { pts: number[]; x0: number; x1: number; flash: number; solo?: boolean }
   const knots: Knot[] = [];
@@ -90,6 +103,9 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
     const pts = b.outline(L);
     knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: 0 });
   }
+  // The menu's word is written by the line itself.
+  const word = g.menu.wordOnRealLine();
+  if (word) knots.push({ pts: word, x0: word[0], x1: word[word.length - 2], flash: 0 });
   // The bulge of a pull stops short of the next creature ahead.
   const f = g.wavell.facing;
   let room = Infinity;
@@ -128,6 +144,9 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
   }
   path.moveTo(left, L.sample(left));
   let i = Math.ceil((left - L.base) / L.spacing), next = 0;
+  // Just let go of by Wavell's bubble, the line is broken for a moment.
+  const gap = g.wavell.snap;
+  let broken = false;
   while (i < L.count) {
     const x = L.xAt(i), k = splice[next];
     if (k && x >= k.x0) {
@@ -137,11 +156,14 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
       continue;
     }
     if (x > right) break;
-    path.lineTo(x, L.y[i]);
+    if (Math.abs(x - g.wavell.x) < gap) broken = true;
+    else if (broken) { path.moveTo(x, L.y[i]); broken = false; }
+    else path.lineTo(x, L.y[i]);
     i++;
   }
-  n.glow(path, COLORS.line, 0.9, 1 + (DIFF.beatOn ? g.beat.flash * 1.6 : 0));
-  for (const k of solo) n.glow(smoothPath(k.pts), COLORS.line, 0.9, 1 + k.flash);
+  const width = g.menu.lineWidthAt(g.mode === 'title' ? g.menu.z : 0);
+  n.glow(path, COLORS.line, width, 1 + (DIFF.beatOn ? g.beat.flash * 1.6 : 0));
+  for (const k of solo) n.glow(smoothPath(k.pts), COLORS.line, width, 1 + k.flash);
   for (const k of splice) if (k.flash > 0.05) n.glow(smoothPath(k.pts), '#ffffff', 0.8, k.flash);
   // The frayed end of the line (not while he burns: then he is its end).
   const W = g.wavell;

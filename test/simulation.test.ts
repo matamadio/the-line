@@ -8,6 +8,9 @@ import { I } from '../src/data/anim';
 import { TUNE } from '../src/data/tune';
 import { MORPH_TIME, TitleDust } from '../src/game/title';
 import { TITLE_HINTS, nostalgiaButton } from '../src/game/hud';
+import { strokeWord } from '../src/game/lettering';
+import { CREDIT_NAMES, ENTRIES, MENU_FOCUS, depthScale } from '../src/game/menu';
+import { ACTIONS, bindKey, bindPad, defaultBindings, keyLabel, padLabel } from '../src/core/controls';
 import { hasGlyph } from '../src/core/pixelfont';
 import { IDLE, headlessGame, seeded } from './helpers';
 
@@ -93,7 +96,7 @@ describe('the rise on load', () => {
     run(g, TUNE.riseHold);
     expect(g.wavell.state).toBe('appear');
     expect(Math.max(...g.line.y.map(Math.abs))).toBe(0);
-    expect(g.neon.camX + g.neon.viewW / 2).toBeCloseTo(g.wavell.x);
+    expect(g.neon.camX + g.neon.viewW * MENU_FOCUS).toBeCloseTo(g.wavell.x);
     run(g, TUNE.riseTime * 0.9);
     expect(g.wavell.state).toBe('appear');
     run(g, TUNE.riseTime * 0.2);
@@ -233,6 +236,96 @@ describe('the rise on load', () => {
     }
   });
 
+  it.each([['over the line', 1], ['under the line', -1]])('floating off, his head fills up as his body shrinks, and only then he lets go of the line, %s', (_name, side) => {
+    const g = headlessGame();
+    g.start();
+    const W = g.wavell;
+    W.state = 'ground';
+    if (side < 0) { W.side = -1; W.flip = 1; }
+    run(g, 0.1);
+    const cur = () => (W as unknown as { cur: Float32Array }).cur;
+    const headTop = () => {
+      const o = W.stroke(g.line)!;
+      let far = 0;
+      for (let i = 1; i < o.length; i += 2) far = Math.max(far, Math.abs(o[i] - g.line.sample(W.x)));
+      return far;
+    };
+    const width = () => {
+      const o = W.stroke(g.line)!, near = (x: number) => Math.abs(x - W.x);
+      let w = 0;
+      // Across the head: only the points well away from the line.
+      for (let i = 0; i < o.length; i += 2) if (Math.abs(o[i + 1] - W.by) < 3) w = Math.max(w, near(o[i]));
+      return w;
+    };
+    g.tick(side > 0 ? { ...IDLE, upPressed: true } : { ...IDLE, downPressed: true });
+    expect(W.flying).toBe(true);
+    const arm0 = cur()[I.handF] - cur()[I.elbowF];
+    const spine0 = cur()[I.neck + 1] - cur()[I.hip + 1];
+    const w0 = width();
+    let by = W.by;
+    while (W.t < TUNE.takeoff - 2 / STEPS_PER_SECOND) {
+      g.tick(IDLE);
+      expect(W.stroke(g.line)).not.toBeNull();
+      expect(W.snap).toBe(0);
+      // Never a jump: the bubble's centre is his head all the way.
+      expect(Math.abs(W.by - by)).toBeLessThan(1.5);
+      by = W.by;
+    }
+    expect(width()).toBeGreaterThan(w0 + 3);
+    expect(width()).toBeCloseTo(W.bubbleR, 0);
+    expect(headTop()).toBeGreaterThan(W.bubbleR * 2);
+    expect(cur()[I.handF] - cur()[I.elbowF]).toBeLessThan(arm0);
+    expect(cur()[I.neck + 1] - cur()[I.hip + 1]).toBeLessThan(spine0 / 3);
+    // It lets go: the line breaks and closes, and the bubble stays where the head was.
+    while (W.stroke(g.line)) g.tick(IDLE);
+    expect(Math.abs(W.by - by)).toBeLessThan(1.5);
+    g.tick(IDLE);
+    expect(W.snap).toBeGreaterThan(0);
+    run(g, 0.25);
+    expect(W.snap).toBe(0);
+    expect(side * (g.line.sample(W.x) - W.by)).toBeGreaterThan(W.bubbleR);
+  });
+
+  it.each([['over the line', 1, 0], ['under the line', -1, 0], ['grown', 1, 2]])('landing, the bubble ties into the line and he grows out of the knot as his head empties, %s', (_name, side, size) => {
+    const g = headlessGame();
+    g.start();
+    const W = g.wavell;
+    W.state = 'ground';
+    W.size = size;
+    if (side < 0) { W.side = -1; W.flip = 1; }
+    run(g, 0.1);
+    g.tick(side > 0 ? { ...IDLE, upPressed: true } : { ...IDLE, downPressed: true });
+    run(g, TUNE.takeoff + 0.5);
+    const toward = side > 0 ? { ...IDLE, down: true } : { ...IDLE, up: true };
+    for (let i = 0; W.flying && i < 3 * STEPS_PER_SECOND; i++) g.tick(toward);
+    expect(W.state).toBe('land');
+    const r = W.bubbleR, by = W.by;
+    const cur = () => (W as unknown as { cur: Float32Array }).cur;
+    // His head starts as the bubble, right where it touched down.
+    g.tick(IDLE);
+    const top = () => {
+      const o = W.stroke(g.line)!;
+      let far = 0;
+      for (let i = 1; i < o.length; i += 2) far = Math.max(far, Math.abs(o[i] - g.line.sample(W.x)));
+      return far;
+    };
+    expect(top()).toBeCloseTo(Math.abs(g.line.sample(W.x) - by) + r, -1);
+    expect(cur()[I.neck + 1]).toBeLessThan(2);
+    // He only rises from there, with no jump, and ends up standing as usual.
+    let last = cur()[I.neck + 1], jump = 0;
+    const landing = () => W.state === 'land';
+    while (landing()) {
+      g.tick(IDLE);
+      if (!landing()) break;
+      jump = Math.max(jump, Math.abs(cur()[I.neck + 1] - last));
+      last = cur()[I.neck + 1];
+      expect(W.stroke(g.line)).not.toBeNull();
+    }
+    expect(jump).toBeLessThan(1);
+    expect(W.state).toBe('ground');
+    expect(last).toBeGreaterThan(12);
+  });
+
   it('does not appear again when the game starts', () => {
     const g = headlessGame();
     run(g, TUNE.riseHold + TUNE.riseTime + 0.1);
@@ -267,7 +360,7 @@ describe('going back to the start screen', () => {
     for (let i = 0; i < seconds * STEPS_PER_SECOND; i++) g.tick(IDLE);
   };
 
-  it('sinks him into the line and lets him rise again in the middle of the screen, with the line whole', () => {
+  it('sinks him into the line and lets him rise again beside the word on the menu, with the line whole', () => {
     const g = headlessGame();
     g.start();
     run(g, 2);
@@ -284,7 +377,7 @@ describe('going back to the start screen', () => {
     run(g, TUNE.riseHold + TUNE.riseTime);
     expect(g.wavell.state).toBe('ground');
     expect(g.endX).toBe(g.wavell.x - 1000);
-    expect(g.neon.camX + g.neon.viewW / 2).toBeCloseTo(g.wavell.x);
+    expect(g.neon.camX + g.neon.viewW * MENU_FOCUS).toBeCloseTo(g.wavell.x);
   });
 
   it('only runs the word through its change coming from FLATLINED', () => {
@@ -386,7 +479,10 @@ describe('the title coming apart', () => {
 describe('nostalgia mode', () => {
   it('has a pixel font for every character the game writes', () => {
     const texts = [...TITLE_HINTS, '← → walk   ↓ through the line   ↑ float / back up', 'left thumb: walk  ·  down: through the line', 'SWIPE ↔ to pull  ·  swipe ↕ to wipe',
-      'WRONG ATTACK, IT GREW! BACKWAVE: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM'];
+      'WRONG ATTACK, IT GREW! BACKWAVE: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM', ...ENTRIES, ...CREDIT_NAMES, ...ACTIONS.map((a) => a.label),
+      '↑ ↓ choose   Enter select', 'swipe to choose   tap to select', 'Enter to go back', 'PRESS A KEY...', 'PRESS A BUTTON...', '< KEYBOARD >', '< JOYPAD >', 'RESTORE DEFAULTS',
+      'NO JOYPAD FOUND: CONNECT ONE AND PRESS A BUTTON', 'THE LEFT STICK WALKS AS WELL   ·   BACK: MENU', 'Esc: leave it as it is', 'TOWARDS THE LINE: THROUGH IT', 'SWIPE SIDEWAYS: PULL', 'SWIPE UP OR DOWN: WIPE',
+      ...Object.values(defaultBindings().keys).flat().map(keyLabel), ...Array.from({ length: 18 }, (_, i) => padLabel(i))];
     for (const t of texts) for (const ch of t) expect(hasGlyph(ch), ch).toBe(true);
   });
 
@@ -402,5 +498,226 @@ describe('nostalgia mode', () => {
     expect(g.neon.retro).toBe(false);
     expect(resize).toHaveBeenCalledTimes(2);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('the menu', () => {
+  const run = (g: ReturnType<typeof headlessGame>, seconds: number) => {
+    for (let i = 0; i < seconds * STEPS_PER_SECOND; i++) g.tick(IDLE);
+  };
+  /** The title, with him up and the line settled. */
+  const ready = () => {
+    const g = headlessGame();
+    run(g, TUNE.riseHold + TUNE.riseTime + 0.5);
+    return g;
+  };
+
+  it('goes round in circles, in either direction', () => {
+    const g = ready(), seen = [ENTRIES[g.menu.selected]];
+    for (let i = 0; i < 3; i++) { g.menu.go(1); run(g, 1); seen.push(ENTRIES[g.menu.selected]); }
+    expect(seen).toEqual(['START', 'CONTROL', 'CREDITS', 'START']);
+    g.menu.go(-1);
+    run(g, 1);
+    expect(ENTRIES[g.menu.selected]).toBe('CREDITS');
+  });
+
+  it('sinks him on the line he leaves while he rises on the one coming to the front', () => {
+    const g = ready();
+    g.menu.go(1);
+    expect(g.menu.ghost?.wavell.sinking).toBe(true);
+    expect(g.wavell.state).toBe('appear');
+    expect(g.menu.z).toBeGreaterThan(0.9);
+    run(g, 0.37);
+    expect(g.menu.z).toBeGreaterThan(0);
+    expect(g.menu.z).toBeLessThan(1);
+    run(g, 0.5);
+    expect(g.menu.ghost).toBeNull();
+    expect(g.menu.z).toBeCloseTo(0);
+    expect(g.wavell.alive).toBe(true);
+  });
+
+  it('brings the new line up from past the view going the other way', () => {
+    const g = ready();
+    g.menu.go(-1);
+    expect(g.menu.z).toBeLessThan(-0.9);
+    run(g, 1);
+    expect(g.menu.z).toBeCloseTo(0);
+  });
+
+  it('keeps presses that come during a move for after it', () => {
+    const g = ready();
+    g.menu.go(1);
+    g.menu.go(1);
+    expect(g.menu.queue).toBe(1);
+    run(g, 2);
+    expect(ENTRIES[g.menu.selected]).toBe('CREDITS');
+    expect(g.menu.queue).toBe(0);
+  });
+
+  it('fades and blurs the lines with distance, and shows only the two behind the front one', () => {
+    const g = ready();
+    expect(g.menu.alphaAt(0)).toBe(1);
+    expect(g.menu.alphaAt(1)).toBeLessThan(0.5);
+    expect(g.menu.alphaAt(2)).toBeLessThan(g.menu.alphaAt(1));
+    expect(g.menu.alphaAt(3)).toBe(0);
+    expect(g.menu.blurAt(0)).toBe(0);
+    expect(g.menu.blurAt(2)).toBeGreaterThan(g.menu.blurAt(1));
+  });
+
+  it('makes the line coming from the back wiggle like the background, and flat by the time it arrives', () => {
+    const g = ready();
+    g.menu.go(1);
+    run(g, 0.1);
+    const wiggle = () => Math.max(...Array.from({ length: 150 }, (_, i) => Math.abs(g.line.sample(g.neon.camX + i * 2))));
+    expect(wiggle()).toBeGreaterThan(1);
+    run(g, 1);
+    expect(g.menu.settled).toBe(true);
+    expect(wiggle()).toBeLessThan(3);
+  });
+
+  it('draws the lines thinner behind the front, and the real line as ever during a game', () => {
+    const g = ready();
+    expect(g.menu.lineWidthAt(0)).toBe(0.9);
+    expect(g.menu.lineWidthAt(1) * depthScale(1)).toBeCloseTo(0.5);
+    expect(g.menu.lineWidthAt(2) * depthScale(2)).toBeCloseTo(0.5);
+  });
+
+  it('writes each word in one stroke that starts and ends flat on the line, at its far ends', () => {
+    for (const entry of ENTRIES) {
+      const { pts, width } = strokeWord(entry);
+      expect(pts[1]).toBeCloseTo(0, 1);
+      expect(pts[pts.length - 1]).toBeCloseTo(0, 1);
+      for (let i = 2; i < pts.length; i += 2) {
+        expect(pts[i]).toBeGreaterThanOrEqual(pts[0]);
+        expect(pts[i]).toBeLessThanOrEqual(pts[pts.length - 2]);
+        expect(Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1])).toBeLessThan(3);
+      }
+      expect(pts[pts.length - 2] - pts[0]).toBeCloseTo(width, 0);
+    }
+  });
+
+  it('pulls the line in to choose, and starts the game with the haul', () => {
+    const g = ready();
+    g.menu.choose();
+    expect(g.mode).toBe('title');
+    g.tick(IDLE);
+    expect(g.wavell.state).toBe('drag');
+    expect(g.wavell.attack).toBe('pull');
+    g.menu.go(1);
+    expect(g.menu.queue).toBe(0);
+    run(g, 2);
+    expect(g.mode).toBe('play');
+    expect(g.titleDust).not.toBeNull();
+    expect(g.menu.z).toBeCloseTo(0);
+  });
+
+  it('waits for the move to finish when asked to choose during one', () => {
+    const g = ready();
+    g.menu.go(-1);
+    g.menu.go(-1);
+    g.menu.choose();
+    expect(g.mode).toBe('title');
+    run(g, 4);
+    expect(g.menu.page).toBe('control');
+  });
+
+  it('keeps him under the line on a page of its own, and lets him back up after', () => {
+    const g = ready();
+    g.menu.go(1);
+    run(g, 1);
+    g.menu.choose();
+    run(g, 2);
+    expect(g.menu.page).toBe('control');
+    run(g, 3);
+    expect(g.wavell.state).toBe('dead');
+    expect(g.menu.z).toBe(-1);
+    g.menu.back();
+    run(g, 1);
+    expect(g.menu.page).toBe('main');
+    expect(g.menu.z).toBeCloseTo(0);
+    expect(g.wavell.alive).toBe(true);
+  });
+
+  it('runs the names along the line on the credits page, which stays where it is', () => {
+    const g = ready();
+    g.menu.go(-1);
+    run(g, 1);
+    g.menu.choose();
+    run(g, 2);
+    expect(g.menu.page).toBe('credits');
+    run(g, 2);
+    expect(g.menu.scroll).toBeGreaterThan(50);
+    expect(g.menu.z).toBeCloseTo(0);
+  });
+
+  it('takes a new key from the player, and Esc leaves things as they were', () => {
+    const g = ready();
+    g.menu.capturing = 'pull';
+    g.menu.captured({ key: 'Escape' });
+    expect(g.menu.capturing).toBeNull();
+    expect(g.input.binds.keys.pull[0]).toBe('KeyX');
+    g.menu.capturing = 'pull';
+    g.menu.captured({ key: 'KeyM' });
+    expect(g.menu.capturing).toBe('pull');
+    expect(g.menu.note).toContain('M');
+    g.menu.captured({ key: 'KeyQ' });
+    expect(g.menu.capturing).toBeNull();
+    expect(g.input.binds.keys.pull).toEqual(['KeyQ']);
+  });
+
+  it('keeps the background lines on going back, until they have become the menu again', () => {
+    const g = ready();
+    expect(g.menu.backdropShows).toBe(false);
+    g.start();
+    expect(g.menu.backdropShows).toBe(true);
+    g.backToTitle(false);
+    expect(g.menu.backdropShows).toBe(true);
+    expect(g.menu.showing).toBe(false);
+    run(g, 0.5);
+    expect(g.menu.showing).toBe(true);
+    expect(g.menu.backdropShows).toBe(false);
+    expect(g.menu.stack).toBeLessThan(1);
+    run(g, 0.6);
+    expect(g.menu.stack).toBe(1);
+  });
+
+  it('after a game over, waits for the word to start turning into the title', () => {
+    const g = ready();
+    g.start();
+    g.backToTitle(true);
+    run(g, 0.5);
+    expect(g.menu.backdropShows).toBe(true);
+    run(g, MORPH_TIME);
+    expect(g.menu.stack).toBe(1);
+    expect(g.menu.backdropShows).toBe(false);
+  });
+
+  it('forgets where it was on going back to the start screen', () => {
+    const g = ready();
+    g.menu.go(1);
+    run(g, 1);
+    g.start();
+    g.backToTitle(false);
+    expect(g.menu.selected).toBe(0);
+    expect(g.menu.ghost).toBeNull();
+  });
+});
+
+describe('the bindings', () => {
+  it('swap when a key or button already has a job, so nothing is left without one', () => {
+    const b = defaultBindings();
+    expect(bindKey(b, 'pause', 'KeyX')).toBe(true);
+    expect(b.keys.pause).toEqual(['KeyX']);
+    expect(b.keys.pull).not.toContain('KeyX');
+    expect(b.keys.pull.length).toBeGreaterThan(0);
+    bindPad(b, 'drag', 2);
+    expect(b.pad.drag).toEqual([2]);
+    expect(b.pad.pull).toEqual([0]);
+  });
+
+  it('refuse the keys with a job of their own', () => {
+    const b = defaultBindings();
+    expect(bindKey(b, 'drag', 'KeyM')).toBe(false);
+    expect(b.keys.drag).toContain('KeyZ');
   });
 });
