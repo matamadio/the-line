@@ -3,11 +3,14 @@
 
 import { DIFF } from '../src/data/difficulty';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Controls } from '../src/core/input';
+import type { Controls, Input } from '../src/core/input';
+import { sfx } from '../src/core/sfx';
+import { STYLES } from '../src/core/styles';
+import { METERS } from '../src/core/music';
 import { I } from '../src/data/anim';
 import { TUNE } from '../src/data/tune';
 import { MORPH_TIME, TitleDust } from '../src/game/title';
-import { TITLE_HINTS, nostalgiaButton } from '../src/game/hud';
+import { TITLE_HINTS, audioButton, nostalgiaButton } from '../src/game/hud';
 import { strokeWord } from '../src/game/lettering';
 import { CREDIT_NAMES, ENTRIES, MENU_FOCUS, depthScale } from '../src/game/menu';
 import { ACTIONS, bindKey, bindPad, defaultBindings, keyLabel, padLabel } from '../src/core/controls';
@@ -15,7 +18,7 @@ import { hasGlyph } from '../src/core/pixelfont';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 // No audio in tests. start() would otherwise open an AudioContext.
-vi.mock('../src/core/sfx', () => ({ sfx: { pause() {}, unlock() {}, play() {}, toggleMute() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { pause() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
 
 const SECONDS = 120;
 const STEPS_PER_SECOND = 120;
@@ -482,6 +485,7 @@ describe('nostalgia mode', () => {
       'WRONG ATTACK, IT GREW! BACKWAVE: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM', ...ENTRIES, ...CREDIT_NAMES, ...ACTIONS.map((a) => a.label),
       '↑ ↓ choose   Enter select', 'swipe to choose   tap to select', 'Enter to go back', 'PRESS A KEY...', 'PRESS A BUTTON...', '< KEYBOARD >', '< JOYPAD >', 'RESTORE DEFAULTS',
       'NO JOYPAD FOUND: CONNECT ONE AND PRESS A BUTTON', 'THE LEFT STICK WALKS AS WELL   ·   BACK: MENU', 'Esc: leave it as it is', 'TOWARDS THE LINE: THROUGH IT', 'SWIPE SIDEWAYS: PULL', 'SWIPE UP OR DOWN: WIPE',
+      'AUDIO', 'SOUND', 'MUSIC', 'TIME', '> CLOSE <', '< ON >', '< OFF >', 'MUSIC BITCRUSHED', ...STYLES.map((st) => `< ${st.name} >`), ...METERS.map((m) => `< ${m.id} >`),
       ...Object.values(defaultBindings().keys).flat().map(keyLabel), ...Array.from({ length: 18 }, (_, i) => padLabel(i))];
     for (const t of texts) for (const ch of t) expect(hasGlyph(ch), ch).toBe(true);
   });
@@ -498,6 +502,49 @@ describe('nostalgia mode', () => {
     expect(g.neon.retro).toBe(false);
     expect(resize).toHaveBeenCalledTimes(2);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('the audio menu', () => {
+  const press = (over: Partial<Input>) => ({ menuUp: false, menuDown: false, menuLeft: false, menuRight: false, confirm: false, mouseX: -1, mouseY: -1, ...over }) as Input;
+
+  it('opens from the speaker button without muting, and the game waits for it', () => {
+    const g = headlessGame();
+    g.start();
+    const [x, y] = audioButton(g.neon);
+    g.input.uiTap!(x, y)!();
+    expect(g.audio.open).toBe(true);
+    expect(g.paused).toBe(true);
+    expect(sfx.muted).toBe(true);
+    // Every tap goes to it while it is open; one outside the window closes it.
+    g.input.uiTap!(1, 1)!();
+    expect(g.audio.open).toBe(false);
+    expect(g.paused).toBe(false);
+  });
+
+  it('leaves a game paused by the player paused', () => {
+    const g = headlessGame();
+    g.start();
+    g.setPaused(true);
+    g.openAudio();
+    g.closeAudio();
+    expect(g.paused).toBe(true);
+  });
+
+  it('changes the time signature from the next bar', () => {
+    const g = headlessGame();
+    g.start();
+    g.openAudio();
+    g.audio.row = 2;
+    g.audio.handle(press({ menuRight: true }));
+    expect(g.beat.beats).toBe(4);
+    g.closeAudio();
+    for (let i = 0; i < 96 * 4 + 1; i++) g.tick(IDLE);
+    expect(g.beat.beats).toBe(5);
+    g.audio.row = 2;
+    g.audio.handle(press({ menuLeft: true }));
+    for (let i = 0; i < 96 * 5; i++) g.tick(IDLE);
+    expect(g.beat.beats).toBe(4);
   });
 });
 
