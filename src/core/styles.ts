@@ -163,5 +163,42 @@ const chiptune: Style = {
   },
 };
 
-export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune];
+// ---------------------------------------------------------------- Lotus: koto, shakuhachi and taiko
+
+/**
+ * The in scale on A (A, B flat, D, E, F), the sound of Japanese koto music. It keeps
+ * A and E, so the Sinepede's notes still belong.
+ */
+const IN_SCALE = [-12, -11, -7, -5, -4, 0, 1, 5, 7, 8, 12];
+const LOTUS_PROG = [chord(-24, -12, -5, 0), chord(-28, -16, -12, -7), chord(-31, -7, -4, 0), chord(-35, -11, -7, -4)];
+const lotusTune = new Tune(IN_SCALE, 0.35);
+/** The koto's pattern over the chord's strings, two notes a beat, with the octave above the root on top. */
+const KOTO = [0, 1, 2, 3, 2, 1];
+
+const lotus: Style = {
+  id: 'lotus', name: 'LOTUS', swing: 0,
+  tint: { wave: 'triangle', cutoff: 5000, echo: 0.3, echoBeats: 1 },
+  play(s, b) {
+    const c = chordAt(LOTUS_PROG, b), e = b.energy, strings = [...c.notes, c.notes[0] + 12];
+    // A big drum on the bar, smaller ones on the other strong beats, and clappers on the backbeat.
+    if (b.beat === 0) s.taiko(b.t(0), 0.8, 1.3);
+    else if (b.group) s.taiko(b.t(0), 0.6);
+    if (b.groupEnd && !b.group && e > 0.3) s.block(b.t(0), 0.3, 1900);
+    if (e > 0.75 && b.groupEnd) s.taiko(b.t(3), 0.3, 0.8);
+    // The bar opens with a low string and a sweep up the koto.
+    if (b.beat === 0) {
+      s.pluck(b.t(0), hz(c.root), 0.9, { bright: 0.3, seconds: 1.6, damp: 0.997 });
+      s.strum(b.t(0), strings.map(hz), 0.7, { bright: 0.75, seconds: 1.2, gap: 0.035 });
+    } else for (const k of e > 0.3 ? [0, 2] : [0]) {
+      s.pluck(b.t(k), hz(strings[KOTO[(b.beat * 2 + k / 2) % KOTO.length]]), 0.45, { bright: 0.75, seconds: 1, damp: 0.996 });
+    }
+    // The flute: a long note on the strong beats, once the game is under way.
+    if (e > 0.55 && b.group) {
+      const n = lotusTune.next(c, b.beat === 0);
+      if (n !== null) s.flute(b.t(0), hz(n), b.len * 1.6, 0.16);
+    }
+  },
+};
+
+export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune, lotus];
 export const styleById = (id: string) => STYLES.find((s) => s.id === id) ?? STYLES[0];

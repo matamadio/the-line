@@ -226,6 +226,40 @@ export class Synth {
     src.start(at);
   }
 
+  /**
+   * A bamboo flute, like a shakuhachi: a soft tone that breathes in, with a little air
+   * in it and a vibrato that only starts once the note has settled.
+   */
+  flute(at: number, freq: number, dur: number, vol: number) {
+    const ctx = this.ctx, end = at + dur + 0.8;
+    const osc = ctx.createOscillator(), g = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq * 0.97, at);
+    osc.frequency.linearRampToValueAtTime(freq, at + 0.12);
+    lfo.frequency.value = 5;
+    depth.gain.setValueAtTime(0, at);
+    depth.gain.linearRampToValueAtTime(freq * 0.012, at + Math.min(dur, 0.5));
+    lfo.connect(depth).connect(osc.frequency);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.12);
+    g.gain.setTargetAtTime(0, at + dur, 0.15);
+    osc.connect(g).connect(this.out);
+    for (const o of [osc, lfo]) { o.start(at); o.stop(end); }
+    // The breath: noise around the note, strongest as it starts.
+    const air = ctx.createBiquadFilter();
+    air.type = 'bandpass';
+    air.frequency.value = freq * 2;
+    air.Q.value = 2;
+    air.connect(this.hit(at, vol * 0.5, 0.05, 0.2, end));
+    this.burst(at, end - at, air);
+  }
+
+  /** A big drum, like a taiko: a deep, slow-dying thump with the skin's slap on top. */
+  taiko(at: number, vol = 1, size = 1) {
+    this.kick(at, vol, { from: 110 / size, to: 42 / size, decay: 0.18 * size });
+    this.snare(at, vol * 0.35, { band: 320 / size, decay: 0.06, tone: 0 });
+  }
+
   /** A strummed chord: the strings one after another, a few milliseconds apart. */
   strum(at: number, freqs: readonly number[], vol: number, o: { bright?: number; seconds?: number; gap?: number } = {}) {
     const { gap = 0.012, ...rest } = o;
