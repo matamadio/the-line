@@ -133,12 +133,14 @@ const bluegrass: Style = {
       s.strum(b.t(0), c.notes.map((n) => hz(n + 12)), 0.8, { bright: 0.6 });
       s.snare(b.t(0), 0.18, { band: 2500, decay: 0.04, tone: 0 });
     }
+    // The banjo rolls in the background: in the chord's own octave with the drone a fifth
+    // above the root, mellow rather than bright, and in sixteenths only on the late levels.
     if (e > 0.25) {
-      const strings = [...c.notes.map((n) => n + 12), c.root + 19];
-      const every = e > 0.5 ? 1 : 2;
+      const strings = [...c.notes, c.root + 7];
+      const every = e > 0.75 ? 1 : 2;
       for (let k = 0; k < 4; k += every) {
         const i = ROLL[(b.beat * 4 + k) % ROLL.length];
-        s.pluck(b.t(k), hz(strings[Math.min(i, strings.length - 1)]), 0.5, { bright: 0.85, seconds: 0.5, damp: 0.99 });
+        s.pluck(b.t(k), hz(strings[Math.min(i, strings.length - 1)]), 0.2, { bright: 0.55, seconds: 0.5, damp: 0.99 });
       }
     }
     if (e > 0.7 && b.group) s.block(b.t(2), 0.12, 700);
