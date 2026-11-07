@@ -27,6 +27,16 @@ const HUM_VOLUME = 0.09;
 /** Brighter waves sound louder at the same level: this evens them out. */
 const WAVE_LOUDNESS: Partial<Record<OscillatorType, number>> = { square: 0.45, sawtooth: 0.5, triangle: 0.9 };
 
+/** The nearest pitch to f whose note is in the scale (semitones above A, 0 to 11). Without a scale, f itself. */
+export function onScale(f: number, scale?: readonly number[]) {
+  if (!scale) return f;
+  const n = 12 * Math.log2(f / 440), base = Math.round(n);
+  for (const d of [0, 1, -1, 2, -2, 3, -3]) {
+    if (scale.includes((((base + d) % 12) + 12) % 12)) return 440 * 2 ** ((base + d) / 12);
+  }
+  return f;
+}
+
 /** A hard clipping curve for the WaveShaper: sharp corners, like the urchin's outline. */
 const DISTORTION = (() => {
   const curve = new Float32Array(1024);
@@ -117,6 +127,8 @@ class Sfx {
     if (styled) {
       osc.type = this.style.tint.wave;
       volume *= WAVE_LOUDNESS[osc.type] ?? 1;
+      freq = onScale(freq, this.style.scale);
+      glide = onScale(glide, this.style.scale);
     }
     osc.frequency.setValueAtTime(freq, at);
     osc.frequency.exponentialRampToValueAtTime(glide, at + seconds);

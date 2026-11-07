@@ -134,13 +134,13 @@ export class Synth {
     this.burst(at, end - at, f);
   }
 
-  /** A woodblock or a rim: a very short, hollow tone. */
-  block(at: number, vol = 1, freq = 900) {
-    const osc = this.ctx.createOscillator();
+  /** A woodblock or a rim: a very short, hollow tone. A longer decay makes a temple block. */
+  block(at: number, vol = 1, freq = 900, decay = 0.018) {
+    const osc = this.ctx.createOscillator(), end = at + decay * 7;
     osc.frequency.value = freq;
-    osc.connect(this.hit(at, vol, 0.001, 0.018, at + 0.12));
+    osc.connect(this.hit(at, vol, 0.001, decay, end));
     osc.start(at);
-    osc.stop(at + 0.12);
+    osc.stop(end);
   }
 
   /** A plain note: one oscillator, through a lowpass if asked, held for `dur` then let go. */
@@ -226,8 +226,68 @@ export class Synth {
     src.start(at);
   }
 
+  /**
+   * A bamboo flute, like a shakuhachi: a soft tone that breathes in, with a little air
+   * in it and a vibrato that only starts once the note has settled.
+   */
+  flute(at: number, freq: number, dur: number, vol: number) {
+    const ctx = this.ctx, end = at + dur + 0.8;
+    const osc = ctx.createOscillator(), g = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq * 0.97, at);
+    osc.frequency.linearRampToValueAtTime(freq, at + 0.12);
+    lfo.frequency.value = 5;
+    depth.gain.setValueAtTime(0, at);
+    depth.gain.linearRampToValueAtTime(freq * 0.012, at + Math.min(dur, 0.5));
+    lfo.connect(depth).connect(osc.frequency);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.12);
+    g.gain.setTargetAtTime(0, at + dur, 0.15);
+    osc.connect(g).connect(this.out);
+    for (const o of [osc, lfo]) { o.start(at); o.stop(end); }
+    // The breath: noise around the note, strongest as it starts.
+    const air = ctx.createBiquadFilter();
+    air.type = 'bandpass';
+    air.frequency.value = freq * 2;
+    air.Q.value = 2;
+    air.connect(this.hit(at, vol * 0.5, 0.05, 0.2, end));
+    this.burst(at, end - at, air);
+  }
+
+  /**
+   * A soft, round bass, like a gently plucked upright: a sine with a quiet octave above it,
+   * kept dark by a lowpass, with a cushioned start and a slow fall rather than a twang.
+   */
+  bass(at: number, freq: number, dur: number, vol: number) {
+    const ctx = this.ctx, end = at + dur + 0.6;
+    const f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'lowpass';
+    f.frequency.value = 380;
+    f.Q.value = 0.5;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.015);
+    g.gain.setTargetAtTime(vol * 0.45, at + 0.015, 0.22);
+    g.gain.setTargetAtTime(0, at + dur, 0.09);
+    f.connect(g).connect(this.out);
+    for (const [mult, wave, level] of [[1, 'sine', 1], [2, 'triangle', 0.22]] as const) {
+      const osc = ctx.createOscillator(), lv = ctx.createGain();
+      osc.type = wave;
+      osc.frequency.value = freq * mult;
+      lv.gain.value = level;
+      osc.connect(lv).connect(f);
+      osc.start(at);
+      osc.stop(end);
+    }
+  }
+
+  /** A big drum, like a taiko: a deep, slow-dying thump with the skin's slap on top. */
+  taiko(at: number, vol = 1, size = 1) {
+    this.kick(at, vol, { from: 110 / size, to: 42 / size, decay: 0.18 * size });
+    this.snare(at, vol * 0.35, { band: 320 / size, decay: 0.06, tone: 0 });
+  }
+
   /** A strummed chord: the strings one after another, a few milliseconds apart. */
-  strum(at: number, freqs: readonly number[], vol: number, o: { bright?: number; seconds?: number; gap?: number } = {}) {
+  strum(at: number, freqs: readonly number[], vol: number, o: { bright?: number; seconds?: number; damp?: number; gap?: number } = {}) {
     const { gap = 0.012, ...rest } = o;
     freqs.forEach((f, i) => this.pluck(at + i * gap, f, vol / Math.sqrt(freqs.length), { seconds: 0.6, ...rest }));
   }

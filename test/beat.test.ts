@@ -173,3 +173,17 @@ describe('the beat in the game', () => {
     expect([a.wavell.x, a.endX, a.line.sample(a.wavell.x + 50)]).toEqual([b.wavell.x, b.endX, b.line.sample(b.wavell.x + 50)]);
   });
 });
+
+describe('the music styles', () => {
+  it('keeps every note of a style with a scale on that scale', async () => {
+    const { onScale } = await vi.importActual<typeof import('../src/core/sfx')>('../src/core/sfx');
+    const { STYLES } = await import('../src/core/styles');
+    const lotus = STYLES.find((s) => s.id === 'lotus')!;
+    for (let f = 200; f < 2000; f *= 1.013) {
+      const n = Math.round(12 * Math.log2(onScale(f, lotus.scale) / 440));
+      expect(lotus.scale).toContain(((n % 12) + 12) % 12);
+    }
+    expect(onScale(440, lotus.scale)).toBeCloseTo(440);
+    expect(onScale(555, undefined)).toBe(555);
+  });
+});

@@ -18,6 +18,11 @@ export interface Style {
    * always stays a pure sine, as it looks), a lowpass over them, and an echo, in beats.
    */
   tint: { wave: OscillatorType; cutoff: number; echo: number; echoBeats: number };
+  /**
+   * The notes of its scale, in semitones above A (0 to 11), if it keeps to one. Wavell's
+   * tones are then moved to the nearest of them, so every note heard belongs to it.
+   */
+  scale?: readonly number[];
   play(s: Synth, b: Beat): void;
 }
 
@@ -118,20 +123,24 @@ const bluegrass: Style = {
   tint: { wave: 'triangle', cutoff: 6000, echo: 0.1, echoBeats: 0.25 },
   play(s, b) {
     const c = chordAt(GRASS_PROG, b), e = b.energy;
-    // Boom on the strong beats, root then fifth; chick on the others.
+    // Boom on the strong beats, root then fifth; chick on the others. The boom is a soft,
+    // round bass kept between 55 and 110 Hz: deep, but still there on small speakers.
     if (b.group) {
-      const first = b.beat === 0;
-      s.pluck(b.t(0), hz((first ? c.root : c.root + 7) - 24), 1.2, { bright: 0.15, seconds: 0.9, damp: 0.994 });
+      let n = (b.beat === 0 ? c.root : c.root + 7) - 24;
+      if (n < -36) n += 12;
+      s.bass(b.t(0), hz(n), b.len * 0.9, 0.45);
     } else {
       s.strum(b.t(0), c.notes.map((n) => hz(n + 12)), 0.8, { bright: 0.6 });
       s.snare(b.t(0), 0.18, { band: 2500, decay: 0.04, tone: 0 });
     }
+    // The banjo rolls in the background: in the chord's own octave with the drone a fifth
+    // above the root, mellow rather than bright, and in sixteenths only on the late levels.
     if (e > 0.25) {
-      const strings = [...c.notes.map((n) => n + 12), c.root + 19];
-      const every = e > 0.5 ? 1 : 2;
+      const strings = [...c.notes, c.root + 7];
+      const every = e > 0.75 ? 1 : 2;
       for (let k = 0; k < 4; k += every) {
         const i = ROLL[(b.beat * 4 + k) % ROLL.length];
-        s.pluck(b.t(k), hz(strings[Math.min(i, strings.length - 1)]), 0.5, { bright: 0.85, seconds: 0.5, damp: 0.99 });
+        s.pluck(b.t(k), hz(strings[Math.min(i, strings.length - 1)]), 0.2, { bright: 0.55, seconds: 0.5, damp: 0.99 });
       }
     }
     if (e > 0.7 && b.group) s.block(b.t(2), 0.12, 700);
@@ -163,5 +172,59 @@ const chiptune: Style = {
   },
 };
 
-export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune];
+// ---------------------------------------------------------------- Lotus: bamboo flutes, koto and temple woods
+
+/**
+ * The yo scale on A (A, B, D, E, F sharp): the bright pentatonic of Japanese folk songs,
+ * and the scale everything in Lotus keeps to, Wavell's tones included. It keeps A and E,
+ * the Sinepede's notes.
+ */
+const YO = [0, 2, 5, 7, 9];
+/** The scale across the instruments' range, in semitones from A 440. */
+const YO_RANGE = [-12, -10, -7, -5, -3, 0, 2, 5, 7, 9, 12];
+/** No Western chords: a soft drone and its fifth, moving slowly between A, D and E, all of them in the scale. */
+const LOTUS_PROG = [chord(-24, -12, -5, 0), chord(-19, -7, 0, 5), chord(-24, -12, -5, 0), chord(-17, -5, 2, 7)];
+/** The flute sings in the middle and top of the range, where the scale sounds brightest. */
+const shakuhachi = new Tune(YO_RANGE.slice(3), 0.35);
+const koto = new Tune(YO_RANGE.slice(0, 9), 0.4);
+/** The koto's sweep up its strings, the sound it is best known for. */
+const SWEEP = [-12, -10, -7, -5, -3, 0];
+
+const lotus: Style = {
+  id: 'lotus', name: 'LOTUS', swing: 0,
+  tint: { wave: 'sine', cutoff: 3000, echo: 0.3, echoBeats: 1.5 },
+  scale: YO,
+  play(s, b) {
+    const c = chordAt(LOTUS_PROG, b, 2), e = b.energy, first = b.beat === 0;
+    // Under it all, a soft hum on the drone and its fifth: no plucked bass, no drum.
+    if (first) {
+      const dur = restOfBar(b);
+      s.tone(b.t(0), hz(c.root), dur, 0.1, { attack: 0.6, release: 0.8, cutoff: 500 });
+      s.tone(b.t(0), hz(c.root + 7), dur, 0.045, { attack: 0.8, release: 0.8, cutoff: 700 });
+    }
+    // Temple woods: a hollow block on the strong beats, a light tap on the backbeats.
+    if (b.group) s.block(b.t(0), first ? 0.2 : 0.12, 520, 0.05);
+    if (b.groupEnd && !b.group && e > 0.3) s.block(b.t(0), 0.06, 1150, 0.025);
+    // The koto: a gentle sweep every other bar, and a few unhurried notes in between.
+    if (first && b.bar % 2 === 0) s.strum(b.t(0), SWEEP.map(hz), 0.34, { bright: 0.45, seconds: 1.6, gap: 0.08, damp: 0.998 });
+    else {
+      const n = koto.next(c, b.group);
+      if (n !== null) s.pluck(b.t(0), hz(n), 0.26, { bright: 0.45, seconds: 1.4, damp: 0.998 });
+      // Now and then the same string again, an octave up, as it dies away.
+      if (n !== null && e > 0.45 && noteRand() < 0.3) s.pluck(b.t(2), hz(n + 12), 0.09, { bright: 0.45, seconds: 1.2, damp: 0.998 });
+    }
+    // The shakuhachi: long breaths on the bar and half way through it, with rests between.
+    if (first || (b.group && e > 0.4)) {
+      const n = shakuhachi.next(c, first);
+      if (n !== null) s.flute(b.t(0), hz(n), Math.min(restOfBar(b), b.len * 3) * 0.85, 0.19);
+    }
+    // A higher flute answers at the end of the bar, quietly.
+    if (e > 0.5 && b.beat === b.meter.beats - 1 && noteRand() < 0.5) {
+      const n = shakuhachi.next(c, false);
+      if (n !== null) s.flute(b.t(1), hz(n + 12), b.len * 0.6, 0.06);
+    }
+  },
+};
+
+export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune, lotus];
 export const styleById = (id: string) => STYLES.find((s) => s.id === id) ?? STYLES[0];
