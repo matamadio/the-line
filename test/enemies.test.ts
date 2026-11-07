@@ -35,6 +35,19 @@ function run(g: ReturnType<typeof ready>, seconds: number, k = IDLE) {
   for (let i = 0; i < seconds * STEPS_PER_SECOND; i++) g.tick(k);
 }
 
+// For every test in this file: the browser APIs the game touches while it plays, and the
+// same random numbers every run, so no test passes or fails on the luck of the draw.
+const fileRandom = Math.random;
+beforeEach(() => {
+  Math.random = seeded(1);
+  vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  vi.stubGlobal('Path2D', class { moveTo() {} lineTo() {} quadraticCurveTo() {} arc() {} closePath() {} rect() {} });
+});
+afterEach(() => {
+  Math.random = fileRandom;
+  vi.unstubAllGlobals();
+});
+
 describe('enemies on the line', () => {
   const nativeRandom = Math.random;
   beforeEach(() => {
