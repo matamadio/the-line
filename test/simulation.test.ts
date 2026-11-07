@@ -549,6 +549,10 @@ describe('the audio menu', () => {
 });
 
 describe('the menu', () => {
+  // The same numbers every run, so a test can't pass or fail on the luck of the draw.
+  const nativeRandom = Math.random;
+  beforeEach(() => { Math.random = seeded(7); });
+  afterEach(() => { Math.random = nativeRandom; });
   const run = (g: ReturnType<typeof headlessGame>, seconds: number) => {
     for (let i = 0; i < seconds * STEPS_PER_SECOND; i++) g.tick(IDLE);
   };
@@ -615,7 +619,9 @@ describe('the menu', () => {
     const g = ready();
     g.menu.go(1);
     run(g, 0.1);
-    const wiggle = () => Math.max(...Array.from({ length: 150 }, (_, i) => Math.abs(g.line.sample(g.neon.camX + i * 2))));
+    // Away from his feet, which press their own dent into the line.
+    const wiggle = () => Math.max(...Array.from({ length: 150 }, (_, i) => g.neon.camX + i * 2)
+      .filter((x) => Math.abs(x - g.wavell.x) >= 15).map((x) => Math.abs(g.line.sample(x))));
     expect(wiggle()).toBeGreaterThan(1);
     run(g, 1);
     expect(g.menu.settled).toBe(true);
