@@ -134,13 +134,13 @@ export class Synth {
     this.burst(at, end - at, f);
   }
 
-  /** A woodblock or a rim: a very short, hollow tone. */
-  block(at: number, vol = 1, freq = 900) {
-    const osc = this.ctx.createOscillator();
+  /** A woodblock or a rim: a very short, hollow tone. A longer decay makes a temple block. */
+  block(at: number, vol = 1, freq = 900, decay = 0.018) {
+    const osc = this.ctx.createOscillator(), end = at + decay * 7;
     osc.frequency.value = freq;
-    osc.connect(this.hit(at, vol, 0.001, 0.018, at + 0.12));
+    osc.connect(this.hit(at, vol, 0.001, decay, end));
     osc.start(at);
-    osc.stop(at + 0.12);
+    osc.stop(end);
   }
 
   /** A plain note: one oscillator, through a lowpass if asked, held for `dur` then let go. */

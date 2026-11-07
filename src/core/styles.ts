@@ -18,6 +18,11 @@ export interface Style {
    * always stays a pure sine, as it looks), a lowpass over them, and an echo, in beats.
    */
   tint: { wave: OscillatorType; cutoff: number; echo: number; echoBeats: number };
+  /**
+   * The notes of its scale, in semitones above A (0 to 11), if it keeps to one. Wavell's
+   * tones are then moved to the nearest of them, so every note heard belongs to it.
+   */
+  scale?: readonly number[];
   play(s: Synth, b: Beat): void;
 }
 
@@ -163,39 +168,51 @@ const chiptune: Style = {
   },
 };
 
-// ---------------------------------------------------------------- Lotus: koto, shakuhachi and taiko
+// ---------------------------------------------------------------- Lotus: bamboo flutes, koto and temple woods
 
 /**
- * The in scale on A (A, B flat, D, E, F), the sound of Japanese koto music. It keeps
- * A and E, so the Sinepede's notes still belong.
+ * Hirajoshi on A (A, B, C, E, F): the koto's own tuning, and the scale everything in
+ * Lotus keeps to, Wavell's tones included. It keeps A and E, the Sinepede's notes.
  */
-const IN_SCALE = [-12, -11, -7, -5, -4, 0, 1, 5, 7, 8, 12];
-const LOTUS_PROG = [chord(-24, -12, -5, 0), chord(-28, -16, -12, -7), chord(-31, -7, -4, 0), chord(-35, -11, -7, -4)];
-const lotusTune = new Tune(IN_SCALE, 0.35);
-/** The koto's pattern over the chord's strings, two notes a beat, with the octave above the root on top. */
-const KOTO = [0, 1, 2, 3, 2, 1];
+const HIRAJOSHI = [0, 2, 3, 7, 8];
+/** The scale across the instruments' range, in semitones from A 440. */
+const HIRA_RANGE = [-12, -10, -9, -5, -4, 0, 2, 3, 7, 8, 12, 14, 15];
+/** No Western chords: a drone and its fifth, moving slowly between A, F and E, all of them in the scale. */
+const LOTUS_PROG = [chord(-24, -12, -5, 0), chord(-24, -12, -5, 0), chord(-28, -16, -9, -4), chord(-29, -17, -10, -5)];
+const shakuhachi = new Tune(HIRA_RANGE.slice(0, 11), 0.3);
+const koto = new Tune(HIRA_RANGE.slice(0, 9), 0.35);
+/** The koto's sweep up its strings, the sound it is best known for. */
+const SWEEP = [-12, -10, -9, -5, -4, 0];
 
 const lotus: Style = {
   id: 'lotus', name: 'LOTUS', swing: 0,
-  tint: { wave: 'triangle', cutoff: 5000, echo: 0.3, echoBeats: 1 },
+  tint: { wave: 'sine', cutoff: 3200, echo: 0.35, echoBeats: 1.5 },
+  scale: HIRAJOSHI,
   play(s, b) {
-    const c = chordAt(LOTUS_PROG, b), e = b.energy, strings = [...c.notes, c.notes[0] + 12];
-    // A big drum on the bar, smaller ones on the other strong beats, and clappers on the backbeat.
-    if (b.beat === 0) s.taiko(b.t(0), 0.8, 1.3);
-    else if (b.group) s.taiko(b.t(0), 0.6);
-    if (b.groupEnd && !b.group && e > 0.3) s.block(b.t(0), 0.3, 1900);
-    if (e > 0.75 && b.groupEnd) s.taiko(b.t(3), 0.3, 0.8);
-    // The bar opens with a low string and a sweep up the koto.
-    if (b.beat === 0) {
-      s.pluck(b.t(0), hz(c.root), 0.9, { bright: 0.3, seconds: 1.6, damp: 0.997 });
-      s.strum(b.t(0), strings.map(hz), 0.7, { bright: 0.75, seconds: 1.2, gap: 0.035 });
-    } else for (const k of e > 0.3 ? [0, 2] : [0]) {
-      s.pluck(b.t(k), hz(strings[KOTO[(b.beat * 2 + k / 2) % KOTO.length]]), 0.45, { bright: 0.75, seconds: 1, damp: 0.996 });
+    const c = chordAt(LOTUS_PROG, b, 2), e = b.energy, first = b.beat === 0;
+    // Temple woods: a hollow block on the strong beats, a light clack on the backbeats.
+    if (b.group) s.block(b.t(0), first ? 0.35 : 0.22, 520, 0.05);
+    if (b.groupEnd && !b.group && e > 0.3) s.block(b.t(0), 0.12, 1150, 0.025);
+    // A soft, deep drum under the bar, only once the game gets going.
+    if (first && e > 0.6) s.taiko(b.t(0), 0.25, 1.6);
+    // The koto: a low string ringing under the bar, a sweep every other bar, and a few unhurried notes.
+    if (first) s.pluck(b.t(0), hz(c.root), 0.95, { bright: 0.25, seconds: 2.4, damp: 0.998 });
+    if (first && b.bar % 2 === 0) s.strum(b.t(0), SWEEP.map(hz), 0.75, { bright: 0.7, seconds: 1.6, gap: 0.07 });
+    else {
+      const n = koto.next(c, b.group);
+      if (n !== null) s.pluck(b.t(0), hz(n), 0.48, { bright: 0.7, seconds: 1.4, damp: 0.997 });
+      // Now and then the same string again, an octave up, as it dies away.
+      if (n !== null && e > 0.45 && noteRand() < 0.35) s.pluck(b.t(2), hz(n + 12), 0.15, { bright: 0.7, seconds: 1.2, damp: 0.997 });
     }
-    // The flute: a long note on the strong beats, once the game is under way.
-    if (e > 0.55 && b.group) {
-      const n = lotusTune.next(c, b.beat === 0);
-      if (n !== null) s.flute(b.t(0), hz(n), b.len * 1.6, 0.16);
+    // The shakuhachi: long breaths on the bar and half way through it, with rests between.
+    if (first || (b.group && e > 0.4)) {
+      const n = shakuhachi.next(c, first);
+      if (n !== null) s.flute(b.t(0), hz(n), Math.min(restOfBar(b), b.len * 3) * 0.85, 0.32);
+    }
+    // A higher flute answers at the end of the bar, quietly.
+    if (e > 0.5 && b.beat === b.meter.beats - 1 && noteRand() < 0.6) {
+      const n = shakuhachi.next(c, false);
+      if (n !== null) s.flute(b.t(1), hz(n + 12), b.len * 0.6, 0.11);
     }
   },
 };
