@@ -261,7 +261,7 @@ export class Synth {
   }
 
   /** A strummed chord: the strings one after another, a few milliseconds apart. */
-  strum(at: number, freqs: readonly number[], vol: number, o: { bright?: number; seconds?: number; gap?: number } = {}) {
+  strum(at: number, freqs: readonly number[], vol: number, o: { bright?: number; seconds?: number; damp?: number; gap?: number } = {}) {
     const { gap = 0.012, ...rest } = o;
     freqs.forEach((f, i) => this.pluck(at + i * gap, f, vol / Math.sqrt(freqs.length), { seconds: 0.6, ...rest }));
   }
