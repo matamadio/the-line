@@ -74,14 +74,19 @@ Enemies on the line never overlap. Those that crawl queue up behind whatever is 
 
 A music-timing core for the game ([issue #3](https://github.com/matamadio/the-line/issues/3)). It is on by default; the first knob of the Beat group in the difficulty editor turns it off.
 
-- A click on every beat, with a higher one on the first beat of each bar. There is no recorded music: the music is meant to come from the game's own sounds.
+- The beat is music, made by the game as it plays: drums, bass and chords in the style picked in the audio menu, with more parts joining as the levels go up. There is no recorded music. See [Music](#music).
 - The line lights up on each beat, so the beat can be seen with the sound off.
 - The whole world runs at `BPM / 75`, and the tempo rises by 2 BPM per level, changing only at the start of a bar.
 - Enemies come in on the beat, one to a beat and never more than two to a bar: on beat 4 only up to level 5, and on beats 2 and 4 from level 6. The kinds take turns, the one furthest past its time going next, so the commonest doesn't take every beat.
 - What they do with a sound also waits for the beat: a Disturchin's spikes, a Backwave or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses are whole beats.
+- The time signature (2/4, 3/4, 4/4, 5/4, 6/8 or 7/8, from the audio menu) sets how many beats make a bar. In any of them, enemies come in on the last beat of the bar, and later also on the one half a bar before it. A new time signature, like a new tempo, waits for the next bar.
 
-Sounds that answer the player, like a hit or a cancelled segment, stay immediate, and the player's timing isn't judged.
+## Music
 
-## Not in yet
+The speaker button up to the right opens the audio menu: sound on or off, the music style and the time signature. The game waits while it is open, and the music keeps playing on its own so a choice can be heard straight away. M still mutes in one press.
 
-These are in the original game and have no version here so far: the Wavehole, the Linesaver bonus and the Flatter. Some of their sounds are already in `public/assets/sounds/`.
+- **Made, not recorded.** Every note is synthesized with Web Audio (`src/core/music.ts`, styles in `src/core/styles.ts`): it follows any tempo and time signature exactly, costs nothing to download, and needs no licence. Plucked strings use Karplus-Strong, which is what makes Bluegrass possible without samples.
+- **Styles:** Vibe (swung lo-fi, electric piano), Chill (pads and bells), Bluegrass (boom-chick bass and strum, banjo rolls) and Chiptune (square waves and noise). Each plays on the strong beats and backbeats the time signature gives it, not on a fixed count of four. To add one, add an entry to `STYLES`.
+- **One key.** Every style is in A, the key of the Sinepede's two notes, so the game's tones always fit the music.
+- **The style dresses every sound.** A lowpass and an echo timed in beats go over all the game's sounds, and Wavell's tones take the style's wave. A Sinepede's tones stay pure sines whatever the style: it looks like a sine, so it sounds like one.
+- **Nostalgia mode** puts the music through a bitcrusher (16 levels per sample, each held for four), to match the low-resolution look.

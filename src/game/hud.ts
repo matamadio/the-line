@@ -93,15 +93,15 @@ function drawDevMenu(g: Game) {
 }
 
 /**
- * The mute button on screen: [x, y, radius]. Up by the score rather than at the bottom,
- * where the right thumb swipes.
+ * The audio button on screen: [x, y, radius]. It opens the audio menu. Up by the score
+ * rather than at the bottom, where the right thumb swipes.
  */
-export function muteButton(n: Neon): [number, number, number] {
+export function audioButton(n: Neon): [number, number, number] {
   const s = hudSize(n);
   return [n.w - s * 1.4, BUTTON_Y * s, s * 0.9];
 }
 
-/** The fullscreen button on screen, beside the mute button. */
+/** The fullscreen button on screen, beside the audio button. */
 export function fullscreenButton(n: Neon): [number, number, number] {
   const s = hudSize(n);
   return [n.w - s * 3.6, BUTTON_Y * s, s * 0.9];
@@ -212,10 +212,11 @@ function drawSurround(g: Game) {
   if (n.fullH > n.fullW) n.text('turn the phone for a bigger view', n.w / 2, -n.oy / 2, Math.max(13, n.unit * 8), '#c9a640', 'center', 0.8);
 }
 
-/** The four beats of the bar, as dots ending at x, with the current one lit. */
+/** The beats of the bar, as dots ending at x, with the current one lit. */
 function drawBar(g: Game, x: number, y: number, s: number) {
-  for (let i = 0; i < 4; i++) {
-    const p = new Path2D(), r = s * 0.13, cx = x - (3 - i) * s * 0.6 - r;
+  const beats = g.beat.beats, gap = s * Math.min(0.6, 2.4 / beats);
+  for (let i = 0; i < beats; i++) {
+    const p = new Path2D(), r = s * 0.13, cx = x - (beats - 1 - i) * gap - r;
     if (g.neon.retro) { retroSprite(g.neon, RETRO.beat, cx, y, COLORS.hud, i === g.beat.beatOfBar ? 1 : 0.3); continue; }
     p.arc(cx, y, r, 0, Math.PI * 2);
     g.neon.glow(p, COLORS.hud, 1.2, i === g.beat.beatOfBar ? 1.4 : 0.25);
@@ -319,7 +320,7 @@ export function drawHud(g: Game) {
     if (g.mode !== 'over') drawLead(g, pad, pad + s * 1.4, s);
     if (g.banner > 0) n.text('LEVEL ' + g.level, cx, n.lineY - n.unit * 70, s * 2.4, COLORS.hud, 'center', Math.min(1, g.banner));
     if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 2.4, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
-    if (g.paused) {
+    if (g.paused && !g.audio.open) {
       n.text('PAUSED', cx, n.lineY - n.unit * 75, s * 2.4, COLORS.hud);
       n.text(`${keyLabel(inp.binds.keys.pause[0])} to carry on   Esc for the menu`, cx, n.lineY - n.unit * 50, s * 0.7, '#c9a640');
     }
@@ -332,7 +333,7 @@ export function drawHud(g: Game) {
   n.fade = 1;
   // The buttons, the same in every mode.
   n.screen();
-  const [bx, by, br] = muteButton(n);
+  const [bx, by, br] = audioButton(n);
   if (n.retro) retroSprite(n, sfx.muted ? RETRO.muted : RETRO.speaker, bx, by, '#c9a640', 0.8);
   const m = new Path2D();
   m.moveTo(bx - br * 0.5, by - br * 0.2); m.lineTo(bx - br * 0.2, by - br * 0.2); m.lineTo(bx + br * 0.15, by - br * 0.5);
@@ -345,7 +346,8 @@ export function drawHud(g: Game) {
   drawNostalgia(n);
   drawSurround(g);
   n.fade = hudFade;
-  if (g.mode === 'play' && (inp.touchUsed || matchMedia('(pointer: coarse)').matches)) drawTouch(g);
+  if (g.mode === 'play' && !g.audio.open && (inp.touchUsed || matchMedia('(pointer: coarse)').matches)) drawTouch(g);
   n.fade = 1;
+  if (g.audio.open) g.audio.draw();
   c.globalCompositeOperation = 'source-over';
 }

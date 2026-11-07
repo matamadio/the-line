@@ -18,6 +18,7 @@
 // level, so every stop costs ground. Sparkles are the bait: they drift about on both
 // sides of the line, often behind him, and catching them means giving ground.
 
+import { AudioMenu } from './audioMenu';
 import { BEAT_SECONDS, BeatClock } from './beat';
 import { Crumble, type Shape } from './crumble';
 import { Fx } from './fx';
@@ -26,6 +27,8 @@ import { loadBindings } from '../core/controls';
 import { Input, usesTouch, type Controls } from '../core/input';
 import { SpringLine } from './line';
 import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
+import { audioPrefs } from '../core/audioPrefs';
+import { meterById } from '../core/music';
 import { sfx } from '../core/sfx';
 import { DIFF, at } from '../data/difficulty';
 import { TUNE } from '../data/tune';
@@ -34,7 +37,7 @@ import { Urchin } from './actors/urchin';
 import { BUBBLE_GREEN, BubbleBurst } from './actors/bubble';
 import { Wavell, type Attack } from './actors/wavell';
 import { WORM_W, Worm } from './actors/worm';
-import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, muteButton, nostalgiaButton } from './hud';
+import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, audioButton, nostalgiaButton } from './hud';
 import { drawGame } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
 import { MORPH_TIME, TitleDust } from './title';
@@ -138,6 +141,10 @@ export class Game {
   /** The title coming apart, for a moment after a game starts from the start screen. */
   titleDust: TitleDust | null = null;
   readonly menu = new Menu(this);
+  /** The audio menu, over everything else when it is open. */
+  readonly audio = new AudioMenu(this);
+  /** The audio menu paused the game, so closing it lets the game go on. */
+  private audioPaused = false;
   readonly morphEnd = MORPH_TIME;
   /** The view jumps into place if the first step is on the title, and eases from then on. */
   private viewSet = false;
@@ -157,6 +164,7 @@ export class Game {
     input.onGesture = () => sfx.unlock();
     input.uiTap = (cx, cy) => {
       const n = this.neon, x = cx - n.ox, y = cy - n.oy;
+      if (this.audio.open) return this.audio.tapAt(x, y);
       const on = ([bx, by, r]: [number, number, number]) => Math.hypot(x - bx, y - by) <= Math.max(r * 1.25, 22);
       // The dev menu and the install button are only there on the start screen, once it has settled.
       const title = this.mode === 'title' && this.morphT >= MORPH_TIME && this.menu.page === 'main';
@@ -165,7 +173,7 @@ export class Game {
         return () => { if (page) location.href = page; };
       }
       if (title && canInstall() && inInstallButton(n, x, y)) return () => { void this.install(); };
-      if (on(muteButton(n))) return () => sfx.toggleMute();
+      if (on(audioButton(n))) return () => this.openAudio();
       if (on(fullscreenButton(n)) && canFullscreen()) return () => { void toggleFullscreen(); };
       if (on(nostalgiaButton(n))) return () => this.setNostalgia(!n.retro);
       return null;
@@ -178,6 +186,7 @@ export class Game {
   setNostalgia(on: boolean) {
     this.neon.retro = on;
     this.neon.resize();
+    sfx.setNostalgia(on);
     try { localStorage.setItem(NOSTALGIA_STORE, on ? '1' : '0'); } catch { /* storage blocked */ }
   }
 
@@ -232,7 +241,8 @@ export class Game {
     this.pulses = [];
     this.fx.clear();
     this.crumbles = [];
-    this.beat.reset(this.level);
+    this.beat.reset(this.level, meterById(audioPrefs.meter));
+    sfx.restartMusic();
     this.endX = this.wavell.x - DIFF.endLead;
     this.endGrace = DIFF.endGrace;
     this.deathHandled = false;
@@ -265,6 +275,27 @@ export class Game {
     W.kill('zap');
   }
 
+  /** The audio menu opens over whatever is going on. A game waits for it, and the music plays on its own. */
+  openAudio() {
+    if (this.audio.open) return;
+    this.audio.show();
+    if (this.mode === 'play' && !this.paused) { this.setPaused(true); this.audioPaused = true; }
+    const bpm = this.mode === 'play' ? this.beat.bpm : at('bpm', DIFF.startLevel);
+    sfx.preview(true, bpm, () => meterById(audioPrefs.meter), this.mode === 'play' ? this.musicEnergy : 0.7);
+  }
+
+  closeAudio() {
+    if (!this.audio.open) return;
+    this.audio.hide();
+    sfx.preview(false);
+    if (this.audioPaused) this.setPaused(false);
+    else if (this.paused) sfx.pause(true);
+    this.audioPaused = false;
+  }
+
+  /** How busy the music is: it fills in as the levels go up. */
+  get musicEnergy() { return clamp(0.25 + (this.level - 1) * 0.15, 0, 1); }
+
   setPaused(on: boolean) {
     if (on === this.paused) return;
     this.paused = on;
@@ -288,7 +319,10 @@ export class Game {
     dt = clamp(dt, 0, 0.05);
     this.input.poll();
     const ready = this.mode === 'over' && this.overT > 0.8;
-    if (this.menuAsked && this.mode === 'play') this.backToTitle(false);
+    if (this.audio.open) {
+      if (this.menuAsked || this.input.backPressed) this.closeAudio();
+      else this.audio.handle(this.input);
+    } else if (this.menuAsked && this.mode === 'play') this.backToTitle(false);
     else if (this.input.pausePressed && this.mode === 'play') this.setPaused(!this.paused);
     else if (ready && (this.menuAsked || this.input.anyPressed)) this.backToTitle(true);
     else if (this.mode === 'title' && this.morphT >= MORPH_TIME) {
@@ -451,14 +485,14 @@ export class Game {
     }
   }
 
-  /** On each beat: a click. */
+  /** On each beat: the music's next beat. */
   private stepBeat() {
     const hit = this.beat.step(this.level);
     if (!hit) return;
     this.onBeat = true;
     this.cue = this.beat.cueBeats;
     if (this.cue) this.cueKind = this.mostOverdue();
-    sfx.beat(60 / this.beat.bpm, hit === 'bar');
+    sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, this.musicEnergy);
   }
 
   /** Every enemy on the line, from the left. One in the air, or on its way out, takes up no room. */

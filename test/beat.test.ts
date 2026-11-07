@@ -4,10 +4,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sfx } from '../src/core/sfx';
 import { DIFF, at } from '../src/data/difficulty';
+import { METERS, groupStarts, meterById } from '../src/core/music';
 import { BASE_BPM, BeatClock } from '../src/game/beat';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
 
 describe('the beat clock', () => {
   it('has a beat every 96 steps and a bar every four beats', () => {
@@ -20,6 +21,43 @@ describe('the beat clock', () => {
     }
     expect(hits.slice(0, 5)).toEqual([[0, 'bar'], [96, 'beat'], [192, 'beat'], [288, 'beat'], [384, 'bar']]);
     expect(hits).toHaveLength(8);
+  });
+
+  it('counts the bar in the time signature it is given', () => {
+    const clock = new BeatClock();
+    clock.reset(1, meterById('7/8'));
+    const bars: number[] = [];
+    for (let i = 0; i < 96 * 15; i++) if (clock.step(1) === 'bar') bars.push(i);
+    expect(bars).toEqual([0, 96 * 7, 96 * 14]);
+  });
+
+  it('changes time signature only at the start of a bar', () => {
+    const clock = new BeatClock();
+    clock.reset(1);
+    for (let i = 0; i < 96 * 2; i++) clock.step(1);
+    clock.setMeter(meterById('3/4'));
+    expect(clock.beats).toBe(4);
+    const bars: number[] = [];
+    for (let i = 96 * 2; i < 96 * 10; i++) if (clock.step(1) === 'bar') bars.push(i);
+    // The 4/4 bar finishes, then the bars are three beats long.
+    expect(bars).toEqual([96 * 4, 96 * 7]);
+    expect(clock.beats).toBe(3);
+  });
+
+  it.each([
+    ['2/4', [1], [0, 1]], ['3/4', [2], [1, 2]], ['4/4', [3], [1, 3]],
+    ['5/4', [4], [2, 4]], ['6/8', [5], [2, 5]], ['7/8', [6], [3, 6]],
+  ])('in %s lets enemies in on beats %j, then %j (counted from 0)', (id, early, late) => {
+    const clock = new BeatClock();
+    clock.reset(1, meterById(id));
+    const beats = [...Array(clock.beats).keys()];
+    expect(beats.filter((b) => clock.cueAt(b, 1))).toEqual(early);
+    expect(beats.filter((b) => clock.cueAt(b, DIFF.cueTwoFrom))).toEqual(late);
+  });
+
+  it('groups every time signature into its beats', () => {
+    for (const m of METERS) expect(m.groups.reduce((a, b) => a + b)).toBe(m.beats);
+    expect(groupStarts(meterById('7/8'))).toEqual([0, 2, 4]);
   });
 
   it('changes tempo only at the start of a bar', () => {
@@ -123,10 +161,10 @@ describe('the beat in the game', () => {
     expect(kinds.size).toBeGreaterThanOrEqual(3);
   });
 
-  it('clicks once per beat when on, accenting each bar', () => {
+  it('plays the music once per beat when on, saying which beat of the bar', () => {
     DIFF.beatOn = 1;
     play(96 * 4 + 1);
-    expect(vi.mocked(sfx.beat).mock.calls.map((c) => c[1])).toEqual([true, false, false, false, true]);
+    expect(vi.mocked(sfx.beat).mock.calls.map((c) => c[1])).toEqual([0, 1, 2, 3, 0]);
   });
 
   it('stays exact when on', () => {
