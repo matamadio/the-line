@@ -52,6 +52,20 @@ function play(seed: number, startLives?: number) {
   return { seen, score: g.score, level: g.level, lives: g.lives, x: g.wavell.x, endX: g.endX };
 }
 
+// For every test in this file: the browser APIs the game touches while it plays (a hint
+// asks matchMedia how to word itself), and the same random numbers every run, so no test
+// passes or fails on the luck of the draw.
+const fileRandom = Math.random;
+beforeEach(() => {
+  Math.random = seeded(1);
+  vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  vi.stubGlobal('Path2D', class { moveTo() {} lineTo() {} quadraticCurveTo() {} arc() {} closePath() {} rect() {} });
+});
+afterEach(() => {
+  Math.random = fileRandom;
+  vi.unstubAllGlobals();
+});
+
 describe('the simulation', () => {
   const nativeRandom = Math.random;
   beforeEach(() => {
