@@ -123,10 +123,12 @@ const bluegrass: Style = {
   tint: { wave: 'triangle', cutoff: 6000, echo: 0.1, echoBeats: 0.25 },
   play(s, b) {
     const c = chordAt(GRASS_PROG, b), e = b.energy;
-    // Boom on the strong beats, root then fifth; chick on the others.
+    // Boom on the strong beats, root then fifth; chick on the others. The boom is a soft,
+    // round bass kept between 55 and 110 Hz: deep, but still there on small speakers.
     if (b.group) {
-      const first = b.beat === 0;
-      s.pluck(b.t(0), hz((first ? c.root : c.root + 7) - 24), 1.2, { bright: 0.15, seconds: 0.9, damp: 0.994 });
+      let n = (b.beat === 0 ? c.root : c.root + 7) - 24;
+      if (n < -36) n += 12;
+      s.bass(b.t(0), hz(n), b.len * 0.9, 0.45);
     } else {
       s.strum(b.t(0), c.notes.map((n) => hz(n + 12)), 0.8, { bright: 0.6 });
       s.snare(b.t(0), 0.18, { band: 2500, decay: 0.04, tone: 0 });

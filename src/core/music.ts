@@ -254,6 +254,32 @@ export class Synth {
     this.burst(at, end - at, air);
   }
 
+  /**
+   * A soft, round bass, like a gently plucked upright: a sine with a quiet octave above it,
+   * kept dark by a lowpass, with a cushioned start and a slow fall rather than a twang.
+   */
+  bass(at: number, freq: number, dur: number, vol: number) {
+    const ctx = this.ctx, end = at + dur + 0.6;
+    const f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'lowpass';
+    f.frequency.value = 380;
+    f.Q.value = 0.5;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.015);
+    g.gain.setTargetAtTime(vol * 0.45, at + 0.015, 0.22);
+    g.gain.setTargetAtTime(0, at + dur, 0.09);
+    f.connect(g).connect(this.out);
+    for (const [mult, wave, level] of [[1, 'sine', 1], [2, 'triangle', 0.22]] as const) {
+      const osc = ctx.createOscillator(), lv = ctx.createGain();
+      osc.type = wave;
+      osc.frequency.value = freq * mult;
+      lv.gain.value = level;
+      osc.connect(lv).connect(f);
+      osc.start(at);
+      osc.stop(end);
+    }
+  }
+
   /** A big drum, like a taiko: a deep, slow-dying thump with the skin's slap on top. */
   taiko(at: number, vol = 1, size = 1) {
     this.kick(at, vol, { from: 110 / size, to: 42 / size, decay: 0.18 * size });
