@@ -421,6 +421,7 @@ export class Game {
         sfx.grew(W.size);
         this.fx.burst(W.x, L.sample(W.x) - W.side * 14, 24, 60, COLORS.wavell, 0, 0.45);
         n.shake = Math.max(n.shake, 0.4);
+        if (DIFF.sizePoints > 0) this.teach('multiplier', `BIGGER IS RICHER: every point now counts ×${this.multiplier}`, `BIGGER IS RICHER: every point now counts ×${this.multiplier}`);
       } else if (e === 'shrink') {
         sfx.shrank(W.size);
         this.fx.burst(W.x, L.sample(W.x) - W.side * 14, 26, 70, COLORS.danger, 60, 0.5);
@@ -475,7 +476,8 @@ export class Game {
     if (this.hintT > 0) this.hintT -= dt;
     this.handleDeath();
 
-    if (this.score > DIFF.levelScore * this.level) {
+    // Level 10 is the last: the boss fight.
+    if (this.level < DIFF.lastLevel && this.score >= DIFF.levelScore * this.level) {
       this.level++;
       this.banner = 2.2;
       this.tremor = 1.2;
@@ -1264,8 +1266,12 @@ export class Game {
     this.teach('cancel', 'OPPOSITE WAVES CANCEL: the other side is no way round', 'OPPOSITE WAVES CANCEL: the other side is no way round');
   }
 
+  /** Points count more the bigger he is: ×2 at the first size, ×3 at the second, and so on. */
+  get multiplier() { return 1 + DIFF.sizePoints * this.wavell.size; }
+
   private addScore(points: number, x: number, y: number) {
-    this.score += points;
-    this.fx.popup(x, y, '+' + points);
+    const m = this.multiplier, pts = Math.round(points * m);
+    this.score += pts;
+    this.fx.popup(x, y, '+' + pts);
   }
 }

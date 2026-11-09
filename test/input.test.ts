@@ -67,6 +67,38 @@ describe('the left thumb moves him', () => {
     expect(input.right).toBe(true);
     expect(input.downPressed).toBe(false);
   });
+
+  it('after a long walk, the usual push still goes up', () => {
+    const { input, send } = touchScreen();
+    send('pointerdown', 1, LEFT.x, LEFT.y);
+    for (let dx = 10; dx <= 120; dx += 10) send('pointermove', 1, LEFT.x + dx, LEFT.y);
+    input.poll();
+    expect(input.right).toBe(true);
+    send('pointermove', 1, LEFT.x + 120, LEFT.y - 40);
+    input.poll();
+    expect(input.upPressed).toBe(true);
+  });
+
+  it('a thumb pushed far up comes back down the usual way', () => {
+    const { input, send } = touchScreen();
+    send('pointerdown', 1, LEFT.x, LEFT.y);
+    for (let dy = 10; dy <= 120; dy += 10) send('pointermove', 1, LEFT.x, LEFT.y - dy);
+    input.poll();
+    expect(input.upPressed).toBe(true);
+    // Back by the length of one push past where it started from, not the whole way.
+    send('pointermove', 1, LEFT.x, LEFT.y - 120 + 75);
+    input.poll();
+    expect(input.downPressed).toBe(true);
+  });
+
+  it('a flick that lifts before any move still counts', () => {
+    const { input, send } = touchScreen();
+    send('pointerdown', 1, LEFT.x, LEFT.y);
+    send('pointerup', 1, LEFT.x, LEFT.y + 40);
+    input.poll();
+    expect(input.downPressed).toBe(true);
+    expect(input.down).toBe(false);
+  });
 });
 
 describe('the right thumb attacks', () => {

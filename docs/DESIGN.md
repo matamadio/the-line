@@ -30,6 +30,10 @@ Enemies on Wavell's side can hurt him, and the other side is no hiding place. Wa
 
 Up to level 3, threats come one at a time, with a second of clear line between them. After that, they overlap.
 
+## Levels
+
+There are 10 levels, one every 50 points. Level 10 is the last and will be a boss fight; until that is built, it simply goes on. The end of the line crumbles faster each level and reaches its top speed at level 10.
+
 ## The threats
 
 | Threat | Where it is | Answer |
@@ -56,6 +60,8 @@ From level 6, half of them let go of the line partway and float off, the way his
 Wavell has one life, and his size is all that protects it. This is a trial and may turn out too hard. Every 10 sparkles caught make him bigger and walking faster, up to three sizes, with a bright run of notes. For a second and a half, fine copies of his outline ripple outwards and light runs along him from his feet to his head. The counter at the top left has a circle for each size: every sparkle draws a tenth of the next one. An enemy's hit takes a whole circle and leaves the sparkles towards the next one in place, and he flashes for a moment while nothing can hurt him. A hit with no circle left is game over.
 
 This doesn't apply to the bubble. A bigger Wavell makes a bigger bubble, which lasts longer but is easier to hit, and when it pops the game is over. The end of the line also ends it, whatever his size.
+
+Size is also worth points: everything he scores is multiplied by 1 plus his size, so ×2 at the first size, ×3 at the second and ×4 at full size. The multiplier shows to the left of the score. A hit takes the multiplier down with the size, so a bigger Wavell has more to lose and climbs the levels faster.
 
 ## Sound and shape match
 

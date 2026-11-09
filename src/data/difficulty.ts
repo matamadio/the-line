@@ -15,7 +15,7 @@ const knob = (group: string, label: string, def: number, min: number, max: numbe
 
 export const DIFF_KNOBS = {
   endSpeed: knob('End of the line', 'Crumble speed at level 1 (u/s)', 78, 0, 200, 1),
-  endSpeedPer: knob('End of the line', '… added per level', 3, 0, 30, 0.5),
+  endSpeedPer: knob('End of the line', '… added per level', 4, 0, 30, 0.5),
   endSpeedCap: knob('End of the line', '… at most', 96, 0, 300, 1),
   endLead: knob('End of the line', 'Most lead he can build up (u)', 240, 40, 600, 5),
   endGrace: knob('End of the line', 'Pause after (re)spawning (s)', 1.6, 0, 6, 0.1),
@@ -96,6 +96,7 @@ export const DIFF_KNOBS = {
   growWalk: knob('Growing', 'Faster walking per size', 0.08, 0, 0.5, 0.01),
   growBubble: knob('Growing', 'Longer in the bubble per size', 0.35, 0, 2, 0.05),
   growSafe: knob('Growing', 'Safe after losing a size (s)', 1.2, 0, 5, 0.1),
+  sizePoints: knob('Growing', 'Points multiplier added per size', 1, 0, 3, 0.25),
 
   sparkleKill: knob('Sparkles', 'Left by each enemy killed', 2, 0, 10, 1),
   sparkleEvery: knob('Sparkles', 'One on its own every (s, roughly)', 3, 0.5, 20, 0.1),
@@ -104,7 +105,8 @@ export const DIFF_KNOBS = {
   chainTime: knob('Sparkles', 'Chain window (s)', 2.2, 0.3, 6, 0.1),
 
   lives: knob('Progress', 'Lives at the start', 1, 1, 20, 1),
-  levelScore: knob('Progress', 'Points per level', 100, 10, 1000, 5),
+  levelScore: knob('Progress', 'Points per level', 50, 10, 1000, 5),
+  lastLevel: knob('Progress', 'Last level (the boss fight)', 10, 1, 30, 1),
   lifeEvery: knob('Progress', 'Extra life every N levels (0: never)', 0, 0, 20, 1),
   startLevel: knob('Progress', 'Start at level', 1, 1, 30, 1),
 

@@ -3,7 +3,8 @@
 // float. The right part attacks: swipe sideways to pull, up or down to wipe.
 // Walking and moving through the line now share a thumb, so going up or down takes a
 // longer push than walking, and has to be mostly vertical. That stops a walking thumb
-// that drifts from flipping him by accident.
+// that drifts from flipping him by accident. The base keeps close behind the thumb, so
+// that push is the same however long he has been walking.
 // Presses are latched so a gesture shorter than one frame is never lost.
 // A joypad does the same as the keys, and which keys and buttons do what is in `binds`.
 
@@ -34,11 +35,17 @@ interface Held { left: boolean; right: boolean; up: boolean; down: boolean; drag
 /** The part of the screen, from the left, where a touch becomes the stick. */
 const STICK_ZONE = 0.45;
 /** How much further than walking the stick must go up or down, as a multiple of the threshold. */
-const STICK_VERTICAL = 1.7;
+const STICK_VERTICAL = 1.4;
+/** How far sideways the thumb can get from the base, as a multiple of the threshold, before the base follows. */
+const STICK_FOLLOW_X = 2;
+/** The same up and down. More than sideways, or a push could never beat a long walk at being mostly vertical. */
+const STICK_FOLLOW_Y = 2.5;
 /** How far back it can come before up or down lets go, so steering the bubble doesn't flicker. */
 const STICK_RELEASE = 0.6;
 /** How far a swipe must travel, as a multiple of the threshold: attacks should feel instant. */
 const SWIPE_TRAVEL = 0.8;
+
+const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 
 export class Input implements Controls {
   left = false; right = false; up = false; down = false;
@@ -145,11 +152,7 @@ export class Input implements Controls {
     el.addEventListener('pointermove', (e) => {
       const [x, y] = this.pos(e), s = this.stick;
       if (s && s.id === e.pointerId) {
-        s.x = x; s.y = y;
-        // Let the base follow a thumb that wanders too far.
-        const max = this.threshold * 3.2, dx = s.x - s.ox, dy = s.y - s.oy, d = Math.hypot(dx, dy);
-        if (d > max) { s.ox = s.x - (dx / d) * max; s.oy = s.y - (dy / d) * max; }
-        this.readStick();
+        this.moveStick(x, y);
         return;
       }
       if (this.swipe?.id === e.pointerId) this.readSwipe(x, y);
@@ -169,7 +172,12 @@ export class Input implements Controls {
         if (e.type === 'pointerup') run();
         return;
       }
-      if (this.stick?.id === e.pointerId) { this.stick = null; this.readStick(); }
+      if (this.stick?.id === e.pointerId) {
+        // A flick up or down can lift before a move event reports it, as on the right.
+        if (e.type === 'pointerup') this.moveStick(...this.pos(e));
+        this.stick = null;
+        this.readStick();
+      }
       if (this.swipe?.id === e.pointerId) {
         // A flick can lift before a move event reports how far it went.
         if (e.type === 'pointerup') this.readSwipe(...this.pos(e));
@@ -197,6 +205,21 @@ export class Input implements Controls {
     w.fired = true;
     if (Math.abs(dx) > Math.abs(dy)) { this.latch.pull = true; this.pullFlash = 1; }
     else { this.latch.drag = true; this.dragFlash = 1; }
+  }
+
+  /**
+   * The thumb is here. The base follows a thumb that wanders too far, sideways and up or
+   * down apart: a long walk then never makes going up or down take a longer push, and a
+   * thumb that pushed far up has only the usual way to come back down.
+   */
+  private moveStick(x: number, y: number) {
+    const s = this.stick;
+    if (!s) return;
+    s.x = x; s.y = y;
+    const th = this.threshold, maxX = th * STICK_FOLLOW_X, maxY = th * STICK_FOLLOW_Y;
+    s.ox = clamp(s.ox, x - maxX, x + maxX);
+    s.oy = clamp(s.oy, y - maxY, y + maxY);
+    this.readStick();
   }
 
   private readStick() {
