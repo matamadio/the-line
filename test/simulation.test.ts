@@ -496,7 +496,7 @@ describe('the title coming apart', () => {
 describe('nostalgia mode', () => {
   it('has a pixel font for every character the game writes', () => {
     const texts = [...TITLE_HINTS, '← → walk   ↓ through the line   ↑ float / back up', 'left thumb: walk  ·  down: through the line', 'SWIPE ↔ to pull  ·  swipe ↕ to wipe',
-      'WRONG ATTACK, IT GREW! BACKWAVE: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM', ...ENTRIES, ...CREDIT_NAMES, ...ACTIONS.map((a) => a.label),
+      'WRONG ATTACK, IT GREW! BACKWAVE: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM', '×4  FINAL LEVEL 10', 'BIGGER IS RICHER: every point now counts ×2', ...ENTRIES, ...CREDIT_NAMES, ...ACTIONS.map((a) => a.label),
       '↑ ↓ choose   Enter select', 'swipe to choose   tap to select', 'Enter to go back', 'PRESS A KEY...', 'PRESS A BUTTON...', '< KEYBOARD >', '< JOYPAD >', 'RESTORE DEFAULTS',
       'NO JOYPAD FOUND: CONNECT ONE AND PRESS A BUTTON', 'THE LEFT STICK WALKS AS WELL   ·   BACK: MENU', 'Esc: leave it as it is', 'TOWARDS THE LINE: THROUGH IT', 'SWIPE SIDEWAYS: PULL', 'SWIPE UP OR DOWN: WIPE',
       'AUDIO', 'SOUND', 'MUSIC', 'TIME', '> CLOSE <', '< ON >', '< OFF >', 'MUSIC BITCRUSHED', ...STYLES.map((st) => `< ${st.name} >`), ...METERS.map((m) => `< ${m.id} >`),
@@ -786,5 +786,33 @@ describe('the bindings', () => {
     const b = defaultBindings();
     expect(bindKey(b, 'drag', 'KeyM')).toBe(false);
     expect(b.keys.drag).toContain('KeyZ');
+  });
+});
+
+describe('progress', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    vi.stubGlobal('Path2D', class { moveTo() {} lineTo() {} quadraticCurveTo() {} arc() {} closePath() {} rect() {} });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+  const score = (g: ReturnType<typeof headlessGame>, pts: number) => (g as unknown as { addScore(p: number, x: number, y: number): void }).addScore(pts, 0, 0);
+
+  it('counts points more the bigger he is', () => {
+    const g = headlessGame();
+    g.start();
+    score(g, 10);
+    g.wavell.size = 2;
+    score(g, 10);
+    expect(g.score).toBe(10 + 10 * (1 + 2 * DIFF.sizePoints));
+  });
+
+  it('goes up a level every levelScore points, and stops at the last level', () => {
+    const g = headlessGame();
+    g.start();
+    g.score = DIFF.levelScore;
+    g.tick(IDLE);
+    expect(g.level).toBe(2);
+    for (let i = 0; i < 40; i++) { g.score = DIFF.levelScore * 100; g.tick(IDLE); }
+    expect(g.level).toBe(DIFF.lastLevel);
   });
 });

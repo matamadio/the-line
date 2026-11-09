@@ -311,14 +311,17 @@ export function drawHud(g: Game) {
     c.canvas.style.cursor = '';
     g.titleDust?.draw(n);
     n.fade = hudFade;
-    n.text(String(g.score).padStart(6, '0'), n.w - s * SCORE_RIGHT, pad, s, COLORS.hud, 'right');
-    n.text('LEVEL ' + g.level + (DIFF.beatOn ? `  ·  ${Math.round(g.beat.bpm)} BPM` : ''), cx, pad, s * 0.7, '#ffb21a');
+    const score = String(g.score).padStart(6, '0');
+    n.text(score, n.w - s * SCORE_RIGHT, pad, s, COLORS.hud, 'right');
+    // Bigger, he scores more: the multiplier sits to the left of the score.
+    if (g.multiplier > 1) n.text('×' + g.multiplier, n.w - s * SCORE_RIGHT - n.wordWidth(score, s) - s * 0.5, pad, s * 0.8, '#ffe680', 'right');
+    n.text((g.level >= DIFF.lastLevel ? 'FINAL LEVEL ' : 'LEVEL ') + g.level +(DIFF.beatOn ? `  ·  ${Math.round(g.beat.bpm)} BPM` : ''), cx, pad, s * 0.7, '#ffb21a');
     if (DIFF.beatOn) drawBar(g, n.w - s * SCORE_RIGHT, pad + s * 1.1, s);
     n.world();
     drawSizes(g, n.camX + (pad / n.unit) + 4, n.viewTop + pad / n.unit + 1);
     n.screen();
     if (g.mode !== 'over') drawLead(g, pad, pad + s * 1.4, s);
-    if (g.banner > 0) n.text('LEVEL ' + g.level, cx, n.lineY - n.unit * 70, s * 2.4, COLORS.hud, 'center', Math.min(1, g.banner));
+    if (g.banner > 0) n.text((g.level >= DIFF.lastLevel ? 'FINAL LEVEL ' : 'LEVEL ') + g.level,cx, n.lineY - n.unit * 70, s * 2.4, COLORS.hud, 'center', Math.min(1, g.banner));
     if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 2.4, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
     if (g.paused && !g.audio.open) {
       n.text('PAUSED', cx, n.lineY - n.unit * 75, s * 2.4, COLORS.hud);
