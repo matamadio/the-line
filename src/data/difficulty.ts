@@ -105,7 +105,7 @@ export const DIFF_KNOBS = {
   chainTime: knob('Sparkles', 'Chain window (s)', 2.2, 0.3, 6, 0.1),
 
   lives: knob('Progress', 'Lives at the start', 1, 1, 20, 1),
-  levelScore: knob('Progress', 'Points per level', 50, 10, 1000, 5),
+  levelScore: knob('Progress', 'Points for level 2; each level after costs this much more', 50, 10, 1000, 5),
   lastLevel: knob('Progress', 'Last level (the boss fight)', 10, 1, 30, 1),
   lifeEvery: knob('Progress', 'Extra life every N levels (0: never)', 0, 0, 20, 1),
   startLevel: knob('Progress', 'Start at level', 1, 1, 30, 1),
@@ -139,3 +139,11 @@ export function at(k: RampKey, level: number) {
 
 // Saving difficulty.json from the editor updates a running game instead of reloading it.
 if (import.meta.hot) import.meta.hot.accept('./difficulty.json', (m) => { if (m) Object.assign(DIFF, savedValues(m.default)); });
+
+/**
+ * The score a level starts at. Each level costs levelScore more than the one before:
+ * at 50, level 2 starts at 50, level 3 at 150, level 4 at 300, level 10 at 2250.
+ */
+export function levelStart(level: number) {
+  return DIFF.levelScore * (level - 1) * level / 2;
+}
