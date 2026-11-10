@@ -18,7 +18,7 @@ import { hasGlyph } from '../src/core/pixelfont';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 // No audio in tests. start() would otherwise open an AudioContext.
-vi.mock('../src/core/sfx', () => ({ sfx: { pause() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { pause() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, stopFreeMusic: vi.fn(), freeMusic: vi.fn(), ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
 
 const SECONDS = 120;
 const STEPS_PER_SECOND = 120;

@@ -289,11 +289,52 @@ const lotus: Style = {
 
 // ---------------------------------------------------------------- Tekno: four on the floor, acid, rave stabs
 
-/** A minor, moving every two bars: Am, Am, F, G. */
-const TEK_PROG = [chord(-12, -12, -9, -5), chord(-12, -12, -9, -5), chord(-16, -16, -12, -9), chord(-14, -14, -10, -7)];
 /**
- * The acid line, a sixteenth at a time: semitones above the chord's root, or null for a
- * rest. The steps in ACID_ACCENT are accented: louder, and the filter opens wider.
+ * The chords, by name, each lasting two bars. Edit this line to change the progression: a
+ * note (A to G, with # or b) and then nothing (major), m, 7, m7 or maj7. The game is in A
+ * minor, so chords from it fit best: Am Bdim C Dm Em F G, plus E or E7 (the major V).
+ */
+const TEK_CHORDS = 'Am7 Dm7 Fmaj7 E7';
+
+const NOTE: Record<string, number> = { A: 0, B: 2, C: 3, D: 5, E: 7, F: 8, G: 10 };
+const QUALITY: Record<string, number[]> = { '': [0, 4, 7], m: [0, 3, 7], '7': [0, 4, 7, 10], m7: [0, 3, 7, 10], maj7: [0, 4, 7, 11], dim: [0, 3, 6] };
+/**
+ * Reads chord names like 'Am7 Fmaj7' into chords. Each note goes between G sharp and G
+ * below A440, so the chords sit close together and the stabs step rather than leap.
+ */
+const chords = (names: string) => names.trim().split(/\s+/).map((name) => {
+  const m = /^([A-G])([#b]?)(.*)$/.exec(name);
+  const quality = m && QUALITY[m[3]];
+  if (!m || !quality) throw new Error(`Unknown chord: ${name}`);
+  const root = NOTE[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+  const place = (n: number) => { n = (((n % 12) + 12) % 12) - 12; return n > -2 ? n - 12 : n; };
+  return chord(place(root), ...quality.map((q) => place(root + q)));
+});
+const TEK_PROG = chords(TEK_CHORDS);
+
+/** A natural minor, in semitones above A. */
+const A_MINOR = [0, 2, 3, 5, 7, 8, 10];
+const pitchClass = (n: number) => ((n % 12) + 12) % 12;
+/**
+ * The scale under a chord: the style's scale (A natural minor unless it says), with any of
+ * the chord's own notes that fall outside it (the G sharp of E7) taking the place of the
+ * scale note just below.
+ */
+const scaleFor = (c: Chord, base: readonly number[] = A_MINOR) => {
+  const notes = new Set(base);
+  for (const n of c.notes) if (!notes.has(pitchClass(n))) { notes.delete(pitchClass(n - 1)); notes.add(pitchClass(n)); }
+  return notes;
+};
+/** Moves a note to the nearest note of the scale, down when two are as near. */
+const inScale = (n: number, scale: Set<number>) => {
+  for (let d = 0; ; d++) {
+    if (scale.has(pitchClass(n - d))) return n - d;
+    if (scale.has(pitchClass(n + d))) return n + d;
+  }
+};
+/**
+ * The acid line, a sixteenth at a time: semitones above the chord's root (then moved into
+ * the chord's scale, so a minor third stays in key over a major chord), or null for a rest. The steps in ACID_ACCENT are accented: louder, and the filter opens wider.
  */
 const ACID: readonly (number | null)[] = [0, null, 12, 0, 3, null, 0, 7, 0, null, 10, 0, 12, 3, null, 7];
 const ACID_ACCENT = [0, 4, 8, 12];
@@ -309,31 +350,80 @@ const tekno: Style = {
       // A kick on every beat, whatever the time signature, and the bass in the gaps between.
       const c = chordAt(TEK_PROG, b, 2);
       s.kick(b.t(0), 1, { from: 160, to: 45, decay: 0.12 });
-      s.tone(b.t(2), hz(lowRoot(c)), b.len * 0.3, 0.32, { wave: 'sawtooth', cutoff: 300, release: 0.02 });
+      s.tone(b.t(2), hz(lowRoot(c)), b.len * 0.3, 0.55, { wave: 'sawtooth', cutoff: 520, release: 0.02 });
     } },
     { name: 'open hi-hat', play(s, b) {
-      s.hat(b.t(2), 0.2, 0.05, 7000);
+      s.hat(b.t(2), 0.34, 0.05, 7000);
     } },
     { name: 'clap', play(s, b) {
       // Two bursts a hair apart sound like hands.
       if (!b.groupEnd || b.group) return;
-      s.snare(b.t(0), 0.3, { band: 1200, decay: 0.03, tone: 0 });
-      s.snare(b.t(0) + 0.012, 0.35, { band: 1300, decay: 0.07, tone: 0 });
+      s.snare(b.t(0), 0.42, { band: 1200, decay: 0.03, tone: 0 });
+      s.snare(b.t(0) + 0.012, 0.5, { band: 1300, decay: 0.07, tone: 0 });
     } },
     { name: 'acid line', play(s, b) {
-      const c = chordAt(TEK_PROG, b, 2), root = lowRoot(c) + 12;
+      const c = chordAt(TEK_PROG, b, 2), root = lowRoot(c) + 12, scale = scaleFor(c);
       for (let k = 0; k < 4; k++) {
         const i = (b.beat * 4 + k) % ACID.length, n = ACID[i];
-        if (n !== null) s.acid(b.t(k), hz(root + n), b.len * 0.2, 0.07, ACID_ACCENT.includes(i));
+        if (n !== null) s.acid(b.t(k), hz(inScale(root + n, scale)), b.len * 0.2, 0.14, ACID_ACCENT.includes(i));
       }
     } },
     { name: 'rave stabs', play(s, b) {
       // A short chord on the off beat at the end of each group, every other bar.
       if (!b.groupEnd || b.bar % 2 === 0) return;
-      for (const n of chordAt(TEK_PROG, b, 2).notes) s.tone(b.t(2), hz(n + 12), 0.04, 0.05, { wave: 'sawtooth', cutoff: 2200, decay: 0.08, release: 0.1 });
+      for (const n of chordAt(TEK_PROG, b, 2).notes) s.tone(b.t(2), hz(n + 12), 0.04, 0.07, { wave: 'sawtooth', cutoff: 2200, decay: 0.08, release: 0.1 });
     } },
   ],
 };
 
-export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune, lotus, tekno];
+// ---------------------------------------------------------------- Trip: trip-hop, slow and heavy, a lonely lead
+
+/** The chords, by name, one bar each. Change them as TEK_CHORDS says. */
+const TRIP_CHORDS = 'B Em7 A B';
+const TRIP_PROG = chords(TRIP_CHORDS);
+/** E dorian (E F# G A B C# D), in semitones above A. Under the B chord, its D sharp takes D's place. */
+const E_DORIAN = [0, 2, 4, 5, 7, 9, 10];
+/** The lead wanders E dorian from the E above A 440. */
+const tripTune = new Tune([7, 9, 10, 12, 14, 16, 17, 19, 21], 0.5);
+/** The lead's last note (Hz), so the next slides up or down from it. */
+let tripLast = 0;
+
+const trip: Style = {
+  id: 'trip', name: 'TRIP', swing: 0.3,
+  tint: { wave: 'sine', cutoff: 2800, echo: 0.3, echoBeats: 1 },
+  layers: [
+    { name: 'heavy kick, sub bass and Rhodes', play(s, b) {
+      const c = chordAt(TRIP_PROG, b);
+      // Boom, bap, and a lazy boom just after the bap.
+      if (b.group) {
+        s.kick(b.t(0), 1, { from: 120, to: 42, decay: 0.16 });
+        s.tone(b.t(0), hz(lowRoot(c)), b.len * 1.6, 0.5, { wave: 'sine', cutoff: 220, release: 0.2 });
+      }
+      if (b.groupEnd && !b.group) s.kick(b.t(2), 0.6, { from: 110, to: 42, decay: 0.12 });
+      if (b.beat === 0) for (const n of c.notes) s.keys(b.t(0), hz(n), restOfBar(b) * 0.9, 0.12);
+    } },
+    { name: 'dusty snare and vinyl crackle', play(s, b) {
+      if (b.groupEnd && !b.group) s.snare(b.t(0), 0.6, { band: 900, decay: 0.14 });
+      // The crackle: tiny clicks, scattered at random.
+      for (let k = 0; k < 4; k++) if (noteRand() < 0.4) s.hat(b.t(k) + noteRand() * 0.05, 0.08, 0.003, 2500);
+    } },
+    { name: 'lazy hi-hats', play(s, b) {
+      s.hat(b.t(0), 0.16, 0.03, 6000);
+      s.hat(b.t(2), 0.26, 0.05, 6000);
+      if (noteRand() < 0.5) s.hat(b.t(3), 0.06, 0.02, 6000);
+    } },
+    { name: 'theremin lead', play(s, b) {
+      const c = chordAt(TRIP_PROG, b), n = tripTune.next(c, b.group);
+      if (n === null) return;
+      const f = hz(inScale(n, scaleFor(c, E_DORIAN)));
+      s.theremin(b.t(0), tripLast, f, b.len * 0.95, 0.09);
+      tripLast = f;
+    } },
+    { name: 'string swell', play(s, b) {
+      if (b.beat === 0) s.pad(b.t(0), chordAt(TRIP_PROG, b).notes.map((n) => hz(n + 12)), restOfBar(b), 0.12, 1400);
+    } },
+  ],
+};
+
+export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune, lotus, tekno, trip];
 export const styleById = (id: string) => STYLES.find((s) => s.id === id) ?? STYLES[0];
