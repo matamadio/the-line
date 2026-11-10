@@ -287,5 +287,53 @@ const lotus: Style = {
   ],
 };
 
-export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune, lotus];
+// ---------------------------------------------------------------- Tekno: four on the floor, acid, rave stabs
+
+/** A minor, moving every two bars: Am, Am, F, G. */
+const TEK_PROG = [chord(-12, -12, -9, -5), chord(-12, -12, -9, -5), chord(-16, -16, -12, -9), chord(-14, -14, -10, -7)];
+/**
+ * The acid line, a sixteenth at a time: semitones above the chord's root, or null for a
+ * rest. The steps in ACID_ACCENT are accented: louder, and the filter opens wider.
+ */
+const ACID: readonly (number | null)[] = [0, null, 12, 0, 3, null, 0, 7, 0, null, 10, 0, 12, 3, null, 7];
+const ACID_ACCENT = [0, 4, 8, 12];
+
+/** The bass note of a chord, kept between 55 and 110 Hz. */
+const lowRoot = (c: Chord) => { let n = c.root - 24; while (n < -36) n += 12; return n; };
+
+const tekno: Style = {
+  id: 'tekno', name: 'TEKNO', swing: 0,
+  tint: { wave: 'square', cutoff: 5000, echo: 0.2, echoBeats: 0.75 },
+  layers: [
+    { name: 'kick and offbeat bass', play(s, b) {
+      // A kick on every beat, whatever the time signature, and the bass in the gaps between.
+      const c = chordAt(TEK_PROG, b, 2);
+      s.kick(b.t(0), 1, { from: 160, to: 45, decay: 0.12 });
+      s.tone(b.t(2), hz(lowRoot(c)), b.len * 0.3, 0.32, { wave: 'sawtooth', cutoff: 300, release: 0.02 });
+    } },
+    { name: 'open hi-hat', play(s, b) {
+      s.hat(b.t(2), 0.2, 0.05, 7000);
+    } },
+    { name: 'clap', play(s, b) {
+      // Two bursts a hair apart sound like hands.
+      if (!b.groupEnd || b.group) return;
+      s.snare(b.t(0), 0.3, { band: 1200, decay: 0.03, tone: 0 });
+      s.snare(b.t(0) + 0.012, 0.35, { band: 1300, decay: 0.07, tone: 0 });
+    } },
+    { name: 'acid line', play(s, b) {
+      const c = chordAt(TEK_PROG, b, 2), root = lowRoot(c) + 12;
+      for (let k = 0; k < 4; k++) {
+        const i = (b.beat * 4 + k) % ACID.length, n = ACID[i];
+        if (n !== null) s.acid(b.t(k), hz(root + n), b.len * 0.2, 0.07, ACID_ACCENT.includes(i));
+      }
+    } },
+    { name: 'rave stabs', play(s, b) {
+      // A short chord on the off beat at the end of each group, every other bar.
+      if (!b.groupEnd || b.bar % 2 === 0) return;
+      for (const n of chordAt(TEK_PROG, b, 2).notes) s.tone(b.t(2), hz(n + 12), 0.04, 0.05, { wave: 'sawtooth', cutoff: 2200, decay: 0.08, release: 0.1 });
+    } },
+  ],
+};
+
+export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune, lotus, tekno];
 export const styleById = (id: string) => STYLES.find((s) => s.id === id) ?? STYLES[0];

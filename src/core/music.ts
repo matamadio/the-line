@@ -306,6 +306,28 @@ export class Synth {
     for (const o of [osc, lfo]) { o.start(at); o.stop(end); }
   }
 
+  /**
+   * An acid bass line's note: a saw through a resonant lowpass that snaps open and
+   * closes again, the squelch of an old bass machine. An accent opens it further.
+   */
+  acid(at: number, freq: number, dur: number, vol: number, accent = false) {
+    const ctx = this.ctx, end = at + dur + 0.1;
+    const osc = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    f.type = 'lowpass';
+    f.Q.value = 11;
+    f.frequency.setValueAtTime(accent ? 2600 : 1400, at);
+    f.frequency.exponentialRampToValueAtTime(260, at + 0.18);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(accent ? vol * 1.4 : vol, at + 0.003);
+    g.gain.setValueAtTime(accent ? vol * 1.4 : vol, at + dur);
+    g.gain.linearRampToValueAtTime(0, at + dur + 0.02);
+    osc.connect(f).connect(g).connect(this.out);
+    osc.start(at);
+    osc.stop(end);
+  }
+
   /** A big drum, like a taiko: a deep, slow-dying thump with the skin's slap on top. */
   taiko(at: number, vol = 1, size = 1) {
     this.kick(at, vol, { from: 110 / size, to: 42 / size, decay: 0.18 * size });
