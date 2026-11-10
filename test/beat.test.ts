@@ -187,3 +187,31 @@ describe('the music styles', () => {
     expect(onScale(555, undefined)).toBe(555);
   });
 });
+
+describe('the music building up', () => {
+  it('gives every style five layers, each of them its own part', async () => {
+    const { STYLES } = await import('../src/core/styles');
+    const { LAYERS, METERS, groupStarts } = await import('../src/core/music');
+    for (const style of STYLES) {
+      expect(style.layers).toHaveLength(LAYERS);
+      expect(new Set(style.layers.map((l) => l.name)).size).toBe(LAYERS);
+      // Every layer makes sound within 16 bars, in every time signature: none is silent.
+      for (const layer of style.layers) for (const meter of METERS) {
+        let notes = 0;
+        const count = () => { notes++; };
+        const synth = { kick: count, snare: count, hat: count, block: count, tone: count, keys: count, pad: count, pluck: count, strum: count, flute: count, fiddle: count, bass: count, taiko: count };
+        const starts = groupStarts(meter);
+        for (let bar = 0; bar < 16; bar++) for (let beat = 0; beat < meter.beats; beat++) {
+          layer.play(synth as never, { at: 0, len: 0.8, beat, bar, meter, layers: LAYERS, group: starts.includes(beat), groupEnd: starts.includes(beat + 1) || beat === meter.beats - 1, t: (k) => k * 0.2 });
+        }
+        expect(notes, `${style.id} / ${layer.name} / ${meter.id}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('adds one layer per level, all five from level 5', () => {
+    const g = headlessGame();
+    const layers = [1, 2, 3, 4, 5, 6, 10].map((level) => { g.level = level; return g.musicLayers; });
+    expect(layers).toEqual([1, 2, 3, 4, 5, 5, 5]);
+  });
+});

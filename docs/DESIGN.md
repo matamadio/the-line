@@ -80,7 +80,7 @@ Enemies on the line never overlap. Those that crawl queue up behind whatever is 
 
 A music-timing core for the game ([issue #3](https://github.com/matamadio/the-line/issues/3)). It is on by default; the first knob of the Beat group in the difficulty editor turns it off.
 
-- The beat is music, made by the game as it plays: drums, bass and chords in the style picked in the audio menu, with more parts joining as the levels go up. There is no recorded music. See [Music](#music).
+- The beat is music, made by the game as it plays: drums, bass and chords in the style picked in the audio menu, with one instrument joining per level up to level 5. There is no recorded music. See [Music](#music).
 - The line lights up on each beat, so the beat can be seen with the sound off.
 - The whole world runs at `BPM / 75`, and the tempo rises by 2 BPM per level, changing only at the start of a bar.
 - Enemies come in on the beat, one to a beat and never more than two to a bar: on beat 4 only up to level 5, and on beats 2 and 4 from level 6. The kinds take turns, the one furthest past its time going next, so the commonest doesn't take every beat.
@@ -93,6 +93,15 @@ The speaker button up to the right opens the audio menu: sound on or off, the mu
 
 - **Made, not recorded.** Every note is synthesized with Web Audio (`src/core/music.ts`, styles in `src/core/styles.ts`): it follows any tempo and time signature exactly, costs nothing to download, and needs no licence. Plucked strings use Karplus-Strong, which is what makes Bluegrass possible without samples.
 - **Styles:** Vibe (swung lo-fi, electric piano), Chill (pads and bells), Bluegrass (a soft, round upright-style bass, guitar strum, and mellow banjo rolls in the background), Chiptune (square waves and noise) and Lotus (a quiet, relaxing piece for shakuhachi-like flutes, koto and temple woods over a soft hum, in the bright yo scale of Japanese folk song). Each plays on the strong beats and backbeats the time signature gives it, not on a fixed count of four. To add one, add an entry to `STYLES`.
+- **Building up.** Every style is five layers. Level 1 plays the first, the base, and each level adds one instrument until all five play from level 5 on. The audio menu plays all five when no game is on, and the game's own number during one.
+
+  | Style | Level 1 | 2 | 3 | 4 | 5 |
+  | --- | --- | --- | --- | --- | --- |
+  | Vibe | kick, bass, electric piano | snare | hi-hats | piano melody | warm pad |
+  | Chill | pad, deep bass, woodblock | soft kick | shaker | bells | flute |
+  | Bluegrass | bass, guitar, brushes | banjo | mandolin chop | fiddle | spoons |
+  | Chiptune | kick, triangle bass | noise drums | arpeggio | square lead | tom fills |
+  | Lotus | drone, koto | temple block | shakuhachi | wooden clappers | high flute |
 - **One key.** Every style is in A, the key of the Sinepede's two notes, so the game's tones always fit the music. Lotus's yo scale (A, B, D, E, F sharp) keeps both of them, and with Lotus on, Wavell's tones are moved to the nearest note of the scale too.
 - **The style dresses every sound.** A lowpass and an echo timed in beats go over all the game's sounds, and Wavell's tones take the style's wave. A Sinepede's tones stay pure sines whatever the style: it looks like a sine, so it sounds like one.
 - **Nostalgia mode** puts the music through a bitcrusher (16 levels per sample, each held for four), to match the low-resolution look.

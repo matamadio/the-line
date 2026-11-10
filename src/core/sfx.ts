@@ -5,7 +5,7 @@
 // lowpass and an echo timed to the beat), and the music. Muting turns the master down.
 
 import { audioPrefs, saveAudioPrefs } from './audioPrefs';
-import { Music, type Meter } from './music';
+import { LAYERS, Music, type Meter } from './music';
 import { STYLES, styleById, type Style } from './styles';
 
 const SAMPLES = {
@@ -276,9 +276,9 @@ class Sfx {
   /**
    * One beat of the music. Frames arrive unevenly, so each beat is placed exactly one
    * beat after the last on the audio clock, as long as the game is roughly there too.
-   * beat: which beat of the bar, from 0. energy: how busy the music is, 0 to 1.
+   * beat: which beat of the bar, from 0. layers: how many of the style's layers play, 1 to 5.
    */
-  beat(seconds: number, beat: number, meter: Meter, energy: number) {
+  beat(seconds: number, beat: number, meter: Meter, layers: number) {
     const ctx = this.ctx;
     if (!ctx) return;
     const soon = ctx.currentTime + BEAT_AHEAD;
@@ -286,18 +286,18 @@ class Sfx {
     this.nextBeat = at + seconds;
     this.lastBeat = at;
     if (beat === 0) this.applyTint(seconds);
-    if (!this.muted) this.music.beat(at, seconds, beat, meter, energy);
+    if (!this.muted) this.music.beat(at, seconds, beat, meter, layers);
   }
 
   /** A game starts its music from the first bar. */
   restartMusic() { this.music.restart(); }
 
   /** The audio menu plays the music on its own clock, so a style can be heard while the game waits. */
-  preview(on: boolean, bpm = 75, meter?: () => Meter, energy = 0.7) {
+  preview(on: boolean, bpm = 75, meter?: () => Meter, layers = LAYERS) {
     this.previewing = on;
     if (!on) { this.music.stopPreview(); return; }
     this.unlock();
-    if (meter) this.music.startPreview(bpm, meter, energy);
+    if (meter) this.music.startPreview(bpm, meter, layers);
     this.applyTint(60 / bpm);
   }
 }
