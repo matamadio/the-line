@@ -161,7 +161,7 @@ Sparkles are the only pickup in the game today. They are the bait: chasing them 
 
 ## Scoring and levels
 
-Every score is multiplied by 1 + Wavell's size: ×1 at no size, ×2, ×3, up to ×4 at full size. A hit lowers the multiplier along with the size. The multiplier shows left of the score.
+Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2, up to ×2.5 at full size (rounded to whole points). A hit lowers the multiplier along with the size. The multiplier shows left of the score. Levels go by the score, so staying big brings the levels on faster.
 
 | Event | Base points |
 | --- | --- |

@@ -72,7 +72,7 @@
   "growWalk": 0.08,
   "growBubble": 0.35,
   "growSafe": 1.2,
-  "sizePoints": 1,
+  "sizePoints": 0.5,
   "sparkleKill": 2,
   "sparkleEvery": 3,
   "sparkleMax": 6,

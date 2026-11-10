@@ -63,7 +63,7 @@ Wavell has one life, and his size is all that protects it. This is a trial and m
 
 This doesn't apply to the bubble. A bigger Wavell makes a bigger bubble, which lasts longer but is easier to hit, and when it pops the game is over. The end of the line also ends it, whatever his size.
 
-Size is also worth points: everything he scores is multiplied by 1 plus his size, so ×2 at the first size, ×3 at the second and ×4 at full size. The multiplier shows to the left of the score. A hit takes the multiplier down with the size, so a bigger Wavell has more to lose and climbs the levels faster.
+Size is also worth points: everything he scores is multiplied by 1 plus half his size, so ×1.5 at the first size, ×2 at the second and ×2.5 at full size. The multiplier shows to the left of the score. Levels go by the score, so a bigger Wavell reaches the end sooner, and the multiplier tells the player why. A hit takes the multiplier down with the size, so a bigger Wavell has more to lose.
 
 ## Sound and shape match
 
