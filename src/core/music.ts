@@ -67,7 +67,8 @@ export class Synth {
   private noiseBuf: AudioBuffer | null = null;
   private plucks = new Map<string, AudioBuffer>();
 
-  constructor(readonly ctx: AudioContext, readonly out: AudioNode) {}
+  /** Where its notes go. Music moves it to a new fader each time the music starts again. */
+  constructor(readonly ctx: AudioContext, public out: AudioNode) {}
 
   private get noise() {
     if (!this.noiseBuf) {
@@ -396,6 +397,10 @@ registerProcessor('crush', Crush);
 const MUSIC_VOLUME = 0.5;
 /** The preview's clock: how often it looks ahead, and how far (s). */
 const PREVIEW_EVERY = 25, PREVIEW_AHEAD = 0.12;
+/** How fast a run of the music fades when another takes over: the time constant (s). */
+const RUN_FADE = 0.04;
+/** How fast a layer that drops out fades: the time constant (s). It is all but gone in three. */
+const LAYER_FADE = 0.6;
 
 export class Music {
   private synth: Synth | null = null;
@@ -407,6 +412,12 @@ export class Music {
   private crushed = false;
   style: Style = STYLES[0];
   private bar = -1;
+  /** The current run of the music goes through this, so it can be faded out when another starts. */
+  private fader: GainNode | null = null;
+  /** One fader per layer, inside the run's, so a layer that drops out can fade away on its own. */
+  private layerFaders: GainNode[] = [];
+  /** How many layers played on the last beat. */
+  private heard = LAYERS;
   private preview: { timer: number; next: number; beat: number; bpm: number; layers: number; meter: () => Meter } | null = null;
 
   init(ctx: AudioContext, dest: AudioNode) {
@@ -416,6 +427,7 @@ export class Music {
     this.bus.gain.value = MUSIC_VOLUME;
     this.bus.connect(dest);
     this.synth = new Synth(ctx, this.input);
+    this.newRun();
     this.route();
     if (!ctx.audioWorklet) return;
     const url = URL.createObjectURL(new Blob([CRUSHER], { type: 'application/javascript' }));
@@ -440,7 +452,32 @@ export class Music {
   }
 
   /** From the first bar again: a new game starts its tune from the top. */
-  restart() { this.bar = -1; }
+  restart() {
+    this.bar = -1;
+    this.newRun();
+  }
+
+  /**
+   * Notes from here on go through a new fader. What the last run still has to play (a pad
+   * or chord can ring for a whole bar) fades out at once, so two tunes never overlap.
+   */
+  private newRun() {
+    const { ctx, synth, input } = this;
+    if (!ctx || !synth || !input) return;
+    const old = this.fader;
+    if (old) {
+      old.gain.setTargetAtTime(0, ctx.currentTime, RUN_FADE);
+      setTimeout(() => old.disconnect(), RUN_FADE * 10 * 1000);
+    }
+    const fader = this.fader = ctx.createGain();
+    fader.connect(input);
+    this.layerFaders = Array.from({ length: LAYERS }, () => {
+      const g = ctx.createGain();
+      g.connect(fader);
+      return g;
+    });
+    this.heard = LAYERS;
+  }
 
   /** One beat, placed on the audio clock at `at`, lasting len seconds. */
   beat(at: number, len: number, beat: number, meter: Meter, layers: number) {
@@ -454,7 +491,18 @@ export class Music {
       groupEnd: starts.includes(beat + 1) || beat === meter.beats - 1,
       t: (k) => at + (k + (k % 2 ? swing : 0)) * (len / 4),
     };
-    this.style.layers.forEach((l, i) => { if (i < layers) l.play(s, b); });
+    // A layer that drops out (the start screen's five becoming level 1's one) fades away
+    // over a couple of seconds; one that joins comes in at full from its first note.
+    this.layerFaders.forEach((g, i) => {
+      if (i >= layers && i < this.heard) g.gain.setTargetAtTime(0, at, LAYER_FADE);
+      if (i < layers && i >= this.heard) { g.gain.cancelScheduledValues(at); g.gain.setValueAtTime(1, at); }
+    });
+    this.heard = layers;
+    this.style.layers.forEach((l, i) => {
+      if (i >= layers) return;
+      if (this.layerFaders[i]) s.out = this.layerFaders[i];
+      l.play(s, b);
+    });
   }
 
   /** Keep the music going on its own clock, at this tempo, while the game isn't driving it. */
@@ -479,7 +527,10 @@ export class Music {
   }
 
   stopPreview() {
-    if (this.preview) window.clearInterval(this.preview.timer);
+    if (!this.preview) return;
+    window.clearInterval(this.preview.timer);
     this.preview = null;
+    // What it already scheduled stops too.
+    this.newRun();
   }
 }

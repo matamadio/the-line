@@ -93,21 +93,21 @@ A music-timing core for the game ([issue #3](https://github.com/matamadio/the-li
 
 The speaker button up to the right opens the audio menu: sound on or off, the music style and the time signature. The game waits while it is open, and the music keeps playing on its own so a choice can be heard straight away. M still mutes in one press.
 
-The start screen plays the music too, all five layers, once the title has formed and Wavell has risen out of the line (and the browser has let sound start, after the first tap or key). It goes on through the audio menu and stops when a game starts, which begins its own music from the first bar.
+The start screen plays the music too, all five layers, once the title has formed and Wavell has risen out of the line (and the browser has let sound start, after the first tap or key). It runs on the game's own beat clock, so it goes on through the audio menu, and a game started from the menu simply carries it on: same beat, same bar, thinned to level 1's single layer. Each layer plays through its own fader, so the four that drop out fade away (a pad can otherwise ring to the end of its bar) instead of stopping dead.
 
 - **Made, not recorded.** Every note is synthesized with Web Audio (`src/core/music.ts`, styles in `src/core/styles.ts`): it follows any tempo and time signature exactly, costs nothing to download, and needs no licence. Plucked strings use Karplus-Strong, which is what makes Bluegrass possible without samples.
-- **Styles:** Vibe (swung lo-fi, electric piano), Chill (pads and bells), Bluegrass (a soft, round upright-style bass, guitar strum, and mellow banjo rolls in the background), Chiptune (square waves and noise) and Lotus (a quiet, relaxing piece for shakuhachi-like flutes, koto and temple woods over a soft hum, in the bright yo scale of Japanese folk song) and Tekno (a four-on-the-floor kick, offbeat bass and hats, and a squelchy acid line over Am7, Dm7, Fmaj7, E7: change the chords by name in `TEK_CHORDS` in `src/core/styles.ts`) and Trip (trip-hop: a heavy, lazy beat with vinyl crackle, Rhodes, strings and a sliding theremin-like lead, over B, Em7, A, B in E dorian, set in `TRIP_CHORDS`). Each plays on the strong beats and backbeats the time signature gives it, not on a fixed count of four. To add one, add an entry to `STYLES`.
+- **Styles:** Vibe (swung lo-fi, electric piano), Chill (pads and bells), Trip (trip-hop: a heavy, lazy beat with vinyl crackle, Rhodes, strings and a sliding theremin-like lead, over B, Em7, A, B in E dorian, set in `TRIP_CHORDS`), Lotus (a quiet, relaxing piece for shakuhachi-like flutes, koto and temple woods over a soft hum, in the bright yo scale of Japanese folk song), Tekno (a four-on-the-floor kick, offbeat bass and hats, and a squelchy acid line over Am7, Dm7, Fmaj7, E7: change the chords by name in `TEK_CHORDS` in `src/core/styles.ts`), Chiptune (square waves and noise) and Bluegrass (a soft, round upright-style bass, guitar strum, and mellow banjo rolls in the background) (in the order the audio menu lists them). Each plays on the strong beats and backbeats the time signature gives it, not on a fixed count of four. To add one, add an entry to `STYLES`.
 - **Building up.** Every style is five layers. Level 1 plays the first, the base, and each level adds one instrument until all five play from level 5 on. The audio menu plays all five when no game is on, and the game's own number during one.
 
   | Style | Level 1 | 2 | 3 | 4 | 5 |
   | --- | --- | --- | --- | --- | --- |
   | Vibe | kick, bass, electric piano | snare | hi-hats | piano melody | warm pad |
   | Chill | pad, deep bass, woodblock | soft kick | shaker | bells | flute |
-  | Bluegrass | bass, guitar, brushes | banjo | mandolin chop | fiddle | spoons |
-  | Chiptune | kick, triangle bass | noise drums | arpeggio | square lead | tom fills |
+  | Trip | heavy kick, sub bass, Rhodes | dusty snare, vinyl crackle | lazy hi-hats | theremin lead | string swell |
   | Lotus | drone, koto | temple block | shakuhachi | wooden clappers | high flute |
   | Tekno | kick, offbeat bass | open hi-hat | clap | acid line | rave stabs |
-  | Trip | heavy kick, sub bass, Rhodes | dusty snare, vinyl crackle | lazy hi-hats | theremin lead | string swell |
+  | Chiptune | kick, triangle bass | noise drums | arpeggio | square lead | tom fills |
+  | Bluegrass | bass, guitar, brushes | banjo | mandolin chop | fiddle | spoons |
 - **One key.** Every style is in A, the key of the Sinepede's two notes, so the game's tones always fit the music. Lotus's yo scale (A, B, D, E, F sharp) keeps both of them, and with Lotus on, Wavell's tones are moved to the nearest note of the scale too.
 - **The style dresses every sound.** A lowpass and an echo timed in beats go over all the game's sounds, and Wavell's tones take the style's wave. A Sinepede's tones stay pure sines whatever the style: it looks like a sine, so it sounds like one.
 - **Nostalgia mode** puts the music through a bitcrusher (16 levels per sample, each held for four), to match the low-resolution look.

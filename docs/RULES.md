@@ -195,7 +195,7 @@ Anything that gets harder is a ramp: a value at level 1, a change per level and 
 | Bubble Burst time to burst | 1.74 s | −0.06 | 1.1 s |
 | Backwave chance per roll | 35% | +5% | 100% |
 | Reflux chance per roll | 29% | +4% | 100% |
-| Music energy (more parts join) | 0.25 | +0.15 | 1 |
+| Music layers (one instrument per level) | 1 | +1 | 5 |
 
 Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.
 
@@ -220,13 +220,17 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 | --- | --- | --- |
 | Vibe | Swung lo-fi, electric piano | 0.22 |
 | Chill | Pads and bells | none |
-| Bluegrass | Upright-style bass, guitar strum, banjo rolls (Karplus-Strong plucks) | 0.08 |
-| Chiptune | Square waves and noise | none |
+| Trip | Trip-hop: heavy lazy beat, vinyl crackle, Rhodes, strings, sliding theremin-like lead, over B Em7 A B | 0.3 |
 | Lotus | Shakuhachi-like flutes, koto, temple woods, in the yo scale (A B D E F♯) | none |
+| Tekno | Four-on-the-floor kick, offbeat bass, acid line, rave stabs, over Am7 Dm7 Fmaj7 E7 | none |
+| Chiptune | Square waves and noise | none |
+| Bluegrass | Upright-style bass, guitar strum, banjo rolls (Karplus-Strong plucks) | 0.08 |
 
 - **One key.** Every style is in A, the key of the Sinepede's two notes, so game tones always fit. With Lotus on, Wavell's tones move to the nearest note of the yo scale.
 - **The style dresses every sound.** A lowpass and an echo timed in beats go over all game sounds, and Wavell's tones use the style's waveform.
-- **Music energy** grows with the level (0.25 at level 1, +0.15 per level), and more parts join as it rises.
+- **Building up.** Every style has five instruments. Level 1 plays the first, and each level adds one, until all five play from level 5.
+- **Chords by name.** Tekno's and Trip's progressions are one line each (`TEK_CHORDS`, `TRIP_CHORDS` in `src/core/styles.ts`), and their bass and leads follow each chord's scale.
+- **Levels.** Sound effects play at 0.55 and music at 0.5, so the effects sit under the music.
 - Each style plays on the strong beats and backbeats of the chosen time signature, not a fixed count of four.
 - **Nostalgia mode** bitcrushes the music (16 levels per sample, each held for four) to match the low-resolution look.
 
@@ -242,6 +246,12 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - The speaker button at the top right opens it: sound on or off, music style, time signature.
 - The game pauses while it is open, and the music keeps playing so a choice can be heard at once.
 - M mutes in one press. Audio choices are saved in the browser.
+
+### Start screen
+
+- The start screen plays the chosen style, all five instruments, once the title has formed and Wavell has risen out of the line. Browsers only allow sound after the first tap or key, so on a first visit it starts then.
+- It keeps the game's own beat clock, so it keeps playing through the audio menu without going back to the first bar.
+- Picking START doesn't restart it: the same beat and bar carry on, and the music thins to level 1's one instrument while the other four fade away over a second or two. Each level then adds one back.
 
 ## Visuals and screens
 

@@ -299,29 +299,17 @@ class Sfx {
   /** Sound can play: the browser has let it start, after a tap or a key. */
   get ready() { return this.ctx !== null; }
 
-  /**
-   * The music on its own clock, while no game drives it: on the start screen, and in the
-   * audio menu. If it is already playing it carries on, at this tempo and with these layers.
-   */
-  freeMusic(bpm: number, meter: () => Meter, layers = LAYERS) {
-    if (!this.ctx) return;
+  /** The audio menu plays the music on its own clock, so a style can be heard while the game waits. */
+  preview(bpm: number, meter: () => Meter, layers = LAYERS) {
+    this.previewing = true;
+    this.unlock();
     this.music.startPreview(bpm, meter, layers);
     this.applyTint(60 / bpm);
   }
 
-  stopFreeMusic() { this.music.stopPreview(); }
-
-  /** The audio menu plays the music, so a style can be heard while the game waits. */
-  preview(bpm: number, meter: () => Meter, layers = LAYERS) {
-    this.previewing = true;
-    this.unlock();
-    this.freeMusic(bpm, meter, layers);
-  }
-
-  /** The audio menu closes. `keepMusic`: the start screen's music goes on. */
-  endPreview(keepMusic = false) {
+  endPreview() {
     this.previewing = false;
-    if (!keepMusic) this.stopFreeMusic();
+    this.music.stopPreview();
   }
 }
 

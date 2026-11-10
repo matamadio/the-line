@@ -425,5 +425,5 @@ const trip: Style = {
   ],
 };
 
-export const STYLES: readonly Style[] = [vibe, chill, bluegrass, chiptune, lotus, tekno, trip];
+export const STYLES: readonly Style[] = [vibe, chill, trip, lotus, tekno, chiptune, bluegrass];
 export const styleById = (id: string) => STYLES.find((s) => s.id === id) ?? STYLES[0];
