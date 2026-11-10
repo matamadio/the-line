@@ -55,7 +55,7 @@ On a computer, the keys and the joypad's buttons can be changed from CONTROL in 
 
 In the menu, ↑ goes to the line behind and ↓ to the one before, round and round; Enter (or a wipe or a pull, or A) picks the line at the front: Wavell pulls it in, and that opens it. On a phone, swipe up or down and tap.
 
-The one rule to remember: **pull in what is close on your side, wipe what is on the other.** The wrong attack feeds a creature and it grows. Each enemy is explained the first time it appears, and [docs/DESIGN.md](docs/DESIGN.md) has the full rules.
+The one rule to remember: **pull in what is close on your side, wipe what is on the other.** The wrong attack feeds a creature and it grows. Each enemy is explained the first time it appears. [docs/RULES.md](docs/RULES.md) lists every rule with its numbers: controls, enemies, scoring, levels, music and the beat. [docs/DESIGN.md](docs/DESIGN.md) explains the design behind them.
 
 Every screen shows the same play area, 16:9 and 356x200 world units, so nobody sees further ahead than anyone else. Whatever it doesn't fill stays empty around it.
 
@@ -188,7 +188,7 @@ src/
 test/              Headless tests: the real simulation, no browser
 tools/             The dev server's save endpoint for the editors, the build's service worker
 public/            Sounds, app icons and the app manifest
-docs/              Game design notes and the original game's event list
+docs/              Game rules reference (RULES.md), design notes and the original game's event list
 ```
 
 ## Commands
@@ -217,4 +217,14 @@ Everything has been vibecoded with Claude Code in the afterjob of leftover credi
 
 ## License
 
-No license has been chosen yet, so all rights are reserved for now. Sounds remain the property of their respective authors.
+*The Line* is released under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/) (CC BY-NC 4.0). The full terms are in [LICENSE](LICENSE).
+
+- **You may** share the game and its code, and change it or build on it.
+- **You must cite it.** Any copy or derived work has to credit the original, link to the license and say what was changed.
+- **You may not use it commercially.** Neither the game nor anything derived from it may be sold or used for commercial purposes.
+
+**How to cite:**
+
+> *The Line*, by matamadio and The Line contributors. <https://github.com/matamadio/the-line>. Based on *The Line continues* (Bepposoft, 2003). Licensed under CC BY-NC 4.0.
+
+The sound effects come from *The Line continues* and are not covered by this license. They remain the property of their respective authors.

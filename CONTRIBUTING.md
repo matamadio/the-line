@@ -11,7 +11,8 @@
 1. Create a branch from `main`.
 2. Make your change. `npm start` gives you the game with live reload.
 3. Run `npm run check`, which type-checks and runs the tests.
-4. Open a pull request. CI runs the same check and a build, and merged changes go live on the hosted version.
+4. If the change touches a rule, a number the player feels, the controls or the music, update [docs/RULES.md](docs/RULES.md) in the same pull request, and [docs/DESIGN.md](docs/DESIGN.md) if the design itself changes.
+5. Open a pull request. CI runs the same check and a build, and merged changes go live on the hosted version.
 
 Keep a pull request to one change. Editor saves rewrite whole data files, so a tuning change is easiest to review, and to merge, on its own. If two branches touch the same data file, re-save from the editor after merging rather than resolving the conflict number by number.
 
@@ -52,7 +53,7 @@ A test plays the game twice and fails if the two runs differ.
 1. Write the actor in `src/game/actors/`. `worm.ts` is a compact example: it updates itself, gives its outline to the line's stroke, and has states for rising, moving, biting and dying.
 2. Spawn and update it from `game.ts`, using `updateWorms` as a model. Add it to `targets()` if attacks can hit it.
 3. Splice its outline into the line in `drawLine` in `render.ts`.
-4. Add its numbers to `difficulty.ts`, a scene to the lab, and its rules to `docs/DESIGN.md`.
+4. Add its numbers to `difficulty.ts`, a scene to the lab, its design to `docs/DESIGN.md`, and its rules and numbers to `docs/RULES.md`.
 
 The game's design rule applies: **every threat is something the line does, and every answer is something Wavell does to the line.** See [docs/DESIGN.md](docs/DESIGN.md).
 

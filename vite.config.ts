@@ -8,6 +8,11 @@ const page = (name: string) => fileURLToPath(new URL(`./${name}.html`, import.me
 export default defineConfig({
   // Relative, so the build works under any path (GitHub Pages serves it from /the-line/).
   base: './',
+  // Every push to main is built and deployed at once, so the day of the build is the day of the deploy.
+  define: {
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    __VERSION__: JSON.stringify(process.env.npm_package_version ?? ''),
+  },
   plugins: [editorSave(), pwa()],
   build: {
     rollupOptions: {

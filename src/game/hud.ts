@@ -135,10 +135,19 @@ function drawFullscreen(n: Neon) {
   n.glow(p, '#c9a640', 1.4, 0.7);
 }
 
+/** Which build this is, small, down in the right corner of the start screen. */
+export const VERSION_TEXT = `v${__VERSION__} · ${__BUILD_DATE__}${import.meta.env.DEV ? ' dev' : ''}`;
+
+function drawVersion(n: Neon) {
+  const s = hudSize(n);
+  n.text(VERSION_TEXT, n.w - s * 0.8, n.h - s * 0.45, s * 0.4, '#c9a640', 'right', 0.6);
+}
+
 /** The install button's box on screen, down to the right of the start screen. */
 function installBox(n: Neon) {
   const s = hudSize(n), w = s * 5.6, h = s * 1.3, pad = s * 0.8;
-  return { s, x: n.w - pad - w, y: n.h - pad - h, w, h };
+  // It sits up a little, to leave the version room under it.
+  return { s, x: n.w - pad - w, y: n.h - s * 1.3 - h, w, h };
 }
 
 export function inInstallButton(n: Neon, x: number, y: number) {
@@ -306,6 +315,7 @@ export function drawHud(g: Game) {
       n.text(TITLE_HINTS[Math.floor(g.time / HINT_TIME) % TITLE_HINTS.length], cx, n.lineY + s * 3.9, s * 0.55, '#c9a640', 'center', hintAlpha);
       drawDevMenu(g);
       if (canInstall()) drawInstall(g);
+      drawVersion(n);
     }
   } else {
     c.canvas.style.cursor = '';

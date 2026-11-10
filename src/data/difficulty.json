@@ -1,7 +1,7 @@
 {
-  "endSpeed": 60,
+  "endSpeed": 40,
   "endSpeedPer": 4,
-  "endSpeedCap": 96,
+  "endSpeedCap": 80,
   "endLead": 240,
   "endGrace": 1.6,
   "soloUntil": 3,
