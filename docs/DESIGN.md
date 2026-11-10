@@ -2,6 +2,8 @@
 
 **Every threat is something the line does, and every answer is something Wavell does to the line.**
 
+This page explains the design. For every rule with its current numbers in one place, see [RULES.md](RULES.md).
+
 ## The line and the characters
 
 - **The line is physical** (`src/game/line.ts`). It is a vibrating string simulated with the wave equation. Footsteps dent it, and Wavell's attacks act on it.
