@@ -1266,7 +1266,7 @@ export class Game {
     this.teach('cancel', 'OPPOSITE WAVES CANCEL: the other side is no way round', 'OPPOSITE WAVES CANCEL: the other side is no way round');
   }
 
-  /** Points count more the bigger he is: ×2 at the first size, ×3 at the second, and so on. */
+  /** Points count more the bigger he is: ×1.5 at the first size, ×2 at the second, ×2.5 at full size. */
   get multiplier() { return 1 + DIFF.sizePoints * this.wavell.size; }
 
   private addScore(points: number, x: number, y: number) {

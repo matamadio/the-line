@@ -96,7 +96,7 @@ export const DIFF_KNOBS = {
   growWalk: knob('Growing', 'Faster walking per size', 0.08, 0, 0.5, 0.01),
   growBubble: knob('Growing', 'Longer in the bubble per size', 0.35, 0, 2, 0.05),
   growSafe: knob('Growing', 'Safe after losing a size (s)', 1.2, 0, 5, 0.1),
-  sizePoints: knob('Growing', 'Points multiplier added per size', 1, 0, 3, 0.25),
+  sizePoints: knob('Growing', 'Points multiplier added per size', 0.5, 0, 3, 0.25),
 
   sparkleKill: knob('Sparkles', 'Left by each enemy killed', 2, 0, 10, 1),
   sparkleEvery: knob('Sparkles', 'One on its own every (s, roughly)', 3, 0.5, 20, 0.1),
