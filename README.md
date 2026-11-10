@@ -212,7 +212,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: branch, change, `npm run check
 
 ## Credits
 
-*The Line* grows out of *The Line continues* (Bepposoft, 2003), a game by Beppo made with The Games Factory and Multimedia Fusion, with a little help by Lupo, technical contributions by Cappy, and the online hiscore page by Mk. The sound effects come from that game, and timings and speeds follow its events wherever there is one to follow ([docs/original-events.txt](docs/original-events.txt)).
+*The Line* grows out of *The Line continues* (Bepposoft, 2003), a game made with The Games Factory/Multimedia Fusion. Kudos to all the crazy pals out there, still making games.
+Everything has been vibecoded with Claude Code in the afterjob of leftover credits.
 
 ## License
 
