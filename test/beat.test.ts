@@ -4,11 +4,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sfx } from '../src/core/sfx';
 import { DIFF, at } from '../src/data/difficulty';
-import { METERS, groupStarts, meterById } from '../src/core/music';
+import { LAYERS, METERS, groupStarts, meterById } from '../src/core/music';
 import { BASE_BPM, BeatClock } from '../src/game/beat';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, stopFreeMusic: vi.fn(), freeMusic: vi.fn(), ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic: vi.fn(), setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
 
 describe('the beat clock', () => {
   it('has a beat every 96 steps and a bar every four beats', () => {
@@ -102,19 +102,54 @@ describe('the beat in the game', () => {
     vi.unstubAllGlobals();
   });
 
-  it('plays on the start screen once he has risen, and stops when a game starts', () => {
-    vi.mocked(sfx.freeMusic).mockClear();
-    vi.mocked(sfx.stopFreeMusic).mockClear();
+  /** A start screen with its music going: he has risen, and a couple of beats have played. */
+  const titleWithMusic = () => {
+    DIFF.beatOn = 1;
+    Math.random = seeded(5);
+    const g = headlessGame();
+    for (let i = 0; i < 600 && g.wavell.state === 'appear'; i++) g.tick(IDLE);
+    for (let i = 0; i < 250; i++) g.tick(IDLE);
+    return g;
+  };
+  const layersPlayed = () => vi.mocked(sfx.beat).mock.calls.map((c) => c[3]);
+
+  it('plays all five layers on the start screen, only once he has risen', () => {
+    DIFF.beatOn = 1;
     Math.random = seeded(5);
     const g = headlessGame();
     g.tick(IDLE);
     expect(g.wavell.state).toBe('appear');
-    expect(sfx.freeMusic).not.toHaveBeenCalled();
-    for (let i = 0; i < 600 && g.wavell.state === 'appear'; i++) g.tick(IDLE);
-    for (let i = 0; i < 10; i++) g.tick(IDLE);
-    expect(sfx.freeMusic).toHaveBeenCalledTimes(1);
+    expect(sfx.beat).not.toHaveBeenCalled();
+    vi.mocked(sfx.beat).mockClear();
+    const t = titleWithMusic();
+    expect(t.mode).toBe('title');
+    expect(layersPlayed().length).toBeGreaterThan(1);
+    expect(new Set(layersPlayed())).toEqual(new Set([LAYERS]));
+  });
+
+  it('carries the start screen music on into a game, thinning to level 1', () => {
+    const g = titleWithMusic();
+    const restarts = vi.mocked(sfx.restartMusic).mock.calls.length;
+    const beatBefore = g.beat.beatOfBar;
+    vi.mocked(sfx.beat).mockClear();
     g.start();
-    expect(sfx.stopFreeMusic).toHaveBeenCalled();
+    for (let i = 0; i < 96 * 8; i++) g.tick(IDLE);
+    // No restart: the same beat goes on, one beat every 96 steps, at level 1's one layer.
+    expect(vi.mocked(sfx.restartMusic).mock.calls.length).toBe(restarts);
+    expect(layersPlayed()).toEqual(Array(8).fill(1));
+    expect(vi.mocked(sfx.beat).mock.calls[0][1]).toBe((beatBefore + 1) % g.beat.beats);
+  });
+
+  it('never plays the start screen music on top of a game started from the menu', () => {
+    // START is picked while the menu steps, inside the start screen's own update.
+    const g = titleWithMusic();
+    const step = g.menu.step.bind(g.menu);
+    let picked = false;
+    g.menu.step = (dt: number) => { step(dt); if (!picked) { picked = true; g.startFromMenu(); } };
+    vi.mocked(sfx.beat).mockClear();
+    for (let i = 0; i < 96 * 8; i++) g.tick(IDLE);
+    expect(g.mode).toBe('play');
+    expect(layersPlayed()).toEqual(Array(8).fill(1));
   });
 
   it('can be turned off', () => {

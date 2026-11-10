@@ -243,10 +243,13 @@ export class Game {
     this.pulses = [];
     this.fx.clear();
     this.crumbles = [];
-    this.beat.reset(this.level, meterById(audioPrefs.meter));
+    // The start screen's music carries on, on the same beat and bar, and thins out to
+    // level 1's one instrument. Without it, the game's music starts from the first bar.
+    if (!this.titleMusic) {
+      this.beat.reset(this.level, meterById(audioPrefs.meter));
+      sfx.restartMusic();
+    }
     this.titleMusic = false;
-    sfx.stopFreeMusic();
-    sfx.restartMusic();
     this.endX = this.wavell.x - DIFF.endLead;
     this.endGrace = DIFF.endGrace;
     this.deathHandled = false;
@@ -284,19 +287,28 @@ export class Game {
     if (this.audio.open) return;
     this.audio.show();
     if (this.mode === 'play' && !this.paused) { this.setPaused(true); this.audioPaused = true; }
+    // The start screen goes on under the menu, so its own music plays: started now if it
+    // hadn't yet. Anywhere else the game waits, and the music plays on its own clock.
+    if (this.mode === 'title' && DIFF.beatOn) { sfx.unlock(); this.startTitleMusic(); return; }
     const bpm = this.mode === 'play' ? this.beat.bpm : at('bpm', DIFF.startLevel);
     sfx.preview(bpm, () => meterById(audioPrefs.meter), this.mode === 'play' ? this.musicLayers : LAYERS);
-    // On the start screen the music it plays is the start screen's, and goes on when it closes.
-    if (this.mode === 'title') this.titleMusic = true;
   }
 
   closeAudio() {
     if (!this.audio.open) return;
     this.audio.hide();
-    sfx.endPreview(this.mode === 'title' && this.titleMusic);
+    sfx.endPreview();
     if (this.audioPaused) this.setPaused(false);
     else if (this.paused) sfx.pause(true);
     this.audioPaused = false;
+  }
+
+  /** The start screen's music, on the game's beat clock from the first bar, if it isn't playing yet. */
+  private startTitleMusic() {
+    if (this.titleMusic) return;
+    this.titleMusic = true;
+    this.beat.reset(DIFF.startLevel, meterById(audioPrefs.meter));
+    sfx.restartMusic();
   }
 
   /** How many layers of the music play: one instrument more for each level, up to level 5. */
@@ -340,7 +352,8 @@ export class Game {
     this.titleDust?.update(dt, this.neon, this.time);
     if (this.titleDust?.done) this.titleDust = null;
     let controls: Controls = this.mode === 'play' ? { ...this.input } : NO_INPUT;
-    this.acc += dt * (DIFF.beatOn && this.mode !== 'title' ? this.beat.speed : 1);
+    // The world keeps the beat's tempo, on the start screen too once its music plays.
+    this.acc += dt * (DIFF.beatOn && (this.mode !== 'title' || this.titleMusic) ? this.beat.speed : 1);
     while (this.acc >= STEP) {
       this.step(STEP, controls);
       controls = { ...controls, upPressed: false, downPressed: false, dragPressed: false, pullPressed: false };
@@ -407,13 +420,13 @@ export class Game {
       // The line lies flat until he has risen out of it, or while the names run along it.
       if ((W.state === 'ground' || this.menu.page === 'credits') && Math.random() < dt * 1.5) L.impulse(n.camX + Math.random() * n.viewW, rand(-50, 50), 5);
       this.menu.step(dt);
+      // START was picked (he pulled the word in): the game has taken over, music included.
+      if (this.mode !== 'title') return;
       // The music starts once the title has formed and he has risen out of the line, and
-      // as soon as the browser lets sound play.
+      // as soon as the browser lets sound play. It keeps the game's own beat, all five layers.
       const settled = this.morphT >= MORPH_TIME && W.alive && W.state !== 'appear';
-      if (!this.titleMusic && settled && sfx.ready && !this.audio.open) {
-        this.titleMusic = true;
-        sfx.freeMusic(at('bpm', DIFF.startLevel), () => meterById(audioPrefs.meter));
-      }
+      if (settled && sfx.ready && DIFF.beatOn) this.startTitleMusic();
+      if (this.titleMusic && this.beat.step(DIFF.startLevel)) sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, LAYERS);
       return;
     }
     if (this.mode === 'over') { this.overT += dt; this.updateSinepedes(dt); this.updateUrchins(dt); this.keepApart(); return; }
