@@ -5,7 +5,7 @@
 // lowpass and an echo timed to the beat), and the music. Muting turns the master down.
 
 import { audioPrefs, saveAudioPrefs } from './audioPrefs';
-import { Music, type Meter } from './music';
+import { LAYERS, Music, type Meter } from './music';
 import { STYLES, styleById, type Style } from './styles';
 
 const SAMPLES = {
@@ -43,6 +43,9 @@ const DISTORTION = (() => {
   for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(((i / (curve.length - 1)) * 2 - 1) * 14);
   return curve;
 })();
+
+/** How loud the sound effects are, under the music (MUSIC_VOLUME in music.ts). */
+const SFX_VOLUME = 0.55;
 
 class Sfx {
   private ctx: AudioContext | null = null;
@@ -83,6 +86,7 @@ class Sfx {
     this.master.gain.value = this.muted ? 0 : 1;
     this.master.connect(limit);
     this.out = ctx.createGain();
+    this.out.gain.value = SFX_VOLUME;
     const filter = ctx.createBiquadFilter(), delay = ctx.createDelay(2), back = ctx.createGain(), wet = ctx.createGain();
     filter.type = 'lowpass';
     back.gain.value = 0.3;
@@ -276,9 +280,9 @@ class Sfx {
   /**
    * One beat of the music. Frames arrive unevenly, so each beat is placed exactly one
    * beat after the last on the audio clock, as long as the game is roughly there too.
-   * beat: which beat of the bar, from 0. energy: how busy the music is, 0 to 1.
+   * beat: which beat of the bar, from 0. layers: how many of the style's layers play, 1 to 5.
    */
-  beat(seconds: number, beat: number, meter: Meter, energy: number) {
+  beat(seconds: number, beat: number, meter: Meter, layers: number) {
     const ctx = this.ctx;
     if (!ctx) return;
     const soon = ctx.currentTime + BEAT_AHEAD;
@@ -286,19 +290,38 @@ class Sfx {
     this.nextBeat = at + seconds;
     this.lastBeat = at;
     if (beat === 0) this.applyTint(seconds);
-    if (!this.muted) this.music.beat(at, seconds, beat, meter, energy);
+    if (!this.muted) this.music.beat(at, seconds, beat, meter, layers);
   }
 
   /** A game starts its music from the first bar. */
   restartMusic() { this.music.restart(); }
 
-  /** The audio menu plays the music on its own clock, so a style can be heard while the game waits. */
-  preview(on: boolean, bpm = 75, meter?: () => Meter, energy = 0.7) {
-    this.previewing = on;
-    if (!on) { this.music.stopPreview(); return; }
-    this.unlock();
-    if (meter) this.music.startPreview(bpm, meter, energy);
+  /** Sound can play: the browser has let it start, after a tap or a key. */
+  get ready() { return this.ctx !== null; }
+
+  /**
+   * The music on its own clock, while no game drives it: on the start screen, and in the
+   * audio menu. If it is already playing it carries on, at this tempo and with these layers.
+   */
+  freeMusic(bpm: number, meter: () => Meter, layers = LAYERS) {
+    if (!this.ctx) return;
+    this.music.startPreview(bpm, meter, layers);
     this.applyTint(60 / bpm);
+  }
+
+  stopFreeMusic() { this.music.stopPreview(); }
+
+  /** The audio menu plays the music, so a style can be heard while the game waits. */
+  preview(bpm: number, meter: () => Meter, layers = LAYERS) {
+    this.previewing = true;
+    this.unlock();
+    this.freeMusic(bpm, meter, layers);
+  }
+
+  /** The audio menu closes. `keepMusic`: the start screen's music goes on. */
+  endPreview(keepMusic = false) {
+    this.previewing = false;
+    if (!keepMusic) this.stopFreeMusic();
   }
 }
 

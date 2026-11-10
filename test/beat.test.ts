@@ -8,7 +8,7 @@ import { METERS, groupStarts, meterById } from '../src/core/music';
 import { BASE_BPM, BeatClock } from '../src/game/beat';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, stopFreeMusic: vi.fn(), freeMusic: vi.fn(), ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
 
 describe('the beat clock', () => {
   it('has a beat every 96 steps and a bar every four beats', () => {
@@ -102,6 +102,21 @@ describe('the beat in the game', () => {
     vi.unstubAllGlobals();
   });
 
+  it('plays on the start screen once he has risen, and stops when a game starts', () => {
+    vi.mocked(sfx.freeMusic).mockClear();
+    vi.mocked(sfx.stopFreeMusic).mockClear();
+    Math.random = seeded(5);
+    const g = headlessGame();
+    g.tick(IDLE);
+    expect(g.wavell.state).toBe('appear');
+    expect(sfx.freeMusic).not.toHaveBeenCalled();
+    for (let i = 0; i < 600 && g.wavell.state === 'appear'; i++) g.tick(IDLE);
+    for (let i = 0; i < 10; i++) g.tick(IDLE);
+    expect(sfx.freeMusic).toHaveBeenCalledTimes(1);
+    g.start();
+    expect(sfx.stopFreeMusic).toHaveBeenCalled();
+  });
+
   it('can be turned off', () => {
     DIFF.beatOn = 0;
     play(500);
@@ -185,5 +200,33 @@ describe('the music styles', () => {
     }
     expect(onScale(440, lotus.scale)).toBeCloseTo(440);
     expect(onScale(555, undefined)).toBe(555);
+  });
+});
+
+describe('the music building up', () => {
+  it('gives every style five layers, each of them its own part', async () => {
+    const { STYLES } = await import('../src/core/styles');
+    const { LAYERS, METERS, groupStarts } = await import('../src/core/music');
+    for (const style of STYLES) {
+      expect(style.layers).toHaveLength(LAYERS);
+      expect(new Set(style.layers.map((l) => l.name)).size).toBe(LAYERS);
+      // Every layer makes sound within 16 bars, in every time signature: none is silent.
+      for (const layer of style.layers) for (const meter of METERS) {
+        let notes = 0;
+        const count = () => { notes++; };
+        const synth = { kick: count, snare: count, hat: count, block: count, tone: count, keys: count, pad: count, pluck: count, strum: count, flute: count, fiddle: count, bass: count, taiko: count, acid: count, theremin: count };
+        const starts = groupStarts(meter);
+        for (let bar = 0; bar < 16; bar++) for (let beat = 0; beat < meter.beats; beat++) {
+          layer.play(synth as never, { at: 0, len: 0.8, beat, bar, meter, layers: LAYERS, group: starts.includes(beat), groupEnd: starts.includes(beat + 1) || beat === meter.beats - 1, t: (k) => k * 0.2 });
+        }
+        expect(notes, `${style.id} / ${layer.name} / ${meter.id}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('adds one layer per level, all five from level 5', () => {
+    const g = headlessGame();
+    const layers = [1, 2, 3, 4, 5, 6, 10].map((level) => { g.level = level; return g.musicLayers; });
+    expect(layers).toEqual([1, 2, 3, 4, 5, 5, 5]);
   });
 });

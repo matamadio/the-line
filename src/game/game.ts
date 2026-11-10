@@ -28,7 +28,7 @@ import { Input, usesTouch, type Controls } from '../core/input';
 import { SpringLine } from './line';
 import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
 import { audioPrefs } from '../core/audioPrefs';
-import { meterById } from '../core/music';
+import { LAYERS, meterById } from '../core/music';
 import { sfx } from '../core/sfx';
 import { DIFF, at } from '../data/difficulty';
 import { TUNE } from '../data/tune';
@@ -150,6 +150,8 @@ export class Game {
   private viewSet = false;
   /** Asked for by a key since the last frame. */
   private menuAsked = false;
+  /** The music is playing on the start screen. */
+  private titleMusic = false;
   private deathHandled = false;
   /** The time until which the start screen explains how to install by hand. */
   installNote = -1;
@@ -242,6 +244,8 @@ export class Game {
     this.fx.clear();
     this.crumbles = [];
     this.beat.reset(this.level, meterById(audioPrefs.meter));
+    this.titleMusic = false;
+    sfx.stopFreeMusic();
     sfx.restartMusic();
     this.endX = this.wavell.x - DIFF.endLead;
     this.endGrace = DIFF.endGrace;
@@ -281,20 +285,22 @@ export class Game {
     this.audio.show();
     if (this.mode === 'play' && !this.paused) { this.setPaused(true); this.audioPaused = true; }
     const bpm = this.mode === 'play' ? this.beat.bpm : at('bpm', DIFF.startLevel);
-    sfx.preview(true, bpm, () => meterById(audioPrefs.meter), this.mode === 'play' ? this.musicEnergy : 0.7);
+    sfx.preview(bpm, () => meterById(audioPrefs.meter), this.mode === 'play' ? this.musicLayers : LAYERS);
+    // On the start screen the music it plays is the start screen's, and goes on when it closes.
+    if (this.mode === 'title') this.titleMusic = true;
   }
 
   closeAudio() {
     if (!this.audio.open) return;
     this.audio.hide();
-    sfx.preview(false);
+    sfx.endPreview(this.mode === 'title' && this.titleMusic);
     if (this.audioPaused) this.setPaused(false);
     else if (this.paused) sfx.pause(true);
     this.audioPaused = false;
   }
 
-  /** How busy the music is: it fills in as the levels go up. */
-  get musicEnergy() { return clamp(0.25 + (this.level - 1) * 0.15, 0, 1); }
+  /** How many layers of the music play: one instrument more for each level, up to level 5. */
+  get musicLayers() { return clamp(this.level, 1, LAYERS); }
 
   setPaused(on: boolean) {
     if (on === this.paused) return;
@@ -401,6 +407,13 @@ export class Game {
       // The line lies flat until he has risen out of it, or while the names run along it.
       if ((W.state === 'ground' || this.menu.page === 'credits') && Math.random() < dt * 1.5) L.impulse(n.camX + Math.random() * n.viewW, rand(-50, 50), 5);
       this.menu.step(dt);
+      // The music starts once the title has formed and he has risen out of the line, and
+      // as soon as the browser lets sound play.
+      const settled = this.morphT >= MORPH_TIME && W.alive && W.state !== 'appear';
+      if (!this.titleMusic && settled && sfx.ready && !this.audio.open) {
+        this.titleMusic = true;
+        sfx.freeMusic(at('bpm', DIFF.startLevel), () => meterById(audioPrefs.meter));
+      }
       return;
     }
     if (this.mode === 'over') { this.overT += dt; this.updateSinepedes(dt); this.updateUrchins(dt); this.keepApart(); return; }
@@ -494,7 +507,7 @@ export class Game {
     this.onBeat = true;
     this.cue = this.beat.cueBeats;
     if (this.cue) this.cueKind = this.mostOverdue();
-    sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, this.musicEnergy);
+    sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, this.musicLayers);
   }
 
   /** Every enemy on the line, from the left. One in the air, or on its way out, takes up no room. */

@@ -8,6 +8,9 @@
 
 import { STYLES, type Style } from './styles';
 
+/** How many layers every style has: the music stops building up at this level. */
+export const LAYERS = 5;
+
 /** A time signature: how many beats to a bar, and how they group, which says where the strong ones fall. */
 export interface Meter { id: string; beats: number; groups: readonly number[] }
 export const METERS: readonly Meter[] = [
@@ -41,8 +44,8 @@ export interface Beat {
   /** A group of the bar starts here: a strong beat. The last beat of a group is the backbeat. */
   group: boolean;
   groupEnd: boolean;
-  /** How busy the music is, 0 to 1. The game raises it with the level. */
-  energy: number;
+  /** How many of the style's five layers play, 1 to 5: one more for each level. */
+  layers: number;
   /** When the kth sixteenth of the beat sounds, swung as the style likes. */
   t(k: number): number;
 }
@@ -280,6 +283,72 @@ export class Synth {
     }
   }
 
+  /**
+   * A fiddle: a bowed saw, softened by a lowpass, swelling in with the bow and taking
+   * on a vibrato once the note has settled.
+   */
+  fiddle(at: number, freq: number, dur: number, vol: number) {
+    const ctx = this.ctx, end = at + dur + 0.6;
+    const osc = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    lfo.frequency.value = 5.5;
+    depth.gain.setValueAtTime(0, at);
+    depth.gain.linearRampToValueAtTime(freq * 0.01, at + Math.min(dur, 0.35));
+    lfo.connect(depth).connect(osc.frequency);
+    f.type = 'lowpass';
+    f.frequency.value = 2200;
+    f.Q.value = 0.7;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.08);
+    g.gain.setTargetAtTime(0, at + dur, 0.12);
+    osc.connect(f).connect(g).connect(this.out);
+    for (const o of [osc, lfo]) { o.start(at); o.stop(end); }
+  }
+
+  /**
+   * An acid bass line's note: a saw through a resonant lowpass that snaps open and
+   * closes again, the squelch of an old bass machine. An accent opens it further.
+   */
+  acid(at: number, freq: number, dur: number, vol: number, accent = false) {
+    const ctx = this.ctx, end = at + dur + 0.1;
+    const osc = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    f.type = 'lowpass';
+    f.Q.value = 11;
+    f.frequency.setValueAtTime(accent ? 2600 : 1400, at);
+    f.frequency.exponentialRampToValueAtTime(260, at + 0.18);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(accent ? vol * 1.4 : vol, at + 0.003);
+    g.gain.setValueAtTime(accent ? vol * 1.4 : vol, at + dur);
+    g.gain.linearRampToValueAtTime(0, at + dur + 0.02);
+    osc.connect(f).connect(g).connect(this.out);
+    osc.start(at);
+    osc.stop(end);
+  }
+
+  /**
+   * A theremin-like lead: a pure, eerie tone that slides from the last note it played
+   * (`from`, in Hz, or 0 to start on the note), with a slow fade in and a wide vibrato.
+   */
+  theremin(at: number, from: number, freq: number, dur: number, vol: number) {
+    const ctx = this.ctx, end = at + dur + 1;
+    const osc = ctx.createOscillator(), g = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(from || freq, at);
+    osc.frequency.exponentialRampToValueAtTime(freq, at + 0.16);
+    lfo.frequency.value = 5.5;
+    depth.gain.setValueAtTime(freq * 0.006, at);
+    depth.gain.linearRampToValueAtTime(freq * 0.016, at + Math.min(dur, 0.8));
+    lfo.connect(depth).connect(osc.frequency);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.1);
+    g.gain.setTargetAtTime(0, at + dur, 0.2);
+    osc.connect(g).connect(this.out);
+    for (const o of [osc, lfo]) { o.start(at); o.stop(end); }
+  }
+
   /** A big drum, like a taiko: a deep, slow-dying thump with the skin's slap on top. */
   taiko(at: number, vol = 1, size = 1) {
     this.kick(at, vol, { from: 110 / size, to: 42 / size, decay: 0.18 * size });
@@ -323,8 +392,8 @@ class Crush extends AudioWorkletProcessor {
 registerProcessor('crush', Crush);
 `;
 
-/** How loud the music is under the game's own sounds. */
-const MUSIC_VOLUME = 0.42;
+/** How loud the music is, over the sound effects (SFX_VOLUME in sfx.ts). */
+const MUSIC_VOLUME = 0.5;
 /** The preview's clock: how often it looks ahead, and how far (s). */
 const PREVIEW_EVERY = 25, PREVIEW_AHEAD = 0.12;
 
@@ -338,7 +407,7 @@ export class Music {
   private crushed = false;
   style: Style = STYLES[0];
   private bar = -1;
-  private preview: { timer: number; next: number; beat: number; bpm: number; energy: number; meter: () => Meter } | null = null;
+  private preview: { timer: number; next: number; beat: number; bpm: number; layers: number; meter: () => Meter } | null = null;
 
   init(ctx: AudioContext, dest: AudioNode) {
     this.ctx = ctx;
@@ -374,33 +443,34 @@ export class Music {
   restart() { this.bar = -1; }
 
   /** One beat, placed on the audio clock at `at`, lasting len seconds. */
-  beat(at: number, len: number, beat: number, meter: Meter, energy: number) {
+  beat(at: number, len: number, beat: number, meter: Meter, layers: number) {
     const s = this.synth;
     if (!s) return;
     if (beat === 0 || this.bar < 0) this.bar++;
     const starts = groupStarts(meter), swing = this.style.swing;
     const b: Beat = {
-      at, len, beat, meter, energy, bar: this.bar,
+      at, len, beat, meter, layers, bar: this.bar,
       group: starts.includes(beat),
       groupEnd: starts.includes(beat + 1) || beat === meter.beats - 1,
       t: (k) => at + (k + (k % 2 ? swing : 0)) * (len / 4),
     };
-    this.style.play(s, b);
+    this.style.layers.forEach((l, i) => { if (i < layers) l.play(s, b); });
   }
 
   /** Keep the music going on its own clock, at this tempo, while the game isn't driving it. */
-  startPreview(bpm: number, meter: () => Meter, energy: number) {
+  startPreview(bpm: number, meter: () => Meter, layers: number) {
     const ctx = this.ctx;
     if (!ctx) return;
-    this.stopPreview();
+    // Already playing: carry on from where it is, so the music never jumps back to the first bar.
+    if (this.preview) { Object.assign(this.preview, { bpm, meter, layers }); return; }
     this.restart();
-    const p = { timer: 0, next: ctx.currentTime + 0.05, beat: 0, bpm, energy, meter };
+    const p = { timer: 0, next: ctx.currentTime + 0.05, beat: 0, bpm, layers, meter };
     p.timer = window.setInterval(() => {
       const len = 60 / p.bpm;
       while (p.next < ctx.currentTime + PREVIEW_AHEAD) {
         const m = p.meter();
         if (p.beat >= m.beats) p.beat = 0;
-        this.beat(p.next, len, p.beat, m, p.energy);
+        this.beat(p.next, len, p.beat, m, p.layers);
         p.beat = (p.beat + 1) % m.beats;
         p.next += len;
       }
