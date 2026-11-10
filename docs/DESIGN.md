@@ -34,7 +34,7 @@ Up to level 3, threats come one at a time, with a second of clear line between t
 
 ## Levels
 
-There are 10 levels, one every 50 points. Level 10 is the last and will be a boss fight; until that is built, it simply goes on. The end of the line crumbles faster each level and reaches its top speed at level 10.
+There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. Level 10 is the last and will be a boss fight; until that is built, it simply goes on. The end of the line crumbles faster each level and reaches its top speed at level 10.
 
 ## The threats
 

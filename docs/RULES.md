@@ -177,7 +177,7 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 
 ### Levels
 
-- There are 10 levels. A new level starts at 50 × the current level in points: level 2 at 50, level 3 at 100, up to level 10 at 450.
+- There are 10 levels. Each level costs 50 points more than the one before: level 2 starts at 50 points, level 3 at 150, level 4 at 300, level 5 at 500, level 6 at 750, level 7 at 1050, level 8 at 1400, level 9 at 1800 and level 10 at 2250.
 - A level-up shows a banner, shakes the screen and plays the level sound.
 - Level 10 is the last and will be a boss fight. Until that is built, level 10 simply goes on.
 - The best score is saved in the browser.

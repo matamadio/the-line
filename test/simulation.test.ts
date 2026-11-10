@@ -1,7 +1,7 @@
 // Plays the real game with scripted keys. The animation lab's scrubbing and live tuning
 // rely on the simulation being exact: same seed and same keys, same game.
 
-import { DIFF } from '../src/data/difficulty';
+import { DIFF, levelStart } from '../src/data/difficulty';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Controls, Input } from '../src/core/input';
 import { sfx } from '../src/core/sfx';
@@ -806,13 +806,21 @@ describe('progress', () => {
     expect(g.score).toBe(10 + 10 * (1 + 2 * DIFF.sizePoints));
   });
 
-  it('goes up a level every levelScore points, and stops at the last level', () => {
+  it('makes each level cost levelScore more than the last', () => {
+    expect([2, 3, 4, 5].map(levelStart)).toEqual([1, 3, 6, 10].map((k) => k * DIFF.levelScore));
+  });
+
+  it('goes up a level at each level start, and stops at the last level', () => {
     const g = headlessGame();
     g.start();
     g.score = DIFF.levelScore;
     g.tick(IDLE);
     expect(g.level).toBe(2);
-    for (let i = 0; i < 40; i++) { g.score = DIFF.levelScore * 100; g.tick(IDLE); }
+    // A score just past level 4's start leaves him at level 4, however many steps go by.
+    g.score = levelStart(4) + 1;
+    for (let i = 0; i < 40; i++) g.tick(IDLE);
+    expect(g.level).toBe(4);
+    for (let i = 0; i < 40; i++) { g.score = levelStart(DIFF.lastLevel + 5); g.tick(IDLE); }
     expect(g.level).toBe(DIFF.lastLevel);
   });
 });

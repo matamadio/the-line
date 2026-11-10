@@ -30,7 +30,7 @@ import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
 import { audioPrefs } from '../core/audioPrefs';
 import { meterById } from '../core/music';
 import { sfx } from '../core/sfx';
-import { DIFF, at } from '../data/difficulty';
+import { DIFF, at, levelStart } from '../data/difficulty';
 import { TUNE } from '../data/tune';
 import { SEG_W, Sinepede, type Side } from './actors/sinepede';
 import { Urchin } from './actors/urchin';
@@ -477,7 +477,7 @@ export class Game {
     this.handleDeath();
 
     // Level 10 is the last: the boss fight.
-    if (this.level < DIFF.lastLevel && this.score >= DIFF.levelScore * this.level) {
+    if (this.level < DIFF.lastLevel && this.score >= levelStart(this.level + 1)) {
       this.level++;
       this.banner = 2.2;
       this.tremor = 1.2;
