@@ -221,7 +221,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 | Vibe | Swung lo-fi, electric piano | 0.22 |
 | Chill | Pads and bells | none |
 | Trip | Trip-hop: heavy lazy beat, vinyl crackle, Rhodes, strings, sliding theremin-like lead, over B Em7 A B | 0.3 |
-| Lotus | Shakuhachi-like flutes, koto, temple woods, in the yo scale (A B D E F♯) | none |
+| Lotus | Temple woods alone at level 1, then a koto arpeggio, then shakuhachi-like flutes, then a soft drone, then taiko and koto sweeps; in the yo scale (A B D E F♯) | none |
 | Tekno | Four-on-the-floor kick, offbeat bass, acid line, rave stabs, over Am7 Dm7 Fmaj7 E7 | none |
 | Chiptune | Square waves and noise | none |
 | Bluegrass | Upright-style bass, guitar strum, banjo rolls (Karplus-Strong plucks) | 0.08 |

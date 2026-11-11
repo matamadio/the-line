@@ -242,7 +242,8 @@ const YO_RANGE = [-12, -10, -7, -5, -3, 0, 2, 5, 7, 9, 12];
 const LOTUS_PROG = [chord(-24, -12, -5, 0), chord(-19, -7, 0, 5), chord(-24, -12, -5, 0), chord(-17, -5, 2, 7)];
 /** The flute sings in the middle and top of the range, where the scale sounds brightest. */
 const shakuhachi = new Tune(YO_RANGE.slice(3), 0.35);
-const koto = new Tune(YO_RANGE.slice(0, 9), 0.4);
+/** The koto's arpeggio: up and back down the chord's root, fifth, octave and the scale's ninth. */
+const KOTO_ARP = [0, 7, 12, 14, 12, 7];
 /** The koto's sweep up its strings, the sound it is best known for. */
 const SWEEP = [-12, -10, -7, -5, -3, 0];
 
@@ -251,38 +252,45 @@ const lotus: Style = {
   tint: { wave: 'sine', cutoff: 3000, echo: 0.3, echoBeats: 1.5 },
   scale: YO,
   layers: [
-    { name: 'drone and koto', play(s, b) {
-      const c = chordAt(LOTUS_PROG, b, 2), first = b.beat === 0;
-      // Under it all, a soft hum on the drone and its fifth: no plucked bass, no drum.
-      if (first) {
-        const dur = restOfBar(b);
-        s.tone(b.t(0), hz(c.root), dur, 0.1, { attack: 0.6, release: 0.8, cutoff: 500 });
-        s.tone(b.t(0), hz(c.root + 7), dur, 0.045, { attack: 0.8, release: 0.8, cutoff: 700 });
+    { name: 'temple woods', play(s, b) {
+      // Only wood at first: a low temple block on the strong beats, high clappers between.
+      if (b.group) s.block(b.t(0), b.beat === 0 ? 0.22 : 0.13, 520, 0.05);
+      if (b.groupEnd && !b.group) s.block(b.t(0), 0.11, 1150, 0.025);
+      if (b.beat === b.meter.beats - 1 && b.bar % 2 === 1) s.block(b.t(2), 0.07, 1150, 0.025);
+    } },
+    { name: 'koto arpeggio', play(s, b) {
+      // Two notes a beat, rising and falling over the chord, the strings left to ring.
+      const c = chordAt(LOTUS_PROG, b, 2), step = (b.bar * b.meter.beats + b.beat) * 2;
+      for (const k of [0, 2]) {
+        const n = c.root + 12 + KOTO_ARP[(step + k / 2) % KOTO_ARP.length];
+        s.pluck(b.t(k), hz(n), b.beat === 0 && k === 0 ? 0.26 : 0.18, { bright: 0.45, seconds: 1.4, damp: 0.998 });
       }
-      // The koto: a gentle sweep every other bar, and a few unhurried notes in between.
-      if (first && b.bar % 2 === 0) s.strum(b.t(0), SWEEP.map(hz), 0.34, { bright: 0.45, seconds: 1.6, gap: 0.08, damp: 0.998 });
-      else {
-        const n = koto.next(c, b.group);
-        if (n !== null) s.pluck(b.t(0), hz(n), 0.26, { bright: 0.45, seconds: 1.4, damp: 0.998 });
+    } },
+    { name: 'flutes', play(s, b) {
+      const c = chordAt(LOTUS_PROG, b, 2);
+      // The shakuhachi: long breaths on the strong beats, with rests between.
+      if (b.group) {
+        const n = shakuhachi.next(c, b.beat === 0);
+        if (n !== null) s.flute(b.t(0), hz(n), Math.min(restOfBar(b), b.len * 3) * 0.85, 0.19);
+      }
+      // A high flute answers at the end of every other bar, quietly.
+      if (b.beat === b.meter.beats - 1 && b.bar % 2 === 1) {
+        const n = shakuhachi.next(c, false);
+        if (n !== null) s.flute(b.t(1), hz(n + 12), b.len * 0.6, 0.06);
       }
     } },
-    { name: 'temple block', play(s, b) {
-      if (b.group) s.block(b.t(0), b.beat === 0 ? 0.2 : 0.12, 520, 0.05);
+    { name: 'soft drone', play(s, b) {
+      // A soft hum on the drone and its fifth under it all.
+      if (b.beat !== 0) return;
+      const c = chordAt(LOTUS_PROG, b, 2), dur = restOfBar(b);
+      s.tone(b.t(0), hz(c.root), dur, 0.1, { attack: 0.6, release: 0.8, cutoff: 500 });
+      s.tone(b.t(0), hz(c.root + 7), dur, 0.045, { attack: 0.8, release: 0.8, cutoff: 700 });
     } },
-    { name: 'shakuhachi', play(s, b) {
-      // Long breaths on the strong beats, with rests between.
-      if (!b.group) return;
-      const n = shakuhachi.next(chordAt(LOTUS_PROG, b, 2), b.beat === 0);
-      if (n !== null) s.flute(b.t(0), hz(n), Math.min(restOfBar(b), b.len * 3) * 0.85, 0.19);
-    } },
-    { name: 'wooden clappers', play(s, b) {
-      if (b.groupEnd && !b.group) s.block(b.t(0), 0.1, 1150, 0.025);
-    } },
-    { name: 'high flute', play(s, b) {
-      // It answers at the end of every other bar, quietly.
-      if (b.beat !== b.meter.beats - 1 || b.bar % 2 === 0) return;
-      const n = shakuhachi.next(chordAt(LOTUS_PROG, b, 2), false);
-      if (n !== null) s.flute(b.t(1), hz(n + 12), b.len * 0.6, 0.06);
+    { name: 'taiko and koto sweep', play(s, b) {
+      // A deep drum to open each bar, and the koto sweeping up its strings every other bar.
+      if (b.beat !== 0) return;
+      s.taiko(b.t(0), 0.3);
+      if (b.bar % 2 === 0) s.strum(b.t(0), SWEEP.map(hz), 0.3, { bright: 0.45, seconds: 1.6, gap: 0.08, damp: 0.998 });
     } },
   ],
 };
