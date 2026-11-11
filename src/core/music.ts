@@ -364,29 +364,31 @@ export class Synth {
 }
 
 /**
- * The bitcrusher of nostalgia mode: fewer levels for each sample, and each sample held for
- * several, like an old sound chip. It runs on the audio thread, from a module made here.
+ * Nostalgia mode's sound: an old console's. The music is cut to CRUSH_RATE samples a
+ * second and CRUSH_BITS bits, with soft filters either side, as the old consoles had.
  */
+const CRUSH_RATE = 8000, CRUSH_BITS = 8;
+/** The filters either side of the crusher (Hz): the one before keeps the cut-down rate from whistling. */
+const CRUSH_BEFORE = 6500, CRUSH_AFTER = 4500;
+/** It runs on the audio thread, from a module made here. */
 const CRUSHER = `
 class Crush extends AudioWorkletProcessor {
-  constructor() { super(); this.left = 0; this.held = []; }
+  constructor() { super(); this.phase = []; this.held = []; }
   process(inputs, outputs) {
     const input = inputs[0], output = outputs[0];
     if (!input.length) return true;
-    const levels = 2 ** ${5 - 1}, hold = 4;
-    let left = this.left;
+    const levels = 2 ** ${CRUSH_BITS - 1}, step = ${CRUSH_RATE} / sampleRate;
     for (let ch = 0; ch < output.length; ch++) {
       const x = input[ch] || input[0], y = output[ch];
-      let h = this.held[ch] || 0, c = this.left;
+      let h = this.held[ch] || 0, p = this.phase[ch] ?? 1;
       for (let i = 0; i < y.length; i++) {
-        if (c <= 0) { h = Math.round(x[i] * levels) / levels; c = hold; }
-        c--;
+        p += step;
+        if (p >= 1) { p -= 1; h = Math.round(x[i] * levels) / levels; }
         y[i] = h;
       }
       this.held[ch] = h;
-      left = c;
+      this.phase[ch] = p;
     }
-    this.left = left;
     return true;
   }
 }
@@ -408,7 +410,8 @@ export class Music {
   /** Where the instruments go in, and where the music leaves for the speakers. */
   private input: GainNode | null = null;
   private bus: GainNode | null = null;
-  private crusher: AudioWorkletNode | null = null;
+  /** Nostalgia mode's way to the bus: a filter, the crusher and another filter. */
+  private crusher: AudioNode | null = null;
   private crushed = false;
   style: Style = STYLES[0];
   private bar = -1;
@@ -432,8 +435,16 @@ export class Music {
     if (!ctx.audioWorklet) return;
     const url = URL.createObjectURL(new Blob([CRUSHER], { type: 'application/javascript' }));
     ctx.audioWorklet.addModule(url).then(() => {
-      this.crusher = new AudioWorkletNode(ctx, 'crush', { outputChannelCount: [2] });
-      this.crusher.connect(this.bus!);
+      const filter = (hz: number) => {
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.Q.value = Math.SQRT1_2;
+        f.frequency.value = Math.min(hz, ctx.sampleRate / 2 - 100);
+        return f;
+      };
+      const before = filter(CRUSH_BEFORE), after = filter(CRUSH_AFTER);
+      before.connect(new AudioWorkletNode(ctx, 'crush', { outputChannelCount: [2] })).connect(after).connect(this.bus!);
+      this.crusher = before;
       this.route();
     }).catch(() => { /* no crusher: the music plays clean */ });
   }

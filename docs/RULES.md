@@ -232,7 +232,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - **Chords by name.** Tekno's and Trip's progressions are one line each (`TEK_CHORDS`, `TRIP_CHORDS` in `src/core/styles.ts`), and their bass and leads follow each chord's scale.
 - **Levels.** Sound effects play at 0.55 and music at 0.5, so the effects sit under the music.
 - Each style plays on the strong beats and backbeats of the chosen time signature, not a fixed count of four.
-- **Nostalgia mode** bitcrushes the music (16 levels per sample, each held for four) to match the low-resolution look.
+- **Nostalgia mode** bitcrushes the music to match the low-resolution look: 8,000 samples a second at 8 bits, filtered at 6.5 kHz before and 4.5 kHz after.
 
 ### Sound matches shape
 

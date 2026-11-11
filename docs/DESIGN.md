@@ -110,4 +110,4 @@ The start screen plays the music too, all five layers, once the title has formed
   | Bluegrass | bass, guitar, brushes | banjo | mandolin chop | fiddle | spoons |
 - **One key.** Every style is in A, the key of the Sinepede's two notes, so the game's tones always fit the music. Lotus's yo scale (A, B, D, E, F sharp) keeps both of them, and with Lotus on, Wavell's tones are moved to the nearest note of the scale too.
 - **The style dresses every sound.** A lowpass and an echo timed in beats go over all the game's sounds, and Wavell's tones take the style's wave. A Sinepede's tones stay pure sines whatever the style: it looks like a sine, so it sounds like one.
-- **Nostalgia mode** puts the music through a bitcrusher (16 levels per sample, each held for four), to match the low-resolution look.
+- **Nostalgia mode** puts the music through a bitcrusher, to match the low-resolution look: 8,000 samples a second at 8 bits, with filters at 6.5 kHz before and 4.5 kHz after. An earlier version, with 16 levels per sample, hissed and swallowed quiet notes.
