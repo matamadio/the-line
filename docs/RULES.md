@@ -221,7 +221,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 | Vibe | Swung lo-fi, electric piano | 0.22 |
 | Chill | Pads and bells | none |
 | Trip | Trip-hop: heavy lazy beat, vinyl crackle, Rhodes, strings, sliding theremin-like lead, over B Em7 A B | 0.3 |
-| Lotus | Shakuhachi-like flutes, koto, temple woods, in the yo scale (A B D E F♯) | none |
+| Lotus | Temple woods alone at level 1, then a koto arpeggio, then shakuhachi-like flutes, then a soft drone, then taiko and koto sweeps; in the yo scale (A B D E F♯) | none |
 | Tekno | Four-on-the-floor kick, offbeat bass, acid line, rave stabs, over Am7 Dm7 Fmaj7 E7 | none |
 | Chiptune | Square waves and noise | none |
 | Bluegrass | Upright-style bass, guitar strum, banjo rolls (Karplus-Strong plucks) | 0.08 |
@@ -232,7 +232,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - **Chords by name.** Tekno's and Trip's progressions are one line each (`TEK_CHORDS`, `TRIP_CHORDS` in `src/core/styles.ts`), and their bass and leads follow each chord's scale.
 - **Levels.** Sound effects play at 0.55 and music at 0.5, so the effects sit under the music.
 - Each style plays on the strong beats and backbeats of the chosen time signature, not a fixed count of four.
-- **Nostalgia mode** bitcrushes the music (16 levels per sample, each held for four) to match the low-resolution look.
+- **Nostalgia mode** bitcrushes the music to match the low-resolution look: 8,000 samples a second at 8 bits, filtered at 6.5 kHz before and 4.5 kHz after.
 
 ### Sound matches shape
 
