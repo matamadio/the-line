@@ -21,6 +21,8 @@ import { ANIM, I, TILT, clipLength, mark, mix, namedPose, pose, type Joint, type
 
 /** Half the width of the ribbons (spine and arms). */
 const RIB = 0.75;
+/** The clip he walks with. Trying out the proposal; 'walk' is the old one. */
+const WALK = 'walkStrut';
 
 /**
  * The two attacks. A wipe lifts the line on his side and sends a crest along it the
@@ -385,7 +387,7 @@ export class Wavell {
     // His weight comes on as he rises, so the line takes it without a jolt.
     else if (this.state === 'appear') line.push(this.x, 1800 * smooth(this.t / this.appearFor), 3);
     if (this.state === 'ground' && this.vel) {
-      const walk = ANIM.clips.walk, len = walk.length ?? 0.4;
+      const walk = ANIM.clips[WALK], len = walk.length ?? 0.4;
       const before = this.phase;
       this.phase = (this.phase + (dt / len) * this.speedMul) % 1;
       for (const [m, dx] of [['stepFront', 7], ['stepBack', -6]] as const) {
@@ -443,7 +445,7 @@ export class Wavell {
     const blendIn = (p: Pose, time: number) => mix(this.from, p, smooth(this.t / time), this.cur);
     switch (this.state) {
       case 'ground':
-        if (this.vel) pose('walk', this.phase * (ANIM.clips.walk.length ?? 0.4), target);
+        if (this.vel) pose(WALK, this.phase * (ANIM.clips[WALK].length ?? 0.4), target);
         else {
           namedPose('idle', target);
           const b = Math.sin(this.time * 3) * 0.35;
