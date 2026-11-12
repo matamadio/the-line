@@ -44,7 +44,7 @@ export async function promptInstall() {
 }
 
 /** iPhones have no fullscreen for pages, and an installed game already is. */
-export function canFullscreen() { return !!document.fullscreenEnabled && !installed(); }
+export function canFullscreen() { return typeof document !== 'undefined' && !!document.fullscreenEnabled && !installed(); }
 
 export function isFullscreen() { return !!document.fullscreenElement; }
 

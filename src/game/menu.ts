@@ -29,9 +29,8 @@ const WORD_HEIGHT = 94;
 export const ENTRIES = ['START', 'CONTROL', 'CREDITS'] as const;
 /** Fake names for now. */
 export const CREDIT_NAMES = [
-  'Sine Wavington', 'Anna Logue', 'Rick O\'Chet', 'Phil Harmonic', 'Crest Fallen', 'Trudy Trough', 'Amp Litude', 'Sue Perposition',
-  'Al Gorithm', 'Dee Bugger', 'Segun Fault', 'Otto Save', 'Polly Line', 'Vera Tex', 'Noah Signal', 'Lou Pback', 'Bea Tclock', 'Hugh Mungous Wave',
-  'Wanda Line', 'Justin Case', 'Flat Stanley Jr.', 'Ty Dwave', 'Mo Mentum', 'Mr. Wavell\'s Hairdresser',
+  'Taddelya', 'Sine Wavington', 'Anna Logue', 'Rick O\'Chet', 'Phil Harmonic', 'Crest Fallen', 'Trudy Trough', 'Amp Litude', 'Sue Perposition',
+  'Al Gorithm', 'Dee Bugger', 'Hugh Mungous Wave', 'Justin Case', 'Flat Stanley Jr.', 'Ty Dwave', 'Moh Mentum', 'Mr. Wavell\'s Hairdresser',
 ];
 
 /** How quickly the lines shrink with depth, and how far above the front line they all meet (u). */

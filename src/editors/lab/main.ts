@@ -12,6 +12,7 @@ import { Neon } from '../../core/neon';
 import { sfx } from '../../core/sfx';
 import { KNOBS, TUNE, type TuneKey } from '../../data/tune';
 import { createEditor } from './keyframes';
+import { createBossEditor } from './boss';
 import { DIFF } from '../../data/difficulty';
 import { FREE, SCENES, type Held, type Tap } from './scenes';
 
@@ -36,7 +37,10 @@ function seeded(seed: number) {
 
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const neon = new Neon(canvas);
-const editor = createEditor(neon, document.getElementById('editor')!);
+const keyEditor = createEditor(neon, document.getElementById('editor')!);
+const bossEditor = createBossEditor(neon, document.getElementById('bosseditor')!);
+/** The editor open, if any: keyframes or the boss. */
+let editor = keyEditor;
 // The game's own input listens on an element nobody touches: the lab feeds it scripted keys.
 const deadInput = new Input(document.createElement('div'));
 sfx.muted = true;
@@ -306,11 +310,17 @@ const ui = (() => {
   }
 
   // Play scenes / edit keyframes.
-  const setMode = (edit: boolean) => {
-    editor.setActive(edit);
-    $('mode-edit').classList.toggle('on', edit);
+  const setMode = (mode: 'play' | 'edit' | 'boss') => {
+    const edit = mode !== 'play';
+    keyEditor.setActive(false);
+    bossEditor.setActive(false);
+    editor = mode === 'boss' ? bossEditor : keyEditor;
+    if (edit) editor.setActive(true);
+    $('mode-edit').classList.toggle('on', mode === 'edit');
+    $('mode-boss').classList.toggle('on', mode === 'boss');
     $('mode-play').classList.toggle('on', !edit);
-    $('editor').hidden = !edit;
+    $('editor').hidden = mode !== 'edit';
+    $('bosseditor').hidden = mode !== 'boss';
     $('playpanel').hidden = edit;
     $('bar').hidden = edit;
     if (!edit) {
@@ -320,8 +330,10 @@ const ui = (() => {
       replay(frame);
     }
   };
-  $('mode-play').onclick = () => setMode(false);
-  $('mode-edit').onclick = () => setMode(true);
+  $('mode-play').onclick = () => setMode('play');
+  $('mode-edit').onclick = () => setMode('edit');
+  $('mode-boss').onclick = () => setMode('boss');
+  if (location.hash === '#boss') setMode('boss');
 
   return { select, sync };
 })();
@@ -329,4 +341,4 @@ const ui = (() => {
 ui.select(sceneIx);
 requestAnimationFrame(loopFn);
 
-if (import.meta.env.DEV) (window as unknown as { lab: unknown }).lab = { get game() { return game; }, replay, TUNE, editor, neon };
+if (import.meta.env.DEV) (window as unknown as { lab: unknown }).lab = { get game() { return game; }, replay, TUNE, get editor() { return editor; }, bossEditor, neon };

@@ -12,8 +12,12 @@ import { MORPH_TIME, drawFlatlined, drawMorph, drawTitle } from './title';
 /** The HUD's base size: a share of the play area, so it lays out the same on every screen. */
 export const hudSize = (n: Neon) => n.h * 0.045;
 
-/** How far down the buttons sit, and how far from the right the score ends to leave them room, in HUD sizes. */
-const BUTTON_Y = 1.1, SCORE_RIGHT = 7.2;
+/**
+ * In HUD sizes: how far down the buttons sit, how far apart they are, and how far from the
+ * right the score ends to leave the top row room. Fullscreen has a row of its own under it,
+ * so the top row is the same with it or without it (an installed app has none).
+ */
+const BUTTON_Y = 1.1, BUTTON_GAP = 2.2, SCORE_RIGHT = 5;
 
 /** Nostalgia mode's pictures of the HUD, drawn pixel by pixel. */
 const RETRO = {
@@ -101,16 +105,16 @@ export function audioButton(n: Neon): [number, number, number] {
   return [n.w - s * 1.4, BUTTON_Y * s, s * 0.9];
 }
 
-/** The fullscreen button on screen, beside the audio button. */
+/** The fullscreen button on screen, under the audio button. */
 export function fullscreenButton(n: Neon): [number, number, number] {
   const s = hudSize(n);
-  return [n.w - s * 3.6, BUTTON_Y * s, s * 0.9];
+  return [n.w - s * 1.4, (BUTTON_Y + BUTTON_GAP) * s, s * 0.9];
 }
 
-/** The nostalgia button on screen, beside the fullscreen button. */
+/** The nostalgia button on screen, beside the audio button. */
 export function nostalgiaButton(n: Neon): [number, number, number] {
   const s = hudSize(n);
-  return [n.w - s * 5.8, BUTTON_Y * s, s * 0.9];
+  return [n.w - s * (1.4 + BUTTON_GAP), BUTTON_Y * s, s * 0.9];
 }
 
 /** A checkerboard of big pixels: lit up when nostalgia mode is on. */
@@ -269,6 +273,21 @@ function drawLead(g: Game, x: number, y: number, s: number) {
  * The size counter: a circle for each size he can reach. A whole one, with a face, is a
  * hit he can take; the next one draws itself round, a slice for each sparkle caught.
  */
+/** The boss's name, and a circle for each size he has left. */
+function drawBoss(g: Game, cx: number, y: number, s: number) {
+  const n = g.neon, B = g.boss!;
+  n.text('THE FLATTENER', cx - s * 0.4, y, s * 0.55, COLORS.danger, 'right');
+  n.world();
+  const wx = n.camX + (cx + s * 0.4) / n.unit + 3, wy = n.viewTop + y / n.unit;
+  for (let i = 0; i < DIFF.bossHits; i++) {
+    const p = new Path2D(), x = wx + i * 9, left = i < B.hp;
+    p.arc(x, wy, 3, 0, Math.PI * 2);
+    if (left) { p.moveTo(x + 1.2, wy); p.arc(x, wy, 1.2, 0, Math.PI * 2); }
+    n.glow(p, COLORS.danger, 0.5, left ? 1 : 0.25);
+  }
+  n.screen();
+}
+
 function drawSizes(g: Game, x: number, y: number) {
   const n = g.neon, W = g.wavell, top = -Math.PI / 2;
   if (n.retro) {
@@ -325,13 +344,14 @@ export function drawHud(g: Game) {
     n.text(score, n.w - s * SCORE_RIGHT, pad, s, COLORS.hud, 'right');
     // Bigger, he scores more: the multiplier sits to the left of the score.
     if (g.multiplier > 1) n.text('×' + g.multiplier, n.w - s * SCORE_RIGHT - n.wordWidth(score, s) - s * 0.5, pad, s * 0.8, '#ffe680', 'right');
-    n.text((g.level >= DIFF.lastLevel ? 'FINAL LEVEL ' : 'LEVEL ') + g.level +(DIFF.beatOn ? `  ·  ${Math.round(g.beat.bpm)} BPM` : ''), cx, pad, s * 0.7, '#ffb21a');
+    n.text(g.levelLabel + (DIFF.beatOn ? `  ·  ${Math.round(g.beat.bpm)} BPM` : ''), cx, pad, s * 0.7, '#ffb21a');
+    if (g.boss) drawBoss(g, cx, pad + s * 1.15, s);
     if (DIFF.beatOn) drawBar(g, n.w - s * SCORE_RIGHT, pad + s * 1.1, s);
     n.world();
     drawSizes(g, n.camX + (pad / n.unit) + 4, n.viewTop + pad / n.unit + 1);
     n.screen();
     if (g.mode !== 'over') drawLead(g, pad, pad + s * 1.4, s);
-    if (g.banner > 0) n.text((g.level >= DIFF.lastLevel ? 'FINAL LEVEL ' : 'LEVEL ') + g.level,cx, n.lineY - n.unit * 70, s * 2.4, COLORS.hud, 'center', Math.min(1, g.banner));
+    if (g.banner > 0) n.text(g.bannerText || g.levelLabel, cx, n.lineY - n.unit * 70, s * 2.4, COLORS.hud, 'center', Math.min(1, g.banner));
     if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 2.4, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
     if (g.paused && !g.audio.open) {
       n.text('PAUSED', cx, n.lineY - n.unit * 75, s * 2.4, COLORS.hud);

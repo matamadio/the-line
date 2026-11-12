@@ -23,6 +23,8 @@
     .keys { display: flex; flex-direction: column; gap: 3px; }
     select { background: #07051a; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 3px 4px; font: inherit; max-width: 100%; }
     .knob select { grid-column: 1 / 3; }
+    .bo-step.on { border-color: var(--accent); color: var(--accent); }
+    #bosseditor input[type=number] { background: #07051a; color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px; font: inherit; width: 100%; box-sizing: border-box; }
   </style>
 </head>
 <body>
@@ -52,8 +54,9 @@
   <aside id="side">
     <h1>Animation lab</h1>
     <p class="help"><a href="./difficulty.html">Difficulty editor</a> · <a href="./index.html">the game</a></p>
-    <div class="row"><button id="mode-play" class="on">Play scenes</button><button id="mode-edit">Edit keyframes</button></div>
+    <div class="row"><button id="mode-play" class="on">Play scenes</button><button id="mode-edit">Edit keyframes</button><button id="mode-boss">Edit boss</button></div>
     <div id="editor" hidden></div>
+    <div id="bosseditor" hidden></div>
     <div id="playpanel">
     <p class="help"><kbd>Space</kbd> play/pause · <kbd>,</kbd> <kbd>.</kbd> one frame (<kbd>Shift</kbd>: 12) · <kbd>R</kbd> restart.
       Changing a number replays the scene to the same moment.</p>

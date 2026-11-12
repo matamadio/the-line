@@ -12,7 +12,7 @@ Your world is a line. You are a wave on it, and the end of the line is coming.
 
 - [Run it](#run-it)
 - [How to play](#how-to-play): [on a phone](#on-a-phone)
-- [The editors](#the-editors): [difficulty editor](#difficulty-editor), [animation lab](#animation-lab), [keyframe editor](#keyframe-editor)
+- [The editors](#the-editors): [difficulty editor](#difficulty-editor), [animation lab](#animation-lab), [keyframe editor](#keyframe-editor), [boss editor](#boss-editor)
 - [Project layout](#project-layout)
 - [Commands](#commands)
 - [Contributing, credits and license](#contributing)
@@ -34,6 +34,8 @@ npm start
 
 **To test on a phone**, run `npm run phone` and open the `Network:` address it prints, with the phone on the same Wi-Fi. Use this on networks you trust: anyone on the network can reach the dev server while it runs.
 
+**To start at a later level**, add `?level=N` to the address, for example `?level=10` to go straight to the boss. It lasts for that page only and saves nothing.
+
 ## How to play
 
 Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your size counter shows how much lead is left.
@@ -48,7 +50,7 @@ On a computer, the keys and the joypad's buttons can be changed from CONTROL in 
 | Pull | X or Ctrl | X | Right thumb, swipe sideways |
 | Wipe | Z, Shift or Space | A | Right thumb, swipe up or down |
 | Mute | M | | Speaker icon |
-| Fullscreen | F | | Corners icon |
+| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) |
 | Nostalgia (low resolution look) | N | | Checkerboard icon |
 | Pause | P | Start | |
 | Back to the start screen | Esc | Back | |
@@ -78,7 +80,7 @@ The game comes with two editors, each running the real game inside a page. They 
 | **Page** | `/difficulty.html` | `/lab.html` |
 | **From the game** | Dev box on the start screen: settings | Dev box on the start screen: editor |
 | **For** | How hard the game is, level by level | How things move and feel |
-| **Edits** | [`src/data/difficulty.json`](src/data/difficulty.json) | [`src/data/anim.json`](src/data/anim.json) and the numbers in [`src/data/tune.ts`](src/data/tune.ts) |
+| **Edits** | [`src/data/difficulty.json`](src/data/difficulty.json) | [`src/data/anim.json`](src/data/anim.json), [`src/data/boss.json`](src/data/boss.json) and the numbers in [`src/data/tune.ts`](src/data/tune.ts) |
 
 When you run them from `npm run ...`, Save writes the file in your checkout, so the change appears in `git diff` like any other and goes into a pull request. A running game picks it up without reloading.
 
@@ -167,6 +169,28 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 
 **Keys:** Ctrl+S saves to `anim.json`, Ctrl+Z and Ctrl+Y undo and redo.
 
+### Boss editor
+
+**Edit boss**, at the top of the lab (or `/lab.html#boss`), edits THE FLATTENER: his shapes and his powers, saved to [`src/data/boss.json`](src/data/boss.json). Choose a shape or a power from the list.
+
+**Shapes** are drawn as the real stroke on the line, at his full size, with Wavell standing by for scale:
+
+- Drag the handles: white points are the outline (root to root; the roots stay on the line), yellow squares the eyes, pink the nose and the point his shots come from, blue the extra strokes (legs, a fang).
+- Click a handle to select it. Insert (or "Add point after selected") adds a point halfway to the next, Delete removes it.
+- Add a nose, a shot point or a stroke, and set the eyes' sizes, in the side panel.
+- "Show under the line" shows the shape mirrored, as a step on the other side of the line uses it.
+- The blob (his idle shape) and the saw are worked out from a few numbers: size, ripple, how far the eyes drift; size, teeth, tooth length.
+- "Copy as new shape" starts a new one from the shape shown.
+- **Connecting loose ends:** stroke ends that touch nothing are ringed in orange. Drag one near an outline point, another stroke's point or the line and it snaps exactly onto it (a green ring shows where); hold Alt to drag freely. With a stroke point selected, "Join to nearest stroke" makes it and the stroke whose end is nearest one stroke, and "Close stroke" brings its end back to its start.
+
+**Powers** are lists of steps. Each step flows into a shape (over or under the line) for a time, holds it, then can wait for the beat and fire: a slam (the front wave), a shot (a line reflux at a height in Wavell's heights) or a roll (the saw). A step can also make a sound as it starts, blister up bubbles while it holds, rear up (scale its heights), glow while charging, and hurt to walk into. Each power also has the phase it comes in from and how often he picks it.
+
+- ▶ Play (or Space) plays the power on a loop, with a beat every 0.8 s. The shots are drawn as red dashes at their height.
+- Add, move, copy and delete steps; copy a power to make a new one.
+- **Shuffle:** a shuffled power plays its moves in a random order each time. Steps in a row with the same group number (1 and up) are one move; group 0 steps keep their place. The cat's three shots are shuffled this way.
+
+**Keys:** Ctrl+S saves to `boss.json`, Ctrl+Z and Ctrl+Y undo and redo.
+
 ## Project layout
 
 ```text
@@ -182,7 +206,7 @@ src/
     line.ts        The line itself: a wave-equation string
     crumble.ts     A creature coming apart at the end of the line
     fx.ts          Sparks, score popups
-    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, and the retired Snawave
+    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, the Flattener (the boss), and the retired Snawave
   data/            The tunable numbers and the files the editors save
   editors/         The difficulty editor and the animation lab
 test/              Headless tests: the real simulation, no browser

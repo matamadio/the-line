@@ -16,6 +16,12 @@ function formatAnim(data: unknown) {
     .replace(/"(snawave)": \[([^\]]*)\]/g, (_m, k: string, v: string) => `"${k}": [${v.split(',').map((x) => x.trim()).join(', ')}]`) + '\n';
 }
 
+/** Number lists on one line: a point, an eye, a short outline. */
+function formatBoss(data: { shapes?: unknown; powers?: unknown }) {
+  if (typeof data !== 'object' || !data || typeof data.shapes !== 'object' || typeof data.powers !== 'object') throw new Error('shapes and powers');
+  return JSON.stringify(data, null, 2).replace(/\[\s+(-?[\d.e-]+(?:,\s+-?[\d.e-]+)*)\s+\]/g, (_m, v: string) => `[${v.split(',').map((x) => x.trim()).join(', ')}]`) + '\n';
+}
+
 function formatDifficulty(data: Record<string, unknown>) {
   if (Object.values(data).some((v) => typeof v !== 'number')) throw new Error('numbers only');
   return JSON.stringify(data, null, 2) + '\n';
@@ -50,6 +56,7 @@ export const editorSave = (): Plugin => ({
   apply: 'serve',
   configureServer(server) {
     server.middlewares.use('/__anim', saveTo('anim.json', formatAnim));
+    server.middlewares.use('/__boss', saveTo('boss.json', formatBoss));
     server.middlewares.use('/__difficulty', saveTo('difficulty.json', formatDifficulty));
   },
 });

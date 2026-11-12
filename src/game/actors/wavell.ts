@@ -58,7 +58,7 @@ const REACH_FAR = 47.5;
 const unravel = (d: Death) => ({ fall: TUNE.burnTime, zap: TUNE.sinkTime, flatten: TUNE.sinkTime, pop: 0 })[d];
 
 /** How tall he stands at his smallest (u). */
-const HEIGHT = 28;
+export const HEIGHT = 28;
 
 export class Wavell {
   x = 0;
