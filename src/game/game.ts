@@ -17,6 +17,10 @@
 // Time is the other half: the end of the line crumbles towards him, faster every
 // level, so every stop costs ground. Sparkles are the bait: they drift about on both
 // sides of the line, often behind him, and catching them means giving ground.
+//
+// Level 10 is the boss fight: THE FLATTENER (actors/flattener.ts) walks on ahead,
+// changing shape for each power, and can only be hurt by his own wave sent back at him. Beating him starts the levels
+// over on a harder loop: the line continues.
 
 import { AudioMenu } from './audioMenu';
 import { BEAT_SECONDS, BeatClock } from './beat';
@@ -35,8 +39,9 @@ import { TUNE } from '../data/tune';
 import { SEG_W, Sinepede, type Side } from './actors/sinepede';
 import { Urchin } from './actors/urchin';
 import { BUBBLE_GREEN, BubbleBurst } from './actors/bubble';
-import { Wavell, type Attack } from './actors/wavell';
+import { Wavell, type Attack, HEIGHT as WAVELL_HEIGHT } from './actors/wavell';
 import { WORM_W, Worm } from './actors/worm';
+import { Flattener } from './actors/flattener';
 import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, audioButton, nostalgiaButton } from './hud';
 import { drawGame } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
@@ -66,12 +71,23 @@ const BUBBLE_ROOM = 22;
 type EnemyKind = 'sine' | 'urchin' | 'worm' | 'bubble' | 'back' | 'reflux';
 /** An enemy's stretch of the line. Those that crawl can be moved; the rest can only be ended. */
 interface Span { x0: number; x1: number; shift?: (d: number) => void; end: () => void }
+/** The Flattener's front wave: it rolls at Wavell (dir -1), or back at him once wiped (dir 1). Its crest stands on top of the line. */
+export interface Tidal { x: number; dir: 1 | -1; amp: number; done: boolean; gone: boolean }
+const TIDAL_WIDTH = 13;
+/** Half the boss's width in his widest shape (u): the room kept for him in view. */
+const BOSS_HALF = 46;
+/** How close in front of Wavell a held wipe catches a tidal wave (u). */
+const CATCH = 80;
 export const backwave = (x: number, warn: number): Backwave => ({ x, dir: 1, warn, done: false, amp: DIFF.backAmp });
 export interface Sparkle { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean; p: number }
 /** air: it came from a bubble bursting in the air, and pops his bubble too. */
 export interface Drop { x: number; y: number; vx: number; vy: number; side: number; life: number; air: boolean }
 
 const STEP = 1 / 120;
+/** A Sinepede is heard this many steps (2 beats) before it comes in: its hum starts on the beat it is called. */
+export const HERALD_STEPS = Math.round((2 * BEAT_SECONDS) / STEP);
+/** Where a Sinepede comes in, past the right of the view (u). */
+const SINE_ENTRY = 30;
 const STORE = 'the-line-best';
 const NOSTALGIA_STORE = 'the-line-nostalgia';
 /** How many drops a bursting bubble sprays, on the line and in the air. */
@@ -79,9 +95,9 @@ const SPRAY = 48;
 const AIR_SPRAY = 28;
 const NO_INPUT: Controls = { left: false, right: false, up: false, down: false, upPressed: false, downPressed: false, dragPressed: false, pullPressed: false };
 
-/** A reflux at half his height from the line, on the given side (1: above it). */
-export function reflux(sx: number, dir: 1 | -1, side: 1 | -1, W: Wavell, warn = 0): Reflux {
-  return { sx, y: 0, side, dist: W.height / 2, dir, warn, passed: false };
+/** A reflux at half his height from the line (or dist u from it), on the given side (1: above it). */
+export function reflux(sx: number, dir: 1 | -1, side: 1 | -1, W: Wavell, warn = 0, dist = W.height / 2): Reflux {
+  return { sx, y: 0, side, dist, dir, warn, passed: false };
 }
 
 export class Game {
@@ -97,6 +113,11 @@ export class Game {
   /** Whose turn this beat is, with the beat on: the kind most overdue. */
   private cueKind: EnemyKind | null = null;
   sinepedes: Sinepede[] = [];
+  /**
+   * A Sinepede called and heard coming, before it comes in. steps: about how long until it
+   * does. beats: with the beat on, how many beats until the cue beat it takes; due once there.
+   */
+  herald: { steps: number; beats: number | null; due: boolean; count: number; speed: number; side: Side } | null = null;
   urchins: Urchin[] = [];
   worms: Worm[] = [];
   backwaves: Backwave[] = [];
@@ -105,6 +126,20 @@ export class Game {
   sparkles: Sparkle[] = [];
   refluxes: Reflux[] = [];
   pulses: Pulse[] = [];
+  tidals: Tidal[] = [];
+  /** The boss, while he is on the line. */
+  boss: Flattener | null = null;
+  /** Seconds left of the pause after the boss is flattened, before the levels start over. */
+  private winT = 0;
+  /** Times the boss has been beaten this game: each loop starts the levels harder. */
+  loop = 0;
+  /** The score this loop started at: levels go by what has been scored since. */
+  private loopBase = 0;
+  /** What the banner says, if not the level. */
+  bannerText = '';
+  private bossHush: (() => void) | null = null;
+  /** The rolling saw has gone past Wavell. */
+  private sawPassed = false;
   mode: Mode = 'title';
   score = 0;
   lives = 3;
@@ -175,10 +210,14 @@ export class Game {
         return () => { if (page) location.href = page; };
       }
       if (title && canInstall() && inInstallButton(n, x, y)) return () => { void this.install(); };
-      if (on(audioButton(n))) return () => this.openAudio();
-      if (on(fullscreenButton(n)) && canFullscreen()) return () => { void toggleFullscreen(); };
-      if (on(nostalgiaButton(n))) return () => this.setNostalgia(!n.retro);
-      return null;
+      // The buttons sit close together, so a tap within reach of two goes to the nearer one.
+      const buttons: [[number, number, number], () => void][] = [
+        [audioButton(n), () => this.openAudio()],
+        [nostalgiaButton(n), () => this.setNostalgia(!n.retro)],
+      ];
+      if (on(fullscreenButton(n)) && canFullscreen()) buttons.push([fullscreenButton(n), () => { void toggleFullscreen(); }]);
+      const near = buttons.filter(([b]) => on(b)).sort(([a], [b]) => Math.hypot(x - a[0], y - a[1]) - Math.hypot(x - b[0], y - b[1]))[0];
+      return near ? near[1] : null;
     };
     this.wavell.rise(0);
     this.neon.camX = -this.neon.viewW * this.neon.focus;
@@ -223,11 +262,12 @@ export class Game {
     this.lives = DIFF.lives;
     this.level = DIFF.startLevel;
     this.playTime = 0;
-    this.sineClock = at('sineEvery', this.level) - DIFF.sineFirst;
+    this.sineClock = at('sineEvery', this.ramp) - DIFF.sineFirst;
     this.urchinClock = 0;
     this.calm = 0;
     this.refluxClock = 0;
     this.sinepedes = [];
+    this.herald = null;
     this.urchins = [];
     this.worms = [];
     this.backwaves = [];
@@ -241,18 +281,25 @@ export class Game {
     this.chain = 0;
     this.refluxes = [];
     this.pulses = [];
+    this.tidals = [];
+    this.boss = null;
+    this.winT = 0;
+    this.loop = 0;
+    this.loopBase = 0;
+    this.bannerText = '';
     this.fx.clear();
     this.crumbles = [];
     // The start screen's music carries on, on the same beat and bar, and thins out to
     // level 1's one instrument. Without it, the game's music starts from the first bar.
     if (!this.titleMusic) {
-      this.beat.reset(this.level, meterById(audioPrefs.meter));
+      this.beat.reset(this.ramp, meterById(audioPrefs.meter));
       sfx.restartMusic();
     }
     this.titleMusic = false;
     this.endX = this.wavell.x - DIFF.endLead;
     this.endGrace = DIFF.endGrace;
     this.deathHandled = false;
+    if (this.level >= DIFF.lastLevel) this.startBoss();
   }
 
   /**
@@ -276,6 +323,10 @@ export class Game {
     this.backwaves = [];
     this.refluxes = [];
     this.pulses = [];
+    this.tidals = [];
+    this.boss?.sink();
+    this.bossHush?.();
+    this.winT = 0;
     this.hintT = 0;
     this.banner = 0;
     this.tremor = 0;
@@ -313,6 +364,17 @@ export class Game {
 
   /** How many layers of the music play: one instrument more for each level, up to level 5. */
   get musicLayers() { return clamp(this.level, 1, LAYERS); }
+
+  /** The level the difficulty ramps read: each loop after beating the boss counts some levels harder. */
+  get ramp() { return this.level + this.loop * DIFF.loopBoost; }
+
+  /** The boss is here, or has just been beaten: nothing else comes, and the end of the line crumbles at its own speed. */
+  get bossTime() { return this.boss !== null || this.winT > 0; }
+
+  /** What the HUD calls this level. */
+  get levelLabel() {
+    return (this.loop > 0 ? 'LOOP ' + (this.loop + 1) + ' · ' : '') + (this.level >= DIFF.lastLevel ? 'FINAL LEVEL ' : 'LEVEL ') + this.level;
+  }
 
   setPaused(on: boolean) {
     if (on === this.paused) return;
@@ -373,8 +435,14 @@ export class Game {
         if (s.harmful && d < best) { best = d; near = s; }
       }
     }
-    const f = near?.front(W.x);
-    sfx.hum(f ? f.side : 0, f ? clamp(1 - best / this.neon.viewW, 0, 1) : 0);
+    // Its pitch goes with its length: 220 Hz for one segment, 110 Hz more for each one after.
+    const f = near?.front(W.x), h = this.herald, n = this.neon;
+    if (f) sfx.hum(near!.count, clamp(1 - best / n.viewW, 0, 1));
+    else if (h && this.mode === 'play' && W.alive) {
+      // Called but not in yet: the hum fades in over the two beats, up to how it sounds as it comes in.
+      const entry = clamp(1 - (n.camX + n.viewW + SINE_ENTRY + SEG_W / 2 - W.x) / n.viewW, 0, 1);
+      sfx.hum(h.count, entry * Math.sqrt(clamp(1 - h.steps / HERALD_STEPS, 0, 1)));
+    } else sfx.hum(0, 0);
   }
 
   // ---------------------------------------------------------------- simulation
@@ -416,6 +484,7 @@ export class Game {
       this.updateSinepedes(dt);
       this.updateUrchins(dt);
       this.updateWorms(dt);
+      this.idleBoss(dt);
       if (W.state === 'dead' && W.t > W.linger + 0.3 && !this.menu.holdsHimDown) W.rise(W.x);
       // The line lies flat until he has risen out of it, or while the names run along it.
       if ((W.state === 'ground' || this.menu.page === 'credits') && Math.random() < dt * 1.5) L.impulse(n.camX + Math.random() * n.viewW, rand(-50, 50), 5);
@@ -429,7 +498,7 @@ export class Game {
       if (this.titleMusic && this.beat.step(DIFF.startLevel)) sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, LAYERS);
       return;
     }
-    if (this.mode === 'over') { this.overT += dt; this.updateSinepedes(dt); this.updateUrchins(dt); this.keepApart(); return; }
+    if (this.mode === 'over') { this.overT += dt; this.updateSinepedes(dt); this.updateUrchins(dt); this.idleBoss(dt); this.keepApart(); return; }
 
     this.playTime += dt;
     if (DIFF.beatOn) this.stepBeat();
@@ -460,8 +529,10 @@ export class Game {
     // a lead can only be built up so far. Stopping for anything costs ground.
     if (this.endGrace > 0) this.endGrace -= dt;
     // A burning creature is the end of the line: it waits for the burn to finish.
-    else if (W.alive && W.state !== 'appear' && !this.crumbles.length) this.endX += at('endSpeed', this.level) * dt;
-    if (W.x - this.endX <= DIFF.endLead) this.endCarried = false;
+    else if (W.alive && W.state !== 'appear' && !this.crumbles.length) this.endX += (this.bossTime ? DIFF.bossEnd : at('endSpeed', this.ramp)) * dt;
+    // Carried back by a wiped Backwave: the usual limit on his lead waits until the wave is gone
+    // and the end has crumbled back within it, or it would pull the end straight back in.
+    if (W.x - this.endX <= DIFF.endLead && !this.backwaves.some((b) => b.dir < 0)) this.endCarried = false;
     this.endX = Math.max(this.endX, this.endCarried ? n.camX - BACKWAVE_OFF : W.x - DIFF.endLead);
     // Sparks come off the break; the line trembles near it. While he burns,
     // he is the end of the line, so the break itself keeps still.
@@ -498,28 +569,269 @@ export class Game {
     this.updateWorms(dt);
     this.keepApart();
     this.updateBackwaves(dt);
+    this.updateBoss(dt);
+    this.updateTidals(dt);
     this.updateRefluxes(dt);
     if (this.hintT > 0) this.hintT -= dt;
     this.handleDeath();
 
+    // Beaten, the boss leaves a moment of quiet, then the levels start over, harder: the line continues.
+    if (this.winT > 0) {
+      this.winT -= dt;
+      if (this.winT <= 0) {
+        this.loop++;
+        this.loopBase = this.score;
+        this.level = 1;
+        this.playTime = 0;
+        this.sineClock = at('sineEvery', this.ramp) - DIFF.sineFirst;
+        this.levelUp('THE LINE CONTINUES');
+      }
+    }
     // Level 10 is the last: the boss fight.
-    if (this.level < DIFF.lastLevel && this.score >= levelStart(this.level + 1)) {
+    if (!this.bossTime && this.level < DIFF.lastLevel && this.score - this.loopBase >= levelStart(this.level + 1)) {
       this.level++;
-      this.banner = 2.2;
-      this.tremor = 1.2;
-      n.shake = 1.5;
-      sfx.play('level');
+      this.levelUp();
       if (DIFF.lifeEvery > 0 && this.level % DIFF.lifeEvery === 0) this.lives++;
+      if (this.level >= DIFF.lastLevel) this.startBoss();
     }
   }
 
+  private levelUp(text = '') {
+    this.bannerText = text;
+    this.banner = 2.2;
+    this.tremor = 1.2;
+    this.neon.shake = 1.5;
+    sfx.play('level');
+  }
+
+  // ---------------------------------------------------------------- the boss
+
+  /** The line clears, and THE FLATTENER climbs out of it ahead of Wavell. */
+  private startBoss() {
+    const W = this.wavell;
+    for (const s of this.sinepedes) s.sink();
+    for (const u of this.urchins) u.sink();
+    for (const w of this.worms) w.sink();
+    for (const b of this.bubbles) b.pop();
+    this.backwaves = [];
+    this.refluxes = [];
+    this.boss = new Flattener(W.x + this.bossAhead);
+    this.bannerText = 'THE FLATTENER';
+    this.banner = 2.6;
+    this.tremor = 2;
+    this.neon.shake = 1.5;
+    this.bossHush = sfx.rumble(this.heard(2.2));
+    this.teach('boss', 'THE FLATTENER: nothing you do hurts him. Only his own wave sent back can!', 'THE FLATTENER: nothing you do hurts him. Only his own wave sent back can!');
+  }
+
+  /** How far ahead of Wavell the boss can be and still be all in view, in his widest shape. */
+  private get bossReach() {
+    const n = this.neon;
+    return n.viewW * (1 - n.focus) - BOSS_HALF - 6;
+  }
+  /** Where he stands, ahead of Wavell: as far as he is told, but all in view. */
+  private get bossAhead() { return Math.min(DIFF.bossAhead, this.bossReach); }
+
+  /** Off the play screen (the title, game over), he only finishes what he is doing. */
+  private idleBoss(dt: number) {
+    const B = this.boss;
+    if (!B) return;
+    B.update(dt, true, false);
+    B.events.length = 0;
+    if (B.done) this.boss = null;
+  }
+
+  private updateBoss(dt: number) {
+    const B = this.boss, W = this.wavell, L = this.line, n = this.neon;
+    if (!B) return;
+    const active = W.alive && W.state !== 'appear';
+    B.update(dt, this.onBeat, active);
+    // He walks on to the right, keeping out of reach, and gets away faster when closed in on.
+    if (B.state !== 'melt' && B.state !== 'done' && !B.away && active) {
+      const reach = this.bossReach, ahead = B.x - W.x;
+      B.x += clamp(DIFF.bossSpeed + (this.bossAhead - ahead) * 2.5, 0, DIFF.bossRun) * dt;
+      B.x = Math.min(B.x, W.x + reach);
+    }
+    if ((B.state === 'rise' || B.state === 'reform') && Math.random() < 0.6) L.impulse(B.x + rand(-20, 20), rand(-30, 30), 4);
+    // Walking into him hurts, and throws Wavell back.
+    if (B.solid && W.alive && W.onLine && W.safe <= 0 && W.x + 6 > B.front && W.x < B.back) {
+      W.hurt('zap');
+      W.bounce(-DIFF.bounce);
+    }
+    this.updateSaw(B);
+    for (const e of B.events.splice(0)) {
+      if (e === 'windup') {
+        this.bossHush = sfx.rumble(this.heard(B.stepTime || 2 * BEAT_SECONDS));
+        this.teach('tidal', 'HE IS ABOUT TO SMASH THE LINE: SWIPE ↕ facing the wave to send it back at him', 'HE IS ABOUT TO SMASH THE LINE: {drag} facing the wave sends it back at him');
+      } else if (e === 'slam') {
+        const x = B.front - 6;
+        L.pulse(x, -DIFF.bossWaveAmp, TIDAL_WIDTH, -1, DIFF.bossWaveSpeed);
+        L.impulse(B.x, 120, 16);
+        this.tidals.push({ x, dir: -1, amp: DIFF.bossWaveAmp, done: false, gone: false });
+        this.fx.burst(x, L.sample(x), 24, 70, COLORS.danger, 0, 0.5);
+        n.shake = Math.max(n.shake, 1.4);
+        sfx.slam();
+      } else if (e === 'meow') {
+        sfx.meow();
+        this.teach('bossCat', 'THE CAT SHOOTS ALONG THE LINE: be on the other side of it', 'THE CAT SHOOTS ALONG THE LINE: {down} or {up} to be on the other side of it');
+      } else if (e === 'shoot') {
+        const [bx, by] = B.butt(L);
+        // Shot heights are in Wavell's heights at his smallest: a high one clears him unless he has grown.
+        this.refluxes.push(reflux(bx - n.camX - 2, -1, B.shot.side, W, 0, B.shot.height * WAVELL_HEIGHT));
+        this.fx.burst(bx, by, 16, 50, COLORS.danger, 0, 0.35);
+        sfx.play('reflux');
+      } else if (e === 'whirr') {
+        this.bossHush = sfx.whirr(this.heard(B.stepTime + 2.5));
+        this.sawPassed = false;
+        this.teach('bossSaw', 'THE SAW CUTS THROUGH BOTH SIDES OF THE LINE: float over it', 'THE SAW CUTS THROUGH BOTH SIDES OF THE LINE: float over it ({up})');
+      } else if (e === 'roll') n.shake = Math.max(n.shake, 0.6);
+      else if (e === 'flatten') {
+        this.bossHush?.();
+        L.impulse(B.x, 60, 10);
+        B.reform(W.x + this.bossAhead);
+      } else if (e === 'croak') {
+        sfx.croak();
+        this.teach('bossToad', 'THE TOAD\'S BUBBLES FLOAT UP AND BURST: keep clear, or get under the line', 'THE TOAD\'S BUBBLES FLOAT UP AND BURST: keep clear, or get under the line');
+      } else if (e === 'bubble') this.toadBubble(B);
+      else if (e === 'melted') this.bossBeaten(B);
+    }
+  }
+
+  /** The saw cuts through the line, both sides: only a bubble high enough clears it. It flattens out before the end of the line. */
+  private updateSaw(B: Flattener) {
+    const W = this.wavell, L = this.line, n = this.neon;
+    if (!B.sawing) return;
+    const cx = B.x, cy = L.sample(cx), R = B.sawR + 2;
+    if (B.away && Math.random() < 0.7) this.fx.spark(cx + rand(-3, 3), cy, rand(30, 90), rand(-50, 50), 0.3, '#fff3a0', 0);
+    if (W.alive && W.state !== 'appear' && W.safe <= 0) {
+      if (W.onLine && Math.abs(W.x - cx) < R + 4) W.hurt('zap');
+      else if (W.flying && Math.hypot(W.x - cx, W.by - cy) < R + W.bubbleR) W.hurt('pop');
+    }
+    if (B.away && !this.sawPassed && cx < W.x - R) {
+      this.sawPassed = true;
+      if (W.flying) this.addScore(6, W.x, W.by - 18);
+    }
+    if (B.away && cx - R < Math.max(this.endX + 40, n.camX + 16)) B.stopSaw();
+  }
+
+  /** Sunk as a toad, he blisters bubbles up anywhere along the line in view, that float off and burst. */
+  private toadBubble(B: Flattener) {
+    const W = this.wavell, n = this.neon;
+    for (let tries = 0; tries < 5; tries++) {
+      const x = rand(n.camX + 20, n.camX + n.viewW - 20);
+      if (Math.abs(x - W.x) < 18 || (x > B.front - 10 && x < B.back + 10) || this.clash(x, BUBBLE_ROOM)) continue;
+      this.bubbles.push(new BubbleBurst(x, 1, this.inBeats(0.8), this.inBeats(DIFF.bubbleFlyTime)));
+      sfx.play('pop', 0.25);
+      return;
+    }
+  }
+
+  /** Hit by his own wave: he loses a size, and gets angrier. */
+  private bossHit(x: number) {
+    const B = this.boss, L = this.line, n = this.neon;
+    if (!B || !B.vulnerable) return;
+    B.hit();
+    const y = L.sample(x) - B.half;
+    this.bossHush?.();
+    this.addScore(DIFF.bossHitPoints, x, y - 20);
+    this.fx.burst(x, y, 30, 90, '#ffffff', 0, 0.6);
+    this.fx.burst(x, y, 20, 60, COLORS.danger, 0, 0.6);
+    L.impulse(B.x, 140, 18);
+    n.shake = Math.max(n.shake, 1.8);
+    this.tremor = Math.max(this.tremor, 0.6);
+    this.dropSparkles(B.front - 12);
+    sfx.bossHit();
+  }
+
+  /** Flattened: he melts into one huge hump that rolls away, and the line goes on. */
+  private bossBeaten(B: Flattener) {
+    const L = this.line;
+    L.pulse(B.x, -26, 22, 1);
+    this.addScore(DIFF.bossWinPoints, B.x, L.sample(B.x) - 40);
+    for (let i = 0; i < 3; i++) this.dropSparkles(B.x - 40 + i * 30);
+    this.boss = null;
+    this.tidals = [];
+    this.winT = 3.5;
+    this.bannerText = 'FLATTENED!';
+    this.banner = 3;
+    this.tremor = 1.5;
+    this.neon.shake = 2;
+    sfx.play('level');
+    sfx.grew(DIFF.growMax);
+  }
+
+  /** A front wave's speed, signed the way it rolls. */
+  private tidalVel(t: Tidal) { return t.dir * (t.dir > 0 ? DIFF.bossWaveBack : DIFF.bossWaveSpeed); }
+
+  /**
+   * His front wave rolls in at Wavell. He wipes it back facing it, which sends it at
+   * the boss, or pulls it flat facing it, or floats over it.
+   */
+  private updateTidals(dt: number) {
+    const W = this.wavell, L = this.line, n = this.neon, B = this.boss;
+    for (const t of this.tidals) {
+      const vel = this.tidalVel(t);
+      t.x += vel * dt;
+      const short = Math.max(0, t.amp + L.sample(t.x));
+      L.carry(t.x, -t.amp, TIDAL_WIDTH, vel, -short * 0.05);
+      if (t.dir > 0) {
+        if (!B || B.away || t.x < B.front + 4) continue;
+        t.gone = true;
+        L.calm(t.x, 26);
+        if (B.vulnerable) this.bossHit(t.x);
+        else this.fx.burst(t.x, L.sample(t.x), 14, 40, '#ffffff', 0, 0.35);
+        continue;
+      }
+      if (t.done || !W.alive || W.state === 'appear') continue;
+      // A wipe facing it sends it back: its crest, or the line held up as it comes.
+      const thrown = this.pulses.find((p) => p.kind === 'wipe' && p.dir > 0 && p.x >= t.x - 4);
+      if (thrown) thrown.spent = true;
+      if (thrown || (W.holding && W.attack === 'wipe' && W.facing > 0 && t.x <= W.x + CATCH && t.x > W.x - 4)) {
+        t.dir = 1;
+        L.calm(t.x, 22);
+        L.pulse(t.x, -t.amp, TIDAL_WIDTH, 1, DIFF.bossWaveBack);
+        this.addScore(10, W.x, L.sample(W.x) - 30 * W.side);
+        n.shake = Math.max(n.shake, 0.8);
+        sfx.sentBack();
+        continue;
+      }
+      if (t.x <= W.x) {
+        t.done = true;
+        if (W.flying) this.addScore(6, W.x, W.by - 18);
+        else if (W.onLine) W.hurt('zap');
+      }
+    }
+    this.tidals = this.tidals.filter((t) => !t.gone && t.x > n.camX - 30 && t.x < n.camX + n.viewW + 60);
+  }
+
+  /** Pulled flat by a pull facing it. */
+  private cancelTidal(t: Tidal) {
+    const L = this.line, W = this.wavell;
+    L.calm(t.x, TIDAL_WIDTH * 2);
+    t.gone = true;
+    this.addScore(10, W.x, L.sample(W.x) - 30 * W.side);
+    this.fx.burst(t.x, L.sample(t.x), 16, 45, COLORS.danger, 0, 0.35);
+    this.neon.shake = Math.max(this.neon.shake, 0.6);
+    sfx.play('kill', 0.5);
+  }
+
+
   /** On each beat: the music's next beat. */
   private stepBeat() {
-    const hit = this.beat.step(this.level);
+    const hit = this.beat.step(this.ramp);
     if (!hit) return;
     this.onBeat = true;
     this.cue = this.beat.cueBeats;
     if (this.cue) this.cueKind = this.mostOverdue();
+    const h = this.herald, b = this.beat;
+    if (h && h.beats !== null && --h.beats <= 0) {
+      // The cue beat a Sinepede was called for: it takes it, as if it had come in on it.
+      h.due = true;
+      this.cue = false;
+    } else if (b.cueAt((b.beatOfBar + 2) % b.beats, this.ramp) && this.sineDue() && this.mostOverdue() === 'sine') {
+      // Two beats before a cue beat it would take, the Sinepede is called, so it is heard coming.
+      this.callSine(2);
+    }
     sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, this.musicLayers);
   }
 
@@ -561,7 +873,7 @@ export class Game {
 
   /** Is anything out there that he has to deal with? */
   private threatsAround() {
-    return this.sinepedes.some((s) => s.harmful) || this.worms.some((w) => w.harmful) || this.bubbles.some((b) => b.harmful)
+    return this.herald !== null || this.sinepedes.some((s) => s.harmful) || this.worms.some((w) => w.harmful) || this.bubbles.some((b) => b.harmful)
       || this.urchins.some((u) => u.standing) || this.backwaves.length > 0 || this.refluxes.length > 0;
   }
 
@@ -570,7 +882,8 @@ export class Game {
    * them. Their clocks wait meanwhile, so each kind still gets its turn.
    */
   private canSpawn() {
-    return this.level > DIFF.soloUntil || (this.calm <= 0 && !this.threatsAround());
+    if (this.bossTime) return false;
+    return this.ramp > DIFF.soloUntil || (this.calm <= 0 && !this.threatsAround());
   }
 
   /**
@@ -578,7 +891,7 @@ export class Game {
    * So they take turns: the one furthest past its time goes next.
    */
   private mostOverdue(): EnemyKind | null {
-    const W = this.wavell, t = this.playTime, l = this.level;
+    const W = this.wavell, t = this.playTime, l = this.ramp;
     const free = this.backwaves.length === 0 && this.refluxes.length === 0;
     const late: [EnemyKind, number][] = [['sine', this.sineClock / at('sineEvery', l)]];
     if (t >= DIFF.urchinFrom) late.push(['urchin', this.urchinClock / at('urchinEvery', l)]);
@@ -614,19 +927,42 @@ export class Game {
   private spawnSinepedes(dt: number) {
     const W = this.wavell, n = this.neon;
     if (!W.alive || W.state === 'appear') return;
-    // The original only counts while you walk right; standing still is punished by the end of the line.
-    if (this.quiet || !this.canSpawn()) return;
-    this.sineClock += dt * (W.vel > 0 ? 1 : DIFF.sineIdle);
-    const every = at('sineEvery', this.level);
-    if (this.sineClock >= every && this.takes('sine')) {
-      this.cue = false;
-      this.sineClock = 0;
-      // Half start on a crest (a sine), half on a trough (a cosine). Longer every few levels.
-      const s = new Sinepede(n.camX + n.viewW + 30, at('sineSpeed', this.level), Math.floor(at('sineSegs', this.level)), Math.random() < 0.5 ? 1 : -1);
+    if (this.bossTime) { this.herald = null; return; }
+    // Called two beats ago, it comes in now, as its hum has been saying. With the beat on,
+    // stepBeat() says when: on the cue beat it was called for.
+    const h = this.herald;
+    if (h) h.steps--;
+    if (h && (h.due || (h.beats === null && h.steps <= 0))) {
+      this.herald = null;
+      const s = new Sinepede(n.camX + n.viewW + SINE_ENTRY, h.speed, h.count, h.side);
       this.sinepedes.push(s);
       sfx.call(s.sides);
       this.teach('sinepede', 'SINEPEDE: a crest on your side: SWIPE ↔. A trough on the other: SWIPE ↕', 'SINEPEDE: a crest on your side: {pull}. A trough on the other: {drag}');
     }
+    // The original only counts while you walk right; standing still is punished by the end of the line.
+    if (this.quiet || !this.canSpawn()) return;
+    this.sineClock += dt * (W.vel > 0 ? 1 : DIFF.sineIdle);
+    // With the beat off it is called whenever it is due, and comes in two beats' time later.
+    if (!DIFF.beatOn && this.sineDue() && this.takes('sine')) {
+      this.cue = false;
+      this.callSine(null);
+    }
+  }
+
+  /** Is it a Sinepede's time, and could one come? */
+  private sineDue() {
+    const W = this.wavell;
+    return !this.herald && this.mode === 'play' && W.alive && W.state !== 'appear' && !this.quiet && !this.bossTime && this.canSpawn()
+      && this.sineClock >= at('sineEvery', this.ramp);
+  }
+
+  /**
+   * A Sinepede is called: its hum starts now and it comes in two beats later. Half start on
+   * a crest (a sine), half on a trough (a cosine). Longer every few levels.
+   */
+  private callSine(beats: number | null) {
+    this.sineClock = 0;
+    this.herald = { steps: HERALD_STEPS, beats, due: false, speed: at('sineSpeed', this.ramp), count: Math.floor(at('sineSegs', this.ramp)), side: Math.random() < 0.5 ? 1 : -1 };
   }
 
   private spawnUrchins(dt: number) {
@@ -634,9 +970,9 @@ export class Game {
     if (!this.canSpawn()) return;
     this.urchinClock += dt;
     if (!W.alive || W.state === 'appear' || this.quiet || this.playTime < DIFF.urchinFrom) return;
-    if (this.urchinClock < at('urchinEvery', this.level) || !this.takes('urchin')) return;
+    if (this.urchinClock < at('urchinEvery', this.ramp) || !this.takes('urchin')) return;
     // Far enough ahead to stop or go round in the time the warning gives.
-    const warn = this.inBeats(at('urchinWarn', this.level));
+    const warn = this.inBeats(at('urchinWarn', this.ramp));
     const x = W.x + W.facing * (warn * 100 + rand(25, 80));
     // No room there: it tries again on a later beat.
     if (this.clash(x, URCHIN_ROOM)) return;
@@ -654,11 +990,11 @@ export class Game {
     // Worms come faster for players who hide under the line.
     if (this.quiet || !this.canSpawn()) return;
     this.wormClock += dt * (W.under ? DIFF.wormUnder : 1);
-    const every = at('wormEvery', this.level);
+    const every = at('wormEvery', this.ramp);
     if (this.wormClock >= every && this.takes('worm')) {
       this.cue = false;
       this.wormClock = rand(-1, 0);
-      this.worms.push(new Worm(n.camX + n.viewW + 20, at('wormSpeed', this.level)));
+      this.worms.push(new Worm(n.camX + n.viewW + 20, at('wormSpeed', this.ramp)));
       this.teach('worm', 'WORM: SWIPE ↔ to pull it flat', 'WORM: {pull} pulls it flat');
     }
   }
@@ -753,7 +1089,7 @@ export class Game {
     if (this.canSpawn()) this.backClock += dt;
     if (!this.quiet && this.takes('back') && this.canSpawn() && this.backClock > DIFF.backCheck && this.playTime > DIFF.backFrom && W.alive && W.state !== 'appear' && this.backwaves.length === 0 && this.refluxes.length === 0 && this.backwaveStart < W.x - BACKWAVE_ROOM) {
       this.backClock = 0;
-      if (Math.random() < at('backChance', this.level)) {
+      if (Math.random() < at('backChance', this.ramp)) {
         this.backwaves.push(backwave(this.backwaveStart, this.inBeats(1.1)));
         this.cue = false;
         this.teach('backwave', 'BACKWAVE: float over it, or face it: SWIPE ↕ sends it back, SWIPE ↔ cancels it', 'BACKWAVE: float over it ({up}), or face it ({left}): {drag} sends it back, {pull} cancels it');
@@ -840,16 +1176,16 @@ export class Game {
   private updateBubbles(dt: number) {
     const W = this.wavell, L = this.line, n = this.neon;
     if (this.canSpawn()) this.bubbleClock += dt;
-    const every = at('bubbleEvery', this.level);
+    const every = at('bubbleEvery', this.ramp);
     if (!this.quiet && this.takes('bubble') && this.canSpawn() && W.alive && W.state !== 'appear' && this.playTime > DIFF.bubbleFrom && this.bubbleClock > every) {
       const x = W.x + rand(60, 170);
       if (!this.clash(x, BUBBLE_ROOM)) {
         this.bubbleClock = rand(-1, 0);
         // Mostly on his side, so it is in his way.
         const side = (Math.random() < DIFF.bubbleOwnSide ? W.side : -W.side) as 1 | -1;
-        const flies = this.level >= DIFF.bubbleFlyLevel && Math.random() < DIFF.bubbleFlyChance;
+        const flies = this.ramp >= DIFF.bubbleFlyLevel && Math.random() < DIFF.bubbleFlyChance;
         // One that floats off needs a beat on the line and a beat to let go.
-        this.bubbles.push(new BubbleBurst(x, side, this.inBeats(at('bubbleGrow', this.level), flies ? 2 : 1), flies ? this.inBeats(DIFF.bubbleFlyTime) : 0));
+        this.bubbles.push(new BubbleBurst(x, side, this.inBeats(at('bubbleGrow', this.ramp), flies ? 2 : 1), flies ? this.inBeats(DIFF.bubbleFlyTime) : 0));
         this.cue = false;
         sfx.play('reflux', 0.25);
         this.teach('bubble', 'BUBBLE BURST: SWIPE ↔ on your side, SWIPE ↕ on the other, or keep away', 'BUBBLE BURST: {pull} on your side, {drag} on the other, or keep away');
@@ -901,7 +1237,7 @@ export class Game {
       }
       if (b.harmful && b.x < this.endX + 4) b.pop();
     }
-    this.bubbles = this.bubbles.filter((b) => b.state !== 'done' && b.x > n.camX - 60);
+    this.bubbles = this.bubbles.filter((b) => b.state !== 'done' && b.x > n.camX - 60 && b.x < n.camX + n.viewW + 60);
     for (const d of this.drops) {
       d.vy += d.side * 200 * dt;
       d.x += d.vx * dt;
@@ -951,7 +1287,7 @@ export class Game {
     this.chainT -= dt;
     if (this.chainT <= 0) this.chain = 0;
     this.sparkleClock -= dt;
-    if (!this.quiet && W.alive && W.state !== 'appear' && this.playTime > 2 && this.sparkleClock <= 0 && this.sparkles.length < DIFF.sparkleMax) {
+    if (!this.quiet && W.alive && W.state !== 'appear' && this.playTime > 2 && this.sparkleClock <= 0 && this.sparkles.length < (this.bossTime ? DIFF.bossSparkles : DIFF.sparkleMax)) {
       this.sparkleClock = DIFF.sparkleEvery * rand(0.6, 1.4);
       // Anywhere around him, behind too.
       this.addSparkle(W.x + rand(-130, 150), Math.random() < 0.5);
@@ -1008,7 +1344,7 @@ export class Game {
       this.refluxClock = 0;
       const incoming = this.sinepedes.some((s) => s.x > n.camX + n.viewW * 0.9);
       if (W.alive && W.state !== 'appear' && this.playTime > DIFF.refluxFrom && this.refluxes.length === 0 && this.backwaves.length === 0 && !incoming &&
-          Math.random() < at('refluxChance', this.level)) {
+          Math.random() < at('refluxChance', this.ramp)) {
         const dir = Math.random() < 0.5 ? 1 : -1;
         this.refluxes.push(reflux(dir > 0 ? -12 : n.viewW + 12, dir, Math.random() < 0.5 ? 1 : -1, W, this.inBeats(0.9)));
         this.cue = false;
@@ -1029,7 +1365,7 @@ export class Game {
       if (!W.alive || W.state === 'appear') continue;
       if (Math.abs(x - W.x) < 5) {
         const hit = W.flying ? Math.hypot(x - W.x, r.y - W.by) < W.bubbleR + 3
-          : W.onLine && W.under === (r.side < 0);
+          : W.onLine && W.under === (r.side < 0) && r.dist < W.height;
         if (hit) { W.hurt(W.flying ? 'pop' : 'zap'); r.passed = true; continue; }
       }
       if (!r.passed && (r.dir > 0 ? x > W.x + 5 : x < W.x - 5)) {
@@ -1078,6 +1414,7 @@ export class Game {
         this.backwaves = [];
         this.refluxes = [];
         this.pulses = [];
+        this.tidals = [];
         W.spawn(W.x);
         this.endX = W.x - DIFF.endLead;
         this.endGrace = DIFF.endGrace;
@@ -1123,7 +1460,9 @@ export class Game {
     this.lineStreams();
     // Facing a Backwave on its way, the pull takes that, if nothing is nearer.
     const wave = f < 0 ? this.backwaves.find((b) => b.warn <= 0 && b.dir > 0 && !b.done && !b.gone && W.x - b.x > -6 && W.x - b.x < reach) : undefined;
+    const tidal = f > 0 ? this.tidals.find((w) => w.dir < 0 && !w.done && !w.gone && w.x - W.x > -6 && w.x - W.x < reach) : undefined;
     if (wave && (!t || W.x - wave.x < ahead(t))) this.cancelBackwave(wave);
+    else if (tidal && (!t || tidal.x - W.x < ahead(t))) this.cancelTidal(tidal);
     else if (t) this.hit(t.e, t.side, 'pull', W.side, -f);
   }
 

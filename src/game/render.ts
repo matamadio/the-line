@@ -26,6 +26,7 @@ export function drawGame(g: Game, dt: number) {
   for (const u of g.urchins) u.drawFeatures(n, g.line);
   for (const w of g.worms) w.drawFeatures(n, g.line);
   for (const b of g.bubbles) b.drawFeatures(n, g.line);
+  g.boss?.drawFeatures(n, g.line, g.wavell.x);
   // A grown creature shows how many right waves it still takes, as dots off its tip.
   const pips = (x: number, y: number, count: number) => {
     const path = new Path2D();
@@ -40,6 +41,7 @@ export function drawGame(g: Game, dt: number) {
   drawDrops(g);
   drawSparkles(g);
   drawBackwaves(g);
+  drawTidals(g);
   drawRefluxes(g);
   g.wavell.drawFeatures(n, g.line);
   g.fx.draw(n);
@@ -102,6 +104,11 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
     if (b.state !== 'grow') continue;
     const pts = b.outline(L);
     knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: 0 });
+  }
+  // The boss is the line itself, bent into his shape.
+  if (g.boss && !g.boss.done) {
+    const pts = g.boss.outline(L);
+    knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: g.boss.flash });
   }
   // The menu's word is written by the line itself.
   const word = g.menu.wordOnRealLine();
@@ -224,6 +231,18 @@ function drawBackwaves(g: Game) {
     const crest: number[] = [];
     for (let x = Math.max(b.x - 16, g.endX); x <= b.x + 16; x += 2) crest.push(x, L.sample(x));
     n.glow(smoothPath(crest), b.dir > 0 ? COLORS.danger : '#ffffff', 1.1, 0.9);
+  }
+}
+
+/** The boss's tidal waves: orange coming in, white once sent back at him. */
+function drawTidals(g: Game) {
+  const n = g.neon, L = g.line;
+  for (const t of g.tidals) {
+    if (t.done && t.dir < 0) continue;
+    const crest: number[] = [];
+    for (let x = Math.max(t.x - 22, g.endX); x <= t.x + 22; x += 2) crest.push(x, L.sample(x));
+    if (crest.length < 4) continue;
+    n.glow(smoothPath(crest), t.dir < 0 ? COLORS.danger : '#ffffff', 1.3, 1);
   }
 }
 

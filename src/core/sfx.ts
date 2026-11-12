@@ -22,7 +22,30 @@ const BEAT_SLACK = 0.06;
 
 /** A Sinepede's notes (Hz): a crest is the higher one, a trough a fourth below. */
 const sinePitch = (side: number) => (side > 0 ? 440 : 330);
-const HUM_VOLUME = 0.09;
+/** The nearest Sinepede's hum (Hz): 220 for one segment, and 110 more for each segment after it. */
+export const humPitch = (segments: number) => 220 + 110 * (Math.max(1, segments) - 1);
+const HUM_VOLUME = 0.3;
+/** How hard the hum is driven into its saturation: enough to warm it, not to buzz. */
+const HUM_DRIVE = 1;
+/** The hum's reverb: how long it rings (s) and how much of it is heard. */
+const HUM_VERB_TIME = 1.2, HUM_VERB_WET = 0.25;
+
+/** A soft, symmetric saturation curve: the sine rounds off at the top, gaining a few odd harmonics. */
+const SATURATION = (() => {
+  const curve = new Float32Array(1024), k = Math.tanh(HUM_DRIVE);
+  for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(((i / (curve.length - 1)) * 2 - 1) * HUM_DRIVE) / k;
+  return curve;
+})();
+
+/** A small room for the reverb: stereo noise dying away. */
+function roomImpulse(ctx: BaseAudioContext, seconds: number) {
+  const len = Math.round(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 3;
+  }
+  return buf;
+}
 
 /** Brighter waves sound louder at the same level: this evens them out. */
 const WAVE_LOUDNESS: Partial<Record<OscillatorType, number>> = { square: 0.45, sawtooth: 0.5, triangle: 0.9 };
@@ -175,22 +198,129 @@ class Sfx {
     this.tone(sinePitch(-side), 0.14, 0.25, sinePitch(-side), 0.16);
   }
 
-  /** The nearest Sinepede's steady tone. side 0: none. near: 0 far away, 1 on top of him. */
-  hum(side: number, near: number) {
+  /** The Flattener slams the line: a deep thud falling away, with a clipped crack on top. */
+  slam() {
+    this.tone(95, 0.8, 0.7, 28);
+    this.tone(190, 0.3, 0.3, 60);
+    this.crunch(0.12, 0.6);
+  }
+
+  /** The Flattener as a cat: a meow, a buzzy tone through a vowel-like filter that opens and closes. */
+  meow() {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const at = this.now(ctx), len = 0.55;
+    const osc = ctx.createOscillator(), vowel = ctx.createBiquadFilter(), g = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(480, at);
+    osc.frequency.linearRampToValueAtTime(720, at + len * 0.35);
+    osc.frequency.exponentialRampToValueAtTime(400, at + len);
+    vowel.type = 'bandpass';
+    vowel.Q.value = 5;
+    vowel.frequency.setValueAtTime(700, at);
+    vowel.frequency.linearRampToValueAtTime(1900, at + len * 0.3);
+    vowel.frequency.exponentialRampToValueAtTime(800, at + len);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.55, at + 0.06);
+    g.gain.setValueAtTime(0.55, at + len * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    osc.connect(vowel).connect(g).connect(this.out!);
+    osc.start(at);
+    osc.stop(at + len + 0.02);
+  }
+
+  /** The Flattener as a saw: a whine that spins up and keeps going. Returns how to cut it off. */
+  whirr(seconds: number): () => void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return () => {};
+    const at = this.now(ctx);
+    const a = ctx.createOscillator(), b = ctx.createOscillator(), tone = ctx.createBiquadFilter(), g = ctx.createGain(), wob = ctx.createOscillator(), depth = ctx.createGain();
+    a.type = b.type = 'sawtooth';
+    for (const [o, f] of [[a, 1], [b, 1.012]] as const) {
+      o.frequency.setValueAtTime(140 * f, at);
+      o.frequency.exponentialRampToValueAtTime(420 * f, at + Math.min(1.2, seconds));
+    }
+    tone.type = 'lowpass';
+    tone.frequency.value = 2400;
+    wob.frequency.value = 34;
+    depth.gain.value = 0.06;
+    wob.connect(depth).connect(g.gain);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.16, at + 0.3);
+    g.gain.setValueAtTime(0.16, at + seconds - 0.1);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+    a.connect(tone);
+    b.connect(tone);
+    tone.connect(g).connect(this.out!);
+    for (const o of [a, b, wob]) { o.start(at); o.stop(at + seconds + 0.02); }
+    return () => {
+      const now = ctx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setTargetAtTime(0, now, 0.03);
+      for (const o of [a, b, wob]) o.stop(now + 0.15);
+    };
+  }
+
+  /** The Flattener as a toad: a low croak, three quick rasps. */
+  croak() {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const at = this.now(ctx);
+    for (let i = 0; i < 3; i++) {
+      const t0 = at + i * 0.1;
+      const osc = ctx.createOscillator(), tone = ctx.createBiquadFilter(), g = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(95, t0);
+      osc.frequency.exponentialRampToValueAtTime(70, t0 + 0.08);
+      tone.type = 'lowpass';
+      tone.frequency.value = 900;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.4, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.08);
+      osc.connect(tone).connect(g).connect(this.out!);
+      osc.start(t0);
+      osc.stop(t0 + 0.1);
+    }
+  }
+
+  /** Something sent back at the Flattener: a tone rising away, the way it rolls. */
+  sentBack() {
+    this.tone(330, 0.32, 0.3, 990, 0, true);
+  }
+
+  /** The Flattener hit by his own power: a big low groan, falling. */
+  bossHit() {
+    this.play('kill');
+    this.tone(220, 0.7, 0.5, 55);
+    this.tone(330, 0.5, 0.25, 82, 0.05);
+  }
+
+  /**
+   * The nearest Sinepede's steady tone. segments: how many it has left, 0 for none. near:
+   * 0 far away, 1 on top of him. The sine is saturated a little before its level is set,
+   * so it sounds the same at any distance, and a little reverb goes with it.
+   */
+  hum(segments: number, near: number) {
     const ctx = this.ctx;
     if (!ctx) return;
     if (!this.humOsc) {
-      if (!side) return;
+      if (!segments) return;
       this.humOsc = ctx.createOscillator();
+      const shape = ctx.createWaveShaper(), verb = ctx.createConvolver(), wet = ctx.createGain();
+      shape.curve = SATURATION;
+      shape.oversample = '2x';
+      verb.buffer = roomImpulse(ctx, HUM_VERB_TIME);
+      wet.gain.value = HUM_VERB_WET;
       this.humGain = ctx.createGain();
       this.humGain.gain.value = 0;
-      this.humOsc.connect(this.humGain).connect(this.out!);
+      this.humOsc.connect(shape).connect(this.humGain).connect(this.out!);
+      this.humGain.connect(verb).connect(wet).connect(this.out!);
       this.humOsc.start();
     }
     const now = ctx.currentTime, gain = this.humGain!.gain, freq = this.humOsc.frequency;
     gain.cancelScheduledValues(now);
-    gain.setTargetAtTime(this.muted || !side ? 0 : HUM_VOLUME * near * near, now, 0.04);
-    if (side) { freq.cancelScheduledValues(now); freq.setTargetAtTime(sinePitch(side) / 2, now, 0.03); }
+    gain.setTargetAtTime(this.muted || !segments ? 0 : HUM_VOLUME * near * near, now, 0.04);
+    if (segments) { freq.cancelScheduledValues(now); freq.setTargetAtTime(humPitch(segments), now, 0.03); }
   }
 
   /** A low tremble under the line's vibration, before a Disturchin comes up. Returns how to cut it off. */

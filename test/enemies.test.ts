@@ -10,7 +10,7 @@ import { Worm } from '../src/game/actors/worm';
 import { backwave, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, muted: true } }));
 
 // These script each enemy to the second; test/beat.test.ts covers them on the beat.
 DIFF.beatOn = 0;
@@ -237,6 +237,24 @@ describe('the Backwave', () => {
     expect(g.endX).toBeLessThan(end);
     expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
     expect(g.wavell.alive).toBe(true);
+  });
+
+  it('carries the end all the way to the left on a screen wider than his lead', () => {
+    const g = ready();
+    // Wide enough that the left of the screen is further back than the 240 u lead.
+    (g.neon as { viewW: number }).viewW = 1000;
+    run(g, 1);
+    expect(g.wavell.x - g.neon.camX).toBeGreaterThan(DIFF.endLead + 60);
+    g.endX = g.wavell.x - 150;
+    holding(g, WIPE);
+    const b = coming(g, g.wavell.x - 90);
+    run(g, 0.1);
+    expect(b.dir).toBe(-1);
+    for (let i = 0; i < STEPS_PER_SECOND * 4 && g.backwaves.length; i++) g.tick(IDLE);
+    expect(g.backwaves.length).toBe(0);
+    // And it stays there: nothing pulls it back in afterwards.
+    run(g, 0.5);
+    expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
   });
 
   it('is cancelled by a pull facing it, with no time earned', () => {
@@ -895,6 +913,20 @@ describe('the game', () => {
   });
 
   describe('the Sinepede', () => {
+    it.each([1, 2, 3, 5])('hums with how many segments it has left (%i)', async (count) => {
+      const { sfx } = await import('../src/core/sfx');
+      const hum = vi.mocked(sfx.hum);
+      const g = ready(), s = new Sinepede(g.wavell.x + 100, 0, count, 1);
+      g.sinepedes.push(s);
+      for (let i = 0; i < 600 && !s.harmful; i++) g.tick(IDLE);
+      expect(s.harmful).toBe(true);
+      hum.mockClear();
+      // The hum is set once a frame, not in every step tick() runs.
+      (g as unknown as { hum(): void }).hum();
+      expect(hum).toHaveBeenLastCalledWith(count, expect.any(Number));
+      expect(hum.mock.lastCall![1]).toBeGreaterThan(0);
+    });
+
     it('is one unbroken stroke that leaves the flat line level at both ends', () => {
       const g = headlessGame();
       const s = new Sinepede(200, 0, 3, 1);

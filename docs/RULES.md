@@ -8,6 +8,7 @@ Every rule the game follows, with its numbers, as of 10 November 2026. It is tak
 - [Controls](#controls)
 - [Wavell, the line and dying](#wavell-the-line-and-dying)
 - [Enemies and hazards](#enemies-and-hazards)
+- [The boss: THE FLATTENER](#the-boss-the-flattener)
 - [Sparkles and power-ups](#sparkles-and-power-ups)
 - [Scoring and levels](#scoring-and-levels)
 - [Music, beat and sound](#music-beat-and-sound)
@@ -38,7 +39,7 @@ The player can change keys and joypad buttons under CONTROL in the menu. These a
 | Pull | X or Ctrl | X | Right thumb, swipe sideways |
 | Wipe | Z, Shift or Space | A | Right thumb, swipe up or down |
 | Mute | M | | Speaker icon |
-| Fullscreen | F | | Corners icon |
+| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) |
 | Nostalgia (low-resolution look) | N | | Checkerboard icon |
 | Pause | P | Start | |
 | Back to the start screen | Esc | Back | |
@@ -50,11 +51,11 @@ The player can change keys and joypad buttons under CONTROL in the menu. These a
 
 ## Wavell, the line and dying
 
-Wavell has one life, and his size is his armour. The game ends when he is hit with no size left, when his bubble pops, or when the end of the line reaches him.
+Wavell has one life, and his size is his armour. The game ends when he is hit with no size left, when his bubble pops, or when the end of the line reaches him. Nothing else ends it: beating the boss starts the levels over.
 
 ### The end of the line
 
-- It crumbles in at 40 u/s at level 1, +4 u/s per level, up to 80 u/s.
+- It crumbles in at 40 u/s at level 1, +4 u/s per level, up to 80 u/s. During the boss fight it crumbles at 60 u/s.
 - Wavell can build a lead of at most 240 u. A gauge under the size counter shows what is left.
 - After (re)spawning, the end waits 1.6 s before it moves.
 - If it reaches Wavell he burns away along his outline, whatever his size. A creature it reaches burns the same way, and the end jumps to that creature's far side.
@@ -109,6 +110,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 - The basic enemy. Each segment is half a wave; segments alternate crest and trough.
 - Length: 1 segment at level 1, +0.5 per level (rounded down), up to 6. Wrong attacks can grow it to 8.
 - Speed 100 u/s. Its clock runs at 40% while Wavell is not walking.
+- **Heard before it is seen**: it is called 2 beats before it comes in, and its hum starts then, fading in. With the beat on, it is called 2 beats before a cue beat it may take, and it takes that beat. With the beat off, it comes in 1.6 s after it is called. On the levels where threats come one at a time, nothing else comes in while one is on its way.
 - The right attack cancels the facing segment and sends a ripple on. The wrong one throws it back and adds a segment at the far end.
 - **Running into it**: both bounce apart (his knockback 300) and he loses that ground. On his side it gains a segment. On the other side the waves cancel: it loses a segment, or flattens if it was the last, and he loses a size. A bubble always pops on it.
 
@@ -138,13 +140,54 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 - Height 22 u, speed 220 u/s, growing 15% of its height per second.
 - Only an attack facing it works; attacking the other way does nothing.
-- A pull cancels it. A wipe throws it back off the left of the screen, carrying the end of the line back with it, and the end then stops for 2 s.
+- A pull cancels it. A wipe throws it back off the left of the screen, carrying the end of the line back with it, all the way to the left of the screen even when that is more than the 240 u lead. The end then stops for 2 s.
 
 ### Order on the line
 
 - **Up to level 3**, threats come one at a time, with 1 s of clear line between them. From level 4 they overlap.
 - Enemies on the line never overlap. Crawlers queue behind whatever is ahead; a Disturchin or Bubble Burst only appears where there is room. A thrown-back enemy stops at the next one or shoves it along.
 - The Backwave and Reflux are waves in the line, so they pass through the others. A bubble in the air is off the line.
+
+## The boss: THE FLATTENER
+
+Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and THE FLATTENER climbs out of the line ahead of Wavell (2.2 s). No other threat comes while he is there.
+
+- **He is a shape-shifter.** He is a stretch of the line on top of it, and he takes a different shape for each power. His outline flows from one shape to the next (0.35 s for most). His shapes and the steps of each power are in `src/data/boss.json`, edited in the lab (Edit boss); the times below are its current numbers.
+- **Idle**, he is a wobbly blob that never holds its shape, with two eyes floating in it, staring at Wavell.
+- **He walks on to the right**, about 150 u ahead and always in view (the knob says how far, but never past the edge of the view), at 60 u/s, faster (up to 170 u/s) when Wavell closes in. He waits at the edge of the view if Wavell stops. Walking into him hurts and throws Wavell back.
+- **The end of the line** crumbles at a steady 60 u/s during the fight.
+- **Only his own front wave hurts him**, sent back at him while he is in his place (not while he is rolling as a saw).
+- **His sizes are his armour**: 3 hits flatten him. Each hit takes a size, throws him back, and he is safe for 1.1 s. The circles next to his name at the top show what is left. He is a little bigger for each size he has.
+
+| Power | His shape | Telegraph | Answer |
+| --- | --- | --- | --- |
+| **Front wave** | A curling breaker | Rears up and glows for 2 beats, then crashes on the beat | **Wipe facing the wave** (its crest, or the line held up as it comes, +10): it rolls back at 260 u/s and hits him. Or pull it flat facing it (+10), or float over it (+6) |
+| **Cat** | A chunky cat, rear at Wavell, shooting **three** line refluxes from its rear, the three moves **in a random order** each time | Low: crouches and meows, charges 0.8 s, shoots on the beat. High: rises with its rear up and meows, charges 0.8 s, shoots on the beat. Under: rolls on its back over to under the line, crouches there hanging upside down, meows, charges 0.8 s, shoots on the beat, and rolls back up | Low: along the **top** of the line at 14 u (half Wavell's smallest height): be under the line. High: along the top at 49 u (1.75 times his smallest height): it clears him on the line unless he is at full size (size 3, 53 u tall), and it pops his bubble if it meets it. Under: along the **bottom** at 14 u: be on top. +6 for each that passes |
+| **Saw** | A sawblade through the line, both sides (the line doesn't show inside it) | Spins up for 1 s, then rolls at Wavell on the next beat, at 150 u/s | **Float over it** (+6). It cuts Wavell anywhere on the line, on either side, and pops a bubble that is too low. It flattens out 40 u before the end of the line, and he grows back out of the line in his place (0.8 s) |
+| **Toad** | A squat toad, which sinks until only its eyes show | Croaks and squats (0.6 s), sinks (0.6 s) | For 3.5 s, a Bubble Burst blisters up every 0.45 s, anywhere in view on top of the line but never within 18 u of Wavell. Each sits on the line for a beat, then floats off and bursts in the air 1.6 s later. Keep clear: walking into one, or its spray, leaves him dizzy, and the spray pops his bubble. Under the line, the spray can't reach him |
+
+- **Front wave**: 30 u high, 120 u/s towards Wavell, its crest on top of the line. It hits him on the line from either side.
+- **Saw**: 16 u radius, plus 8% for each size he has left, with 12 teeth.
+- **His size**: every shape is drawn 8% bigger for each size he has left.
+- **Phases**: each hit makes him angrier.
+
+| Phase | Sizes left | Powers | Rest between powers |
+| --- | --- | --- | --- |
+| 1 | 3 | Front wave, cat | 2.4 s |
+| 2 | 2 | + Saw | 1.95 s |
+| 3 | 1 | + Toad; 30% chance of a power straight after another | 1.5 s |
+
+- **His choices**: the first power is always one that can be sent back at him (the front wave), and he never uses three powers in a row without one, so there is always a way to hurt him coming. Otherwise he picks by weight: front wave 5, cat 4, saw 4, toad 4, from the phase each comes in.
+- **Powers on the beat**: he picks a power on a beat, and the crash, the shot and the saw's roll land on the beat.
+- **Sparkles** keep coming during the fight, at most 3 at a time. Each hit leaves 2 by him.
+
+### Beating him
+
+- He melts flat into the line (1.4 s), and one huge hump rolls away to the right. FLATTENED! shows, with 250 base points.
+- After 3.5 s of quiet line, the levels start over at level 1 on the next loop: THE LINE CONTINUES. The score carries on, and levels go by what is scored since the loop started.
+- **Each loop counts 2 levels harder** for every ramp (crumble speed, spawn rates, tempo and so on): loop 2's level 1 plays like level 3. The level gates (threats overlapping, two enemies a bar, floating bubbles) use the same harder level.
+- The music starts again from one instrument and builds up level by level.
+- The HUD shows the loop: LOOP 2 · LEVEL 1.
 
 ## Sparkles and power-ups
 
@@ -173,13 +216,18 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 | Backwave wiped back | 10 |
 | Backwave floated over | 6 |
 | Line reflux passed safely | 6 |
+| Boss's front wave floated over | 6 |
+| Boss's front wave pulled flat, or sent back | 10 |
+| Boss's saw floated over | 6 |
+| Boss hit | 50 |
+| Boss flattened | 250 |
 | Sparkle | Chain position (1–8), ×5 if gold |
 
 ### Levels
 
-- There are 10 levels. Each level costs 50 points more than the one before: level 2 starts at 50 points, level 3 at 150, level 4 at 300, level 5 at 500, level 6 at 750, level 7 at 1050, level 8 at 1400, level 9 at 1800 and level 10 at 2250.
+- There are 10 levels. Each level costs 50 points more than the one before: level 2 starts at 50 points, level 3 at 150, level 4 at 300, level 5 at 500, level 6 at 750, level 7 at 1050, level 8 at 1400, level 9 at 1800 and level 10 at 2250. On later loops these count from the score the loop started at.
 - A level-up shows a banner, shakes the screen and plays the level sound.
-- Level 10 is the last and will be a boss fight. Until that is built, level 10 simply goes on.
+- Level 10 is the last: the boss fight (see [The boss](#the-boss-the-flattener)). Beating him starts the levels over on the next loop, 2 levels harder.
 - The best score is saved in the browser.
 
 ### What changes with the level
@@ -210,7 +258,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - The tempo starts at 75 BPM, rises 2 BPM per level up to 120, and only changes at the start of a bar.
 - The beat is counted in simulation steps (96 steps of 1/120 s per beat), never on a clock, so replays are exact.
 - The line lights up on each beat, brighter on the first beat of a bar, so the beat can be seen with the sound off.
-- **Enemies come in on the beat**: on the last beat of the bar, and from level 6 also on the beat half a bar before it. That is never more than two per bar. Kinds take turns: the one furthest past its due time goes next.
+- **Enemies come in on the beat**: on the last beat of the bar, and from level 6 also on the beat half a bar before it. That is never more than two per bar. Kinds take turns: the one furthest past its due time goes next. A Sinepede is called 2 beats ahead of its cue beat, so its hum is heard first.
 - **Enemy actions wait for the beat**: a Disturchin's spikes, a Backwave or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses last whole beats.
 - **Time signature** (2/4, 3/4, 4/4, 5/4, 6/8 or 7/8, from the audio menu) sets the beats per bar. A change waits for the next bar.
 
@@ -236,7 +284,8 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 
 ### Sound matches shape
 
-- **Sinepede:** pure sine tones whatever the style. It announces itself with one note per segment, high for a crest, low for a trough. Its steady hum gets louder as the nearest one closes in. Each cancelled segment plays its own note.
+- **The Flattener:** a low tremble as he rises and as he rears up, a deep falling thud with a clipped crack when his wave crashes, a meow for the cat (a buzzy tone through a vowel-like filter), a whine that spins up for the saw, a low three-rasp croak for the toad, a tone rising away when his wave is sent back at him, and a big falling groan when it hits.
+- **Sinepede:** pure sine tones whatever the style. It announces itself with one note per segment, high for a crest, low for a trough. Each cancelled segment plays its own note. The nearest one also hums: a sine at 220 Hz for one segment and 110 Hz more for each segment after it (330 Hz for 2, 440 Hz for 3), slightly saturated and with a little reverb. The hum starts 2 beats before a Sinepede comes in and gets louder as it closes in.
 - **Disturchin:** a low tremble under the fuzz, then a harsh, clipped sound while its spikes are out.
 - **Wavell:** a bright run of notes when he grows, a falling one when he shrinks.
 - **Samples** from the original 2003 game cover the rest: appearing, vanishing, flipping down and up, hits, kills, being eaten, Reflux, bubble pop, level pass and the Backwave bonus.
@@ -262,7 +311,7 @@ Everything is drawn as glowing vector strokes at the screen's native resolution.
 - **Dying.** Killed by an enemy, he sinks back into the line looking up (0.6 s) until one raised hand is the last of him. Burnt by the end of the line, the break runs along his outline from foot to foot (1.25 s) and drifts away in sparks.
 - **Enemy deaths.** A killed creature melts into a hump that rolls on with the wave that hit it. A Sinepede leaves a ripple as each segment dies.
 - **Screens.** The title is one unbroken stroke. Starting a game breaks it apart. At game over, FLATLINED appears and turns back into the title.
-- **HUD.** Top left: size circles, with the lead gauge under them. Score with its multiplier to the left. Points pop up where they are earned. A banner shows each new level.
+- **HUD.** Top left: size circles, with the lead gauge under them. Score with its multiplier to the left. Points pop up where they are earned. A banner shows each new level. During the boss fight, THE FLATTENER and a circle for each size he has left sit under the level.
 - **Nostalgia mode** (N or the checkerboard icon) gives a low-resolution look and is saved in the browser.
 
 ## Platform and saving
@@ -282,6 +331,7 @@ The game runs in the browser at <https://matamadio.github.io/the-line/> and inst
 | Feel: walk, flip, float, wave, death and melt timings | `src/data/tune.ts` | Animation lab sliders, `npm run lab` (copy values back by hand) |
 | Animation keyframes | `src/data/anim.json` | Keyframe editor in the lab |
 | Rules and point values | `src/game/game.ts` | Code |
+| The boss's shape, powers and phases | `src/game/actors/flattener.ts` (his numbers in `difficulty.json`, Boss group) | Code, difficulty editor |
 | Beat and cue beats | `src/game/beat.ts` | Code |
 | Music styles | `src/core/styles.ts`, `src/core/music.ts` | Code |
 | Sound effects | `src/core/sfx.ts` | Code |

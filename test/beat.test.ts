@@ -6,9 +6,10 @@ import { sfx } from '../src/core/sfx';
 import { DIFF, at } from '../src/data/difficulty';
 import { LAYERS, METERS, groupStarts, meterById } from '../src/core/music';
 import { BASE_BPM, BeatClock } from '../src/game/beat';
+import { HERALD_STEPS } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic: vi.fn(), setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic: vi.fn(), setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, muted: true } }));
 
 describe('the beat clock', () => {
   it('has a beat every 96 steps and a bar every four beats', () => {
@@ -209,6 +210,43 @@ describe('the beat in the game', () => {
     expect(beatsSeen.size).toBeGreaterThan(0);
     // No one kind takes all the beats.
     expect(kinds.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each([1, 6])('at level %i, a Sinepede is heard two beats before it comes in, on a beat it may take', (level) => {
+    DIFF.beatOn = 1;
+    Math.random = seeded(5 + level);
+    const g = headlessGame();
+    g.start();
+    const hum = vi.mocked(sfx.hum);
+    let calledAt = -1, checked = 0;
+    for (let i = 0; i < 40000 && checked < 3; i++) {
+      g.level = level;
+      g.lives = 9;
+      g.wavell.safe = 9;
+      const before = g.sinepedes.length;
+      g.tick({ ...IDLE, right: true });
+      if (g.herald && calledAt < 0) {
+        calledAt = i;
+        expect(i % 96).toBe(0);
+        // Heard from the start, at its pitch: its number of segments.
+        hum.mockClear();
+        (g as unknown as { hum(): void }).hum();
+        expect(hum).toHaveBeenLastCalledWith(g.herald.count, expect.any(Number));
+      }
+      if (calledAt >= 0 && i === calledAt + HERALD_STEPS / 2) {
+        // Halfway there, it is already heard.
+        hum.mockClear();
+        (g as unknown as { hum(): void }).hum();
+        expect(hum.mock.lastCall![1]).toBeGreaterThan(0);
+      }
+      if (g.sinepedes.length > before) {
+        expect(i - calledAt).toBe(HERALD_STEPS);
+        expect(g.beat.cueAt(Math.floor(i / 96) % 4, level)).toBe(true);
+        calledAt = -1;
+        checked++;
+      }
+    }
+    expect(checked).toBe(3);
   });
 
   it('plays the music once per beat when on, saying which beat of the bar', () => {
