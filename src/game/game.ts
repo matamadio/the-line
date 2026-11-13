@@ -168,6 +168,8 @@ export class Game {
   private endCarried = false;
   /** Once a wiped Backwave is gone: the end stays off the left of the screen for its pause, even if he walks back. */
   private endHeld = false;
+  /** The time he has, as the HUD shows it (0..1): full while the end is held off the screen. */
+  lead = 1;
   hint = '';
   hintT = 0;
   private taught = new Set<string>();
@@ -307,6 +309,7 @@ export class Game {
     this.endX = this.wavell.x - DIFF.endLead;
     this.endGrace = DIFF.endGrace;
     this.endHeld = false;
+    this.lead = 1;
     this.deathHandled = false;
     if (this.level >= DIFF.lastLevel) this.startBoss();
   }
@@ -559,6 +562,9 @@ export class Game {
     // and the end must not slide into view and meet him before its pause is over.
     if (this.endGrace <= 0) this.endHeld = false;
     if (this.endHeld) this.endX = Math.min(this.endX, n.camX - BACKWAVE_OFF);
+    // The HUD bar: the line left behind him, or full while the end is held. It eases, not jumps.
+    const lead = this.endHeld ? 1 : clamp((W.x - this.endX) / DIFF.endLead, 0, 1);
+    this.lead += (lead - this.lead) * Math.min(1, dt * 8);
     // Sparks come off the break; the line trembles near it. While he burns,
     // he is the end of the line, so the break itself keeps still.
     const crumbling = (W.state === 'dead' && W.death === 'fall') || this.crumbles.length > 0;
@@ -1485,6 +1491,7 @@ export class Game {
         this.endX = W.x - DIFF.endLead;
         this.endGrace = DIFF.endGrace;
         this.endHeld = false;
+        this.lead = 1;
       } else {
         this.mode = 'over';
         this.overT = 0;

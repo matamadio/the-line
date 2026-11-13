@@ -265,6 +265,8 @@ describe('the Backwave', () => {
     for (let i = 0; i < (DIFF.backEarn - 0.1) * STEPS_PER_SECOND; i++) {
       g.tick(k);
       expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
+      // The gauge fills up for the pause.
+      if (i > STEPS_PER_SECOND * 0.6) expect(g.lead).toBeGreaterThan(0.97);
     }
     expect(g.wavell.alive).toBe(true);
     // Then it crumbles in again as usual.

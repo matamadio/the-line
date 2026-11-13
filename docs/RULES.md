@@ -56,7 +56,7 @@ Wavell has one life, and his size is his armour. The game ends when he is hit wi
 ### The end of the line
 
 - It crumbles in at 40 u/s at level 1, +3 u/s per level, up to 80 u/s. During the boss fight it crumbles at 60 u/s.
-- Wavell can build a lead of at most 240 u. A gauge under the size counter shows what is left.
+- Wavell can build a lead of at most 240 u. A gauge under the size counter shows what is left; it reads full while a wiped Backwave holds the end off the screen.
 - After (re)spawning, the end waits 1.6 s before it moves.
 - If it reaches Wavell he burns away along his outline, whatever his size. A creature it reaches burns the same way: the break crosses it at the speed the end crumbles in, and the end carries on from its far side.
 
@@ -141,7 +141,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 - Height 22 u, speed 220 u/s, growing 15% of its height per second.
 - Only an attack facing it works; attacking the other way does nothing.
-- A pull cancels it. A wipe throws it back off the left of the screen, carrying the end of the line back with it, all the way to the left of the screen even when that is more than the 240 u lead. The end then stays just off the left of the screen for 2 s, even if he walks back towards it, before it crumbles in again.
+- A pull cancels it. A wipe throws it back off the left of the screen, carrying the end of the line back with it, all the way to the left of the screen even when that is more than the 240 u lead. The end then stays just off the left of the screen for 2 s, even if he walks back towards it, before it crumbles in again. The lead gauge fills up for that pause.
 
 ### Order on the line
 
