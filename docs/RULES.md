@@ -55,7 +55,7 @@ Wavell has one life, and his size is his armour. The game ends when he is hit wi
 
 ### The end of the line
 
-- It crumbles in at 40 u/s at level 1, +4 u/s per level, up to 80 u/s. During the boss fight it crumbles at 60 u/s.
+- It crumbles in at 40 u/s at level 1, +3 u/s per level, up to 80 u/s. During the boss fight it crumbles at 60 u/s.
 - Wavell can build a lead of at most 240 u. A gauge under the size counter shows what is left.
 - After (re)spawning, the end waits 1.6 s before it moves.
 - If it reaches Wavell he burns away along his outline, whatever his size. A creature it reaches burns the same way, and the end jumps to that creature's far side.
@@ -98,20 +98,20 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 | Threat | Where it is | Answer | First appears | How often (level 1 → limit) |
 | --- | --- | --- | --- | --- |
-| **Sinepede** | Crawls along the line as crests above and troughs below | The right attack for the segment facing you, one segment at a time | After 1.75 s | Every 4.25 s → 1.8 s (−0.35 s/level) |
-| **Worm** | Crawls underneath, sagging the line | Pull it, from either side | After 10 s of play | Every 6.6 s → 2.6 s (−0.4 s/level) |
-| **Bubble Burst** | Blisters out of either side, swells and bursts | Pop it early with the right attack, or keep clear | After 6 s of play | Every 5.15 s → 2.4 s (−0.35 s/level) |
-| **Disturchin** | Stays still, on both sides of the line | Pull it, or wait it out | After 14 s of play | Every 7 s → 3.5 s (−0.4 s/level) |
-| **Line reflux** | Runs parallel to the line on one side, half Wavell's height away | Be on the other side | After 5 s of play | 29% chance every 3 s, +4%/level |
-| **Backwave** | Rolls in from behind | Float over it, or turn and answer it | After 22 s of play | 35% chance every 4 s, +5%/level |
+| **Sinepede** | Crawls along the line as crests above and troughs below | The right attack for the segment facing you, one segment at a time | After 1.75 s | Every 4.25 s → 1.8 s (−0.26 s/level) |
+| **Worm** | Crawls underneath, sagging the line | Pull it, from either side | After 10 s of play | Every 6.6 s → 2.6 s (−0.3 s/level) |
+| **Bubble Burst** | Blisters out of either side, swells and bursts | Pop it early with the right attack, or keep clear | After 6 s of play | Every 5.15 s → 2.4 s (−0.26 s/level) |
+| **Disturchin** | Stays still, on both sides of the line | Pull it, or wait it out | After 14 s of play | Every 7 s → 3.5 s (−0.3 s/level) |
+| **Line reflux** | Runs parallel to the line on one side, half Wavell's height away | Be on the other side | After 5 s of play | 29% chance every 3 s, +3%/level |
+| **Backwave** | Rolls in from behind | Float over it, or turn and answer it | After 22 s of play | 35% chance every 4 s, +4%/level |
 
 ### Sinepede
 
 - The basic enemy. Each segment is half a wave; segments alternate crest and trough.
-- Length: 1 segment at level 1, +0.5 per level (rounded down), up to 6. Wrong attacks can grow it to 8.
+- Length: 1 segment at level 1, +0.25 per level (rounded down), up to 4: 1 segment on levels 1–4, 2 on levels 5–8, 3 on level 9. Wrong attacks can grow it to 8.
 - Speed 100 u/s. Its clock runs at 40% while Wavell is not walking.
 - **Heard before it is seen**: it is called 2 beats before it comes in, and its hum starts then, fading in. With the beat on, it is called 2 beats before a cue beat it may take, and it takes that beat. With the beat off, it comes in 1.6 s after it is called. On the levels where threats come one at a time, nothing else comes in while one is on its way.
-- The right attack cancels the facing segment and sends a ripple on. The wrong one throws it back and adds a segment at the far end.
+- The right attack cancels the facing segment and sends a ripple on, and what is left of it is set back a little (knockback 150, about 30 u), so even a long one can be worn down. The wrong one throws it back (knockback 650) and adds a segment at the far end.
 - **Running into it**: both bounce apart (his knockback 300) and he loses that ground. On his side it gains a segment. On the other side the waves cancel: it loses a segment, or flattens if it was the last, and he loses a size. A bubble always pops on it.
 
 ### Worm
@@ -122,13 +122,14 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 ### Bubble Burst
 
-- It appears on Wavell's side 65% of the time. Time to burst: 1.74 s at level 1, −0.06 s per level, down to 1.1 s.
+- It appears on Wavell's side 65% of the time. Time to burst: 1.74 s at level 1, −0.045 s per level, down to 1.1 s.
 - Its spray makes him dizzy. The wrong attack makes it swell and burst sooner. Walking into it pops it but still leaves him dizzy.
 - **From level 6**, half of them float off the line partway and burst after 1.6 s in the air. Attacks along the line can't reach those, and a fed one is too heavy to fly. The spray pops his bubble, and leaves him dizzy if he is on the line under it.
 
 ### Disturchin
 
-- It starts as a fuzz on the line (warning 0.9 s at level 1, −0.03 s per level, down to 0.5 s), then bursts out in spikes for 1 s.
+- It comes up 25–80 u further ahead of Wavell than he can walk in its warning, always to the right of him, even when he has turned round: never behind him, where the end of the line is.
+- It starts as a fuzz on the line (warning 0.9 s at level 1, −0.02 s per level, down to 0.5 s), then bursts out in spikes for 1 s.
 - The opposite-sides rule doesn't apply: **a pull always kills it and a wipe always feeds it.**
 - Each wipe bounces it back (knockback 250), restarts its time with 0.5 s more, makes it bigger and takes one more pull. Dots show how many are left.
 
@@ -145,7 +146,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 ### Order on the line
 
 - **Up to level 3**, threats come one at a time, with 1 s of clear line between them. From level 4 they overlap.
-- Enemies on the line never overlap. Crawlers queue behind whatever is ahead; a Disturchin or Bubble Burst only appears where there is room. A thrown-back enemy stops at the next one or shoves it along.
+- Enemies on the line never overlap. Crawlers queue behind whatever is ahead; a Disturchin or Bubble Burst only appears where there is room. A thrown-back enemy stops at the next one or shoves it along. One on its way out (fading, sinking, melting, or a Disturchin pulling its spikes in) keeps its room until it has gone.
 - The Backwave and Reflux are waves in the line, so they pass through the others. A bubble in the air is off the line.
 
 ## The boss: THE FLATTENER
@@ -233,17 +234,17 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 
 ### What changes with the level
 
-Anything that gets harder is a ramp: a value at level 1, a change per level and a limit.
+Anything that gets harder is a ramp: a value at level 1, a change per level and a limit. The steps are small enough that level 9, the last before the boss, is still fair; most limits are only reached in later loops.
 
 | Ramp | Level 1 | Per level | Limit |
 | --- | --- | --- | --- |
-| End of the line speed | 40 u/s | +4 | 80 u/s |
+| End of the line speed | 40 u/s | +3 | 80 u/s |
 | Tempo | 75 BPM | +2 | 120 BPM |
-| Sinepede segments | 1 | +0.5 | 6 |
-| Disturchin warning | 0.9 s | −0.03 | 0.5 s |
-| Bubble Burst time to burst | 1.74 s | −0.06 | 1.1 s |
-| Backwave chance per roll | 35% | +5% | 100% |
-| Reflux chance per roll | 29% | +4% | 100% |
+| Sinepede segments | 1 | +0.25 | 4 |
+| Disturchin warning | 0.9 s | −0.02 | 0.5 s |
+| Bubble Burst time to burst | 1.74 s | −0.045 | 1.1 s |
+| Backwave chance per roll | 35% | +4% | 100% |
+| Reflux chance per roll | 29% | +3% | 100% |
 | Music layers (one instrument per level; all 5 from loop 2 on) | 1 | +1 | 5 |
 
 Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.

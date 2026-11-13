@@ -892,12 +892,16 @@ export class Game {
     sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, this.musicLayers);
   }
 
-  /** Every enemy on the line, from the left. One in the air, or on its way out, takes up no room. */
+  /**
+   * Every enemy on the line, from the left. One on its way out (fading, sinking, melting,
+   * spikes going back in) still takes up its room until it has gone, so nothing comes in
+   * or crawls through on top of it. One in the air takes up none.
+   */
   private spans(): Span[] {
     const out: Span[] = [];
-    for (const s of this.sinepedes) if (s.harmful) out.push({ x0: s.x, x1: s.back, shift: (d) => { s.x += d; }, end: () => s.sink() });
-    for (const w of this.worms) if (w.harmful) out.push({ x0: w.x, x1: w.back, shift: w.state === 'bite' ? undefined : (d) => { w.x += d; }, end: () => w.sink() });
-    for (const u of this.urchins) if (u.standing) out.push({ x0: u.x - u.reach, x1: u.x + u.reach, shift: u.moving ? (d) => { u.x += d; } : undefined, end: () => u.sink() });
+    for (const s of this.sinepedes) if (s.state !== 'done' && s.segs.length) out.push({ x0: s.x, x1: s.back, shift: (d) => { s.x += d; }, end: () => s.sink() });
+    for (const w of this.worms) if (w.state !== 'done') out.push({ x0: w.x, x1: w.back, shift: w.harmful && w.state !== 'bite' ? (d) => { w.x += d; } : undefined, end: () => w.sink() });
+    for (const u of this.urchins) if (u.state !== 'done') out.push({ x0: u.x - u.reach, x1: u.x + u.reach, shift: u.moving ? (d) => { u.x += d; } : undefined, end: () => u.sink() });
     for (const b of this.bubbles) if (b.harmful && !b.airborne) out.push({ x0: b.x - b.r - 3, x1: b.x + b.r + 3, end: () => b.pop() });
     return out.sort((a, b) => a.x0 - b.x0);
   }
@@ -1028,9 +1032,10 @@ export class Game {
     this.urchinClock += dt;
     if (!W.alive || W.state === 'appear' || this.quiet || this.playTime < DIFF.urchinFrom) return;
     if (this.urchinClock < at('urchinEvery', this.ramp) || !this.takes('urchin')) return;
-    // Far enough ahead to stop or go round in the time the warning gives.
+    // Far enough ahead to stop or go round in the time the warning gives. Always ahead,
+    // even when he has turned round: behind him is where the end of the line is coming.
     const warn = this.inBeats(at('urchinWarn', this.ramp));
-    const x = W.x + W.facing * (warn * 100 + rand(25, 80));
+    const x = W.x + warn * 100 + rand(25, 80);
     // No room there: it tries again on a later beat.
     if (this.clash(x, URCHIN_ROOM)) return;
     this.urchinClock = rand(-1, 0);
@@ -1588,6 +1593,8 @@ export class Game {
       if (right) {
         // The two waves cancel: that segment is gone, and a ripple rolls on the way it was hit.
         e.cancel(W.x);
+        // and what is left of it is set back a little, so a long one can be worn down.
+        if (e.count > 0) e.knock((Math.sign(x - W.x) || 1) * DIFF.sineSetBack);
         L.pulse(x, -side * 5, 10, dir);
         this.addScore(4, x, y - side * 6);
         this.fx.burst(x, y, 10, 40, COLORS.enemy, 0, 0.3);
