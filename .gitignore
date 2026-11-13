@@ -6,3 +6,5 @@ dist
 .DS_Store
 Thumbs.db
 .vite
+# Reference images and videos for design, not ours to publish
+ref/

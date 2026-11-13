@@ -43,6 +43,8 @@ const MELT_TIME = 1.4;
 const REFORM_TIME = 0.8;
 /** Each size left makes him this much bigger. */
 const GROW = 0.08;
+/** Rolling over to the other side of the line: how long the way back to his idle shape takes (s), and how high his body stands mid-roll, of his tallest. */
+const ROLL_TIME = 0.6, ROLL_DEPTH = 0.45;
 const FLAT: ShapeDef = { kind: 'path', pts: [[-20, 0], [20, 0]], eyes: [], strokes: [] };
 const SHUT: Eye[] = [{ dx: -6, h: 0, r: 0 }, { dx: 6, h: 0, r: 0 }];
 const SOUND_EVENT: Record<string, BossEvent | null> = { none: null, rumble: 'windup', meow: 'meow', whirr: 'whirr', croak: 'croak' };
@@ -57,6 +59,21 @@ function resample(p: number[], n = N): Float32Array {
     const d = (i / (n - 1)) * total;
     while (j < m - 2 && acc[j + 1] < d) j++;
     const f = acc[j + 1] > acc[j] ? (d - acc[j]) / (acc[j + 1] - acc[j]) : 0;
+    out[i * 2] = lerp(p[j * 2], p[j * 2 + 2], f);
+    out[i * 2 + 1] = lerp(p[j * 2 + 1], p[j * 2 + 3], f);
+  }
+  return out;
+}
+
+/**
+ * n points along a polyline (flat [x, y, ...]), spread evenly by its points rather than by
+ * length: the same point of two shapes with the same number of points lands on the same
+ * place in each, so one flows into the other point for point (a mouth stays a mouth).
+ */
+function resampleByPoint(p: number[], n = N): Float32Array {
+  const out = new Float32Array(n * 2), m = p.length / 2;
+  for (let i = 0; i < n; i++) {
+    const t = (i / (n - 1)) * (m - 1), j = Math.min(m - 2, Math.floor(t)), f = t - j;
     out[i * 2] = lerp(p[j * 2], p[j * 2 + 2], f);
     out[i * 2 + 1] = lerp(p[j * 2 + 1], p[j * 2 + 3], f);
   }
@@ -129,6 +146,15 @@ export class Flattener {
   posing = false;
 
   private form: Form = { shape: 'blob', side: 1, grow: [1, 1] };
+  /** The shape he is flowing out of, for its strokes to fade. */
+  private prevForm: Form = { shape: 'blob', side: 1, grow: [1, 1] };
+  /** Changing side of the line, he rolls over rather than squashing flat: 0, or the side he rolls from. */
+  private rolling: 0 | 1 | -1 = 0;
+  /** How high his body stands seen end-on, mid-roll. */
+  private rollDepth = 0;
+  /** Ease into the flow, and out of it. A step that goes straight on to the next doesn't stop in between. */
+  private easeIn = true;
+  private easeOut = true;
   private from = resample([-20, 0, 20, 0]);
   private fromEyes: Eye[] = SHUT.map((e) => ({ ...e }));
   private morphT = 0;
@@ -147,6 +173,8 @@ export class Flattener {
 
   /** 1 to 3: every hit makes him angrier. */
   get phase() { return clamp(DIFF.bossHits - this.hp + 1, 1, 3); }
+  /** How many other powers come between two front waves: 2 at full health, one more for each size he has lost. */
+  get waveGap() { return 1 + this.phase; }
   /** His left end, facing Wavell, and his right end. */
   get front() { return this.x + this.left; }
   get back() { return this.x + this.right; }
@@ -178,7 +206,43 @@ export class Flattener {
   /** How far through charging up the step he is at is, 0..1. */
   get charge() { const T = this.stepTime; return T > 0 ? clamp(this.t / T, 0, 1) : 0; }
   /** Charging up to fire: he glows with danger. */
-  private get charging() { const s = this.step; return !!s && s.glow && s.fire !== 'none'; }
+  get charging() { const s = this.step; return !!s && s.glow && s.fire !== 'none'; }
+  /** Charging up a shot: only once he has reached his pose, through its hold. */
+  get chargingShot() { const s = this.step; return this.charging && s?.fire === 'shoot' && this.t >= s.morph; }
+  /** How full the shot's charge is, 0..1, from reaching the pose to the end of its hold. */
+  get shotCharge() {
+    const s = this.step;
+    if (!this.chargingShot || !s) return 0;
+    return s.hold > 0 ? clamp((this.t - s.morph) / s.hold, 0, 1) : 1;
+  }
+  /** How far through flowing into his shape he is, 0..1, eased. */
+  get flow() {
+    const u = clamp(this.morphT / this.morphTime, 0, 1);
+    if (this.easeIn && this.easeOut) return smooth(u);
+    if (this.easeIn) return u * u;
+    if (this.easeOut) return 1 - (1 - u) * (1 - u);
+    return u;
+  }
+  /** Seconds until the next step that crashes a wave goes off (the beat it waits for not counted), or 0 if none is coming. */
+  get buildTime() {
+    if (this.state !== 'power' || !this.power) return 0;
+    const steps = BOSS.powers[this.power]?.steps ?? [];
+    let t = Math.max(0, this.stepTime - this.t);
+    for (let n = this.at_; n < this.order.length; n++) {
+      const s = steps[this.order[n]];
+      if (!s) break;
+      if (n > this.at_) t += s.morph + s.hold;
+      if (s.fire === 'slam') return t;
+    }
+    return 0;
+  }
+  /** The top of him, on the screen: a wave's crest. */
+  crest(line: SpringLine): [number, number] {
+    let best = 0;
+    const up = this.form.side;
+    for (let i = 1; i < N; i++) if (this.pts[i * 2 + 1] * up > this.pts[best * 2 + 1] * up) best = i;
+    return this.at(line, this.pts[best * 2], this.pts[best * 2 + 1]);
+  }
 
   /** Hit by his own wave. Returns true if that flattened him. */
   hit(): boolean {
@@ -288,12 +352,23 @@ export class Flattener {
   private go(s: State) { this.state = s; this.t = 0; this.stage = 0; }
 
   /** Start flowing into another shape, from wherever he is now. */
-  private morph(shape: string, time: number, side: 1 | -1 = 1, grow: [number, number] = [1, 1]) {
+  private morph(shape: string, time: number, side: 1 | -1 = 1, grow: [number, number] = [1, 1], easeIn = true, easeOut = true) {
     this.from = this.pts.slice();
     this.fromEyes = this.eyes.map((e) => ({ ...e }));
+    this.prevForm = this.form;
+    // Over to the other side of the line: a roll, over his back.
+    this.rolling = side !== this.form.side && this.state !== 'melt' && this.state !== 'reform' ? this.form.side : 0;
     this.form = { shape, side, grow };
     this.morphT = 0;
     this.morphTime = Math.max(0.01, time);
+    this.easeIn = easeIn;
+    this.easeOut = easeOut;
+    if (this.rolling) {
+      let hi = 0;
+      const to = this.target(this.form);
+      for (let i = 0; i < N; i++) hi = Math.max(hi, Math.abs(this.from[i * 2 + 1]), Math.abs(to[i * 2 + 1]));
+      this.rollDepth = hi * ROLL_DEPTH;
+    }
   }
 
   private begin(p: BossPower, rand: () => number = Math.random) {
@@ -313,7 +388,12 @@ export class Flattener {
     const s = this.step;
     if (!s) return;
     this.nextBubble = s.morph;
-    this.morph(s.shape, s.morph, s.side, s.grow);
+    // A step with no hold, wait or action runs straight into the next, without slowing in between.
+    const steps = BOSS.powers[this.power!]?.steps ?? [];
+    const through = (x: Step | undefined) => !!x && x.hold <= 0 && !x.beat && x.fire === 'none';
+    const prev = n > 0 ? steps[this.order[n - 1]] : undefined, next = steps[this.order[n + 1]];
+    // A step that crashes a wave comes down at full speed: it doesn't slow at the end.
+    this.morph(s.shape, s.morph, s.side, s.grow, !through(prev), !(through(s) && next) && s.fire !== 'slam');
     const e = SOUND_EVENT[s.sound];
     if (e) this.events.push(e);
   }
@@ -331,7 +411,7 @@ export class Flattener {
   private rest(rand: () => number) {
     this.go('idle');
     this.power = null;
-    if (this.form.shape !== 'blob' || this.form.side !== 1) this.morph('blob', 0.4);
+    if (this.form.shape !== 'blob' || this.form.side !== 1) this.morph('blob', this.form.side !== 1 ? ROLL_TIME : 0.4);
     this.wait = Math.max(0.2, DIFF.bossRest - DIFF.bossRestStep * (this.phase - 1));
     if (this.phase >= 3 && rand() < DIFF.bossDouble) this.wait = 0;
   }
@@ -339,15 +419,19 @@ export class Flattener {
   /** A power that sends something he can be hit with. */
   private hurts(p: BossPower) { return !!BOSS.powers[p]?.steps.some((s) => s.fire === 'slam'); }
 
-  /** His next power. The first is always one that can be sent back at him, and never three in a row that can't. */
+  /**
+   * His next power, never the one he just used. The first is always one that can be sent
+   * back at him (the front wave); after it come exactly waveGap others, then it again.
+   */
   private choose(rand: () => number): BossPower {
-    const ph = this.phase;
-    let pool = Object.entries(BOSS.powers).filter(([, d]) => d.from <= ph && d.weight > 0 && d.steps.length);
-    if (!this.last || this.dry >= 2) {
-      const hurt = pool.filter(([k]) => this.hurts(k));
-      if (hurt.length) pool = hurt;
-    }
-    if (!pool.length) return 'wave';
+    const all = Object.entries(BOSS.powers).filter(([, d]) => d.from <= this.phase && d.weight > 0 && d.steps.length);
+    const fresh = all.filter(([k]) => k !== this.last);
+    const hurt = fresh.filter(([k]) => this.hurts(k)), other = fresh.filter(([k]) => !this.hurts(k));
+    const due = !this.last || this.dry >= this.waveGap;
+    let pool = due ? hurt : other;
+    if (!pool.length) pool = due ? other : hurt;
+    if (!pool.length) pool = all;
+    if (!pool.length) return 'tideAl';
     let r = rand() * pool.reduce((a, [, d]) => a + d.weight, 0);
     for (const [k, d] of pool) { r -= d.weight; if (r <= 0) return k; }
     return pool[pool.length - 1][0];
@@ -380,11 +464,11 @@ export class Flattener {
       p = [-R - 8, 0, ...rim(R, def.teeth, def.tooth, this.spin, Math.PI, 0, 60), R + 8, 0];
     } else {
       // The charge makes it tremble, more and more (not at the roots).
-      const c = this.charging && this.step?.fire === 'shoot' ? this.charge : 0, n = def.pts.length;
+      const c = this.shotCharge, n = def.pts.length;
       p = def.pts.flatMap(([x, h], i) => [x, h * g + (i > 0 && i < n - 1 ? c * 0.5 * Math.sin(tm * 50 + i) : 0)]);
     }
     if (p.length < 4) p = [-20, 0, 20, 0];
-    return resample(p.map((v) => v * k));
+    return def.kind === 'path' && p.length >= 6 ? resampleByPoint(p.map((v) => v * k)) : resample(p.map((v) => v * k));
   }
 
   /** His two eyes in a shape (a shape with one has the other shut). */
@@ -402,21 +486,38 @@ export class Flattener {
 
   /** Flow towards the shape he is taking, with the line's wobble on top. */
   private shape() {
-    const to = this.target(this.form), m = smooth(this.morphT / this.morphTime), a = this.from, def = shapeOf(this.form.shape);
+    const to = this.target(this.form), m = this.flow, a = this.from, def = shapeOf(this.form.shape);
     let lo = Infinity, hi = -Infinity;
     const wob = def.kind === 'blob' ? def.wobble : 0.6;
     for (let i = 0; i < N; i++) {
       const x = lerp(a[i * 2], to[i * 2], m);
       const env = Math.sin((Math.PI * i) / (N - 1));
       this.pts[i * 2] = x;
-      this.pts[i * 2 + 1] = lerp(a[i * 2 + 1], to[i * 2 + 1], m) + wob * env * Math.sin(i * 0.11 + this.time * 5);
+      this.pts[i * 2 + 1] = this.rollH(a[i * 2 + 1], to[i * 2 + 1], m, this.rollDepth * Math.pow(env, 0.7)) + wob * env * Math.sin(i * 0.11 + this.time * 5);
       lo = Math.min(lo, x);
       hi = Math.max(hi, x);
     }
     this.left = lo;
     this.right = hi;
     const eyes = this.eyesOf(this.form);
-    this.eyes = eyes.map((e, i) => ({ dx: lerp(this.fromEyes[i].dx, e.dx, m), h: lerp(this.fromEyes[i].h, e.h, m), r: lerp(this.fromEyes[i].r, e.r, m) }));
+    // Mid-roll, his eyes turn away, edge-on.
+    const turn = this.rolling ? 0.35 + 0.65 * Math.abs(Math.cos(Math.PI * m)) : 1;
+    this.eyes = eyes.map((e, i) => ({
+      dx: lerp(this.fromEyes[i].dx, e.dx, m),
+      h: this.rollH(this.fromEyes[i].h, e.h, m, this.rollDepth * 0.8),
+      r: lerp(this.fromEyes[i].r, e.r, m) * turn,
+    }));
+  }
+
+  /**
+   * A height flowing from a to b. Rolling, he turns over around the line like a barrel:
+   * the first side's heights shrink as the second's grow, and his body, seen end-on,
+   * stays up on the side he rolls from until it tips over. Otherwise a plain blend.
+   */
+  private rollH(a: number, b: number, m: number, depth: number) {
+    if (!this.rolling) return lerp(a, b, m);
+    const th = Math.PI * m, c = Math.cos(th);
+    return a * Math.max(0, c) + b * Math.max(0, -c) + this.rolling * depth * Math.sin(th);
   }
 
   /** A point of him on the screen, from [across, up] from his centre. */
@@ -433,8 +534,8 @@ export class Flattener {
   }
 
   /** The strokes drawn over the shape he is in: legs, a fang, the saw's rim under the line. */
-  private strokes(): number[][] {
-    const def = shapeOf(this.form.shape), g = this.rear() * this.form.side;
+  private strokes(f: Form = this.form, g = this.rear() * f.side): number[][] {
+    const def = shapeOf(f.shape);
     if (def.kind === 'saw') return [rim(def.radius, def.teeth, def.tooth, this.spin, 0, -Math.PI, 60)];
     if (def.kind === 'path') return def.strokes.map((s) => s.flatMap(([x, h]) => [x, h * g]));
     return [];
@@ -443,27 +544,40 @@ export class Flattener {
   /** His eyes on Wavell, what each shape adds to the line, and white when he is hit. */
   drawFeatures(neon: Neon, line: SpringLine, wx: number) {
     if (this.state === 'done') return;
-    const m = smooth(this.morphT / this.morphTime), k = this.shown, def = shapeOf(this.form.shape), side = this.form.side;
-    const show = clamp((m - 0.5) * 2, 0, 1);
+    const m = this.flow, k = this.shown, def = shapeOf(this.form.shape);
+    // Rolling, the legs show only once he is over; the old shape's fade as he leaves it.
+    const show = this.rolling ? clamp((m - 0.8) * 5, 0, 1) : clamp((m - 0.5) * 2, 0, 1);
+    const fade = this.state === 'melt' || this.prevForm.shape === this.form.shape && !this.rolling ? 0 : clamp(1 - m * (this.rolling ? 3 : 2.5), 0, 1);
+    const strokeAt = (s: number[], squash: number, alpha: number) => {
+      const p: number[] = [];
+      for (let i = 0; i < s.length; i += 2) p.push(...this.at(line, s[i] * k, s[i + 1] * k * squash));
+      neon.glow(smoothPath(p), COLORS.line, 0.9, alpha);
+    };
+    // Strokes that match point for point (the same monster in another pose) flow from one
+    // shape into the next, like the outline. Others fade out, and the new ones in.
+    const before = this.strokes(this.prevForm, this.prevForm.side), after = this.strokes();
+    const flows = !this.rolling && this.state !== 'melt' && before.length > 0 && before.length === after.length && before.every((b, i) => b.length === after[i].length);
+    if (flows) {
+      for (let i = 0; i < after.length; i++) strokeAt(after[i].map((v, j) => lerp(before[i][j], v, m)), 1, 1);
+    } else if (fade > 0) {
+      const squash = this.rolling ? Math.max(0, Math.cos(Math.PI * m)) : 1;
+      for (const s of before) strokeAt(s, squash, fade);
+    }
     if (show > 0 && this.state !== 'melt') {
-      for (const s of this.strokes()) {
-        const p: number[] = [];
-        for (let i = 0; i < s.length; i += 2) p.push(...this.at(line, s[i] * k, s[i + 1] * k));
-        neon.glow(smoothPath(p), COLORS.line, 0.9, show);
-      }
+      if (!flows) for (const s of after) strokeAt(s, 1, show);
       // The shot's way out, and the charge glowing in it.
       if (def.kind === 'path' && def.emit) {
         const [bx, by] = this.butt(line), x = new Path2D();
         x.moveTo(bx - 2, by - 2); x.lineTo(bx + 2, by + 2); x.moveTo(bx + 2, by - 2); x.lineTo(bx - 2, by + 2);
         neon.glow(x, COLORS.line, 0.8, show);
-        if (this.charging && this.step?.fire === 'shoot') {
-          const c = this.charge, ball = new Path2D();
+        if (this.chargingShot) {
+          const c = this.shotCharge, ball = new Path2D();
           ball.arc(bx, by, 0.5 + c * 4 + Math.sin(this.time * 40) * 0.4 * c, 0, Math.PI * 2);
           neon.glow(ball, COLORS.danger, 1, 0.4 + c);
         }
       }
       if (def.kind === 'path' && def.nose) {
-        const [nx, ny] = this.at(line, def.nose[0] * k, def.nose[1] * k * side * this.rear()), nose = new Path2D();
+        const [nx, ny] = this.at(line, def.nose[0] * k, def.nose[1] * k * this.form.side * this.rear()), nose = new Path2D();
         nose.arc(nx, ny, 1.1 * k, 0, Math.PI * 2);
         neon.glow(nose, COLORS.eye, 0.8, 1.2 * show);
       }
@@ -483,6 +597,8 @@ export class Flattener {
       eye.arc(ex, ey, e.r, 0, Math.PI * 2);
       neon.glow(eye, COLORS.line, 0.7, 1.2);
       const pupil = new Path2D();
+      // Which way up the eye is: it turns over with him as he rolls.
+      const side = e.h >= 0 ? 1 : -1;
       pupil.arc(ex + look * e.r * 0.4, ey + e.r * 0.1 * side, e.r * 0.38, 0, Math.PI * 2);
       neon.glow(pupil, COLORS.eye, 0.8, 1.4);
       // A heavy lid slanting down to the middle: he means it.
@@ -492,7 +608,8 @@ export class Flattener {
       neon.glow(lid, COLORS.danger, 0.7, 0.9);
     }
     const pts = this.outline(line);
-    if (this.charging) neon.glow(smoothPath(pts), COLORS.danger, 1, 0.2 + this.charge);
+    if (this.step?.fire === 'shoot') { if (this.chargingShot) neon.glow(smoothPath(pts), COLORS.danger, 1, 0.2 + this.shotCharge); }
+    else if (this.charging) neon.glow(smoothPath(pts), COLORS.danger, 1, 0.2 + this.charge);
     if (this.sawing) neon.glow(smoothPath(pts), COLORS.danger, 0.9, 0.5 + 0.5 * this.charge);
     if (this.flash > 0) neon.glow(smoothPath(pts), '#ffffff', 1.2, this.flash * 1.5);
   }

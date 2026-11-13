@@ -46,7 +46,7 @@ The player can change keys and joypad buttons under CONTROL in the menu. These a
 
 - **Directions are relative to the line.** "Towards" goes through it and "away" floats off, on whichever side Wavell is.
 - **Menu.** ↑ and ↓ cycle the entries (START, CONTROL, CREDITS). Enter, a wipe, a pull or joypad A picks the front one: Wavell pulls it in to open it. On a phone, swipe up or down and tap.
-- **First-time hints.** Each enemy and each mistake (such as a wrong attack) shows a hint the first time, for 3.5 s, worded for keys or touch depending on the input in use.
+- **First-time hints.** Each enemy and each mistake (such as a wrong attack) shows a hint the first time, for 3.5 s, worded for keys or touch depending on the input in use. Once the levels start over after the boss, no hints show again.
 - **Saved.** Key bindings are saved in the browser.
 
 ## Wavell, the line and dying
@@ -150,43 +150,44 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 ## The boss: THE FLATTENER
 
-Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and THE FLATTENER climbs out of the line ahead of Wavell (2.2 s). No other threat comes while he is there.
+Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and THE FLATTENER climbs out of the line ahead of Wavell (2.2 s), with the screen shaking hard (no title). No other threat comes while he is there.
 
 - **He is a shape-shifter.** He is a stretch of the line on top of it, and he takes a different shape for each power. His outline flows from one shape to the next (0.35 s for most). His shapes and the steps of each power are in `src/data/boss.json`, edited in the lab (Edit boss); the times below are its current numbers.
 - **Idle**, he is a wobbly blob that never holds its shape, with two eyes floating in it, staring at Wavell.
 - **He walks on to the right**, about 150 u ahead and always in view (the knob says how far, but never past the edge of the view), at 60 u/s, faster (up to 170 u/s) when Wavell closes in. He waits at the edge of the view if Wavell stops. Walking into him hurts and throws Wavell back.
 - **The end of the line** crumbles at a steady 60 u/s during the fight.
-- **Only his own front wave hurts him**, sent back at him while he is in his place (not while he is rolling as a saw).
+- **Only his own front wave, Tide-Al, hurts him**, sent back at him while he is in his place (not while he is rolling as a saw).
 - **His sizes are his armour**: 3 hits flatten him. Each hit takes a size, throws him back, and he is safe for 1.1 s. The circles next to his name at the top show what is left. He is a little bigger for each size he has.
 
 | Power | His shape | Telegraph | Answer |
 | --- | --- | --- | --- |
-| **Front wave** | A curling breaker | Rears up and glows for 2 beats, then crashes on the beat | **Wipe facing the wave** (its crest, or the line held up as it comes, +10): it rolls back at 260 u/s and hits him. Or pull it flat facing it (+10), or float over it (+6) |
-| **Cat** | A chunky cat, rear at Wavell, shooting **three** line refluxes from its rear, the three moves **in a random order** each time | Low: crouches and meows, charges 0.8 s, shoots on the beat. High: rises with its rear up and meows, charges 0.8 s, shoots on the beat. Under: rolls on its back over to under the line, crouches there hanging upside down, meows, charges 0.8 s, shoots on the beat, and rolls back up | Low: along the **top** of the line at 14 u (half Wavell's smallest height): be under the line. High: along the top at 49 u (1.75 times his smallest height): it clears him on the line unless he is at full size (size 3, 53 u tall), and it pops his bubble if it meets it. Under: along the **bottom** at 14 u: be on top. +6 for each that passes |
+| **Front wave: Tide-Al** | A breaking wave with a face: a long back slope, a curling lip dripping fingers of foam, angry eyes and a toothy mouth under the lip | From his blob he flows straight into the wave (1.5 s), glowing, with spray blowing off its crest, and holds it, rearing up, until a beat (at least 0.3 s). On that beat it leans over, its head forward and down (0.1 s), and comes down (0.1 s), landing as a dome over its crushed face. Its lean, crash and mound are the wave's own points moved, teeth and eyes included, so it flows from one to the next. A deep bass builds up all the while, heard from the moment the wave starts to rise: a sub and a driven, detuned bass rising a fifth, its filter opening, louder and throbbing faster (3 to 16 times a second), held until the crash. Landing, it crashes with a crash cymbal ringing out over 2 s, the slap of the water and a deep boom, and bursts into a splash along its front: 18 tall jets of water and about 90 drops thrown up, fanning out, that fall back and vanish into the line, while it sinks into a low mound (0.1 s) and flat (0.4 s) | **Wipe facing the wave** (its crest, or the line held up as it comes, +10): it rolls back at 260 u/s and hits him. Or pull it flat facing it (+10), or float over it (+6) |
+| **Cat** | A chunky cat, rear at Wavell, shooting **three** line refluxes from its rear, the three moves **in a random order** each time | Once it has reached each pose, it charges: sparks are drawn into its rear and a ball of light swells there, more and faster as the charge fills. Low: crouches and meows, charges 0.4 s, shoots on the beat. High: rises with its rear up and meows, charges 0.4 s, shoots on the beat. Under: rolls on its back (0.3 s) and on over to under the line (0.55 s), like a barrel turning over round the line, its body never going flat; crouches there hanging upside down, meows, charges 0.4 s, shoots on the beat, and rolls back up the same way (0.3 s, then on into its next shape, or 0.6 s back to the blob). Its moves flow into each other without stopping | Low: along the **top** of the line at 14 u (half Wavell's smallest height): be under the line. High: along the top at 49 u (1.75 times his smallest height): it clears him on the line unless he is at full size (size 3, 53 u tall), and it pops his bubble if it meets it. Under: along the **bottom** at 14 u: be on top. +6 for each that passes |
 | **Saw** | A sawblade through the line, both sides (the line doesn't show inside it) | Spins up for 1 s, then rolls at Wavell on the next beat, at 150 u/s | **Float over it** (+6). It cuts Wavell anywhere on the line, on either side, and pops a bubble that is too low. It flattens out 40 u before the end of the line, and he grows back out of the line in his place (0.8 s) |
 | **Toad** | A squat toad, which sinks until only its eyes show | Croaks and squats (0.6 s), sinks (0.6 s) | For 3.5 s, a Bubble Burst blisters up every 0.45 s, anywhere in view on top of the line but never within 18 u of Wavell. Each sits on the line for a beat, then floats off and bursts in the air 1.6 s later. Keep clear: walking into one, or its spray, leaves him dizzy, and the spray pops his bubble. Under the line, the spray can't reach him |
 
-- **Front wave**: 30 u high, 120 u/s towards Wavell, its crest on top of the line. It hits him on the line from either side.
+- **Front wave**: 30 u high, 120 u/s towards Wavell, its crest on top of the line and its lip curling over the way it rolls, spray blowing off it. It hits him on the line from either side.
 - **Saw**: 16 u radius, plus 8% for each size he has left, with 12 teeth.
 - **His size**: every shape is drawn 8% bigger for each size he has left.
 - **Phases**: each hit makes him angrier.
 
-| Phase | Sizes left | Powers | Rest between powers |
-| --- | --- | --- | --- |
-| 1 | 3 | Front wave, cat | 2.4 s |
-| 2 | 2 | + Saw | 1.95 s |
-| 3 | 1 | + Toad; 30% chance of a power straight after another | 1.5 s |
+| Phase | Sizes left | Powers | Front wave after | Rest between powers |
+| --- | --- | --- | --- | --- |
+| 1 | 3 | Front wave, cat, saw | every 2 other powers | 2.4 s |
+| 2 | 2 | (same) | every 3 other powers | 1.95 s |
+| 3 | 1 | + Toad; 30% chance of a power straight after another | every 4 other powers | 1.5 s |
 
-- **His choices**: the first power is always one that can be sent back at him (the front wave), and he never uses three powers in a row without one, so there is always a way to hurt him coming. Otherwise he picks by weight: front wave 5, cat 4, saw 4, toad 4, from the phase each comes in.
-- **Powers on the beat**: he picks a power on a beat, and the crash, the shot and the saw's roll land on the beat.
+- **His choices**: he never uses the same power twice in a row. The first power is always the front wave (the one that can be sent back at him); then come exactly as many other powers as his phase says (2, 3, then 4: he gets harder to hurt as he shrinks), then the front wave again. The others are picked by weight (cat 4, saw 4, toad 4), from the phase each comes in.
+- **Powers on the beat**: he picks a power on a beat, and Tide-Al's lean, the shot and the saw's roll land on the beat.
 - **Sparkles** keep coming during the fight, at most 3 at a time. Each hit leaves 2 by him.
 
 ### Beating him
 
-- He melts flat into the line (1.4 s), and one huge hump rolls away to the right. FLATTENED! shows, with 250 base points.
-- After 3.5 s of quiet line, the levels start over at level 1 on the next loop: THE LINE CONTINUES. The score carries on, and levels go by what is scored since the loop started.
+- He melts flat into the line (1.4 s), and one huge hump rolls away to the right, with 250 base points. No text shows.
+- After 3.5 s of quiet line, the levels start over at level 1 on the next loop, with a screen shake and no banner: THE LINE CONTINUES is written in the title's hand by the nearest of the two lines behind the game, going by from right to left at 40 u/s (its letters about 20 u high). The letters are that line itself, as faint as the rest of it. The score carries on, and levels go by what is scored since the loop started.
 - **Each loop counts 2 levels harder** for every ramp (crumble speed, spawn rates, tempo and so on): loop 2's level 1 plays like level 3. The level gates (threats overlapping, two enemies a bar, floating bubbles) use the same harder level.
-- The music starts again from one instrument and builds up level by level.
+- The music keeps going with all five layers: from the second loop on, every level plays them all.
+- **The time signature changes at random**: each new loop picks another one of the six (2/4, 3/4, 4/4, 5/4, 6/8, 7/8), different from the one playing, from the next bar. The audio menu can still change it. A new game starts in the one picked in the audio menu.
 - The HUD shows the loop: LOOP 2 · LEVEL 1.
 
 ## Sparkles and power-ups
@@ -243,7 +244,7 @@ Anything that gets harder is a ramp: a value at level 1, a change per level and 
 | Bubble Burst time to burst | 1.74 s | −0.06 | 1.1 s |
 | Backwave chance per roll | 35% | +5% | 100% |
 | Reflux chance per roll | 29% | +4% | 100% |
-| Music layers (one instrument per level) | 1 | +1 | 5 |
+| Music layers (one instrument per level; all 5 from loop 2 on) | 1 | +1 | 5 |
 
 Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.
 
@@ -255,7 +256,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 
 - The beat is on by default (first knob of the Beat group in the difficulty editor).
 - The whole world runs at BPM / 75, so everything stays the same length in beats. At 75 BPM the walk cycle is exactly half a beat.
-- The tempo starts at 75 BPM, rises 2 BPM per level up to 120, and only changes at the start of a bar.
+- The tempo starts at 75 BPM, rises 2 BPM per level up to 120, and only changes at the start of a bar. After the boss, each loop switches to another time signature at random.
 - The beat is counted in simulation steps (96 steps of 1/120 s per beat), never on a clock, so replays are exact.
 - The line lights up on each beat, brighter on the first beat of a bar, so the beat can be seen with the sound off.
 - **Enemies come in on the beat**: on the last beat of the bar, and from level 6 also on the beat half a bar before it. That is never more than two per bar. Kinds take turns: the one furthest past its due time goes next. A Sinepede is called 2 beats ahead of its cue beat, so its hum is heard first.
@@ -284,7 +285,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 
 ### Sound matches shape
 
-- **The Flattener:** a low tremble as he rises and as he rears up, a deep falling thud with a clipped crack when his wave crashes, a meow for the cat (a buzzy tone through a vowel-like filter), a whine that spins up for the saw, a low three-rasp croak for the toad, a tone rising away when his wave is sent back at him, and a big falling groan when it hits.
+- **The Flattener:** a low tremble as he rises and as he rears up, a deep bass building up as his wave rears and a crash cymbal, a slap of water and a boom when it crashes, a meow for the cat (a buzzy tone through a vowel-like filter), a whine that spins up for the saw, a low three-rasp croak for the toad, a tone rising away when his wave is sent back at him, and a big falling groan when it hits.
 - **Sinepede:** pure sine tones whatever the style. It announces itself with one note per segment, high for a crest, low for a trough. Each cancelled segment plays its own note. The nearest one also hums: a sine at 220 Hz for one segment and 110 Hz more for each segment after it (330 Hz for 2, 440 Hz for 3), slightly saturated and with a little reverb. The hum starts 2 beats before a Sinepede comes in and gets louder as it closes in.
 - **Disturchin:** a low tremble under the fuzz, then a harsh, clipped sound while its spikes are out.
 - **Wavell:** a bright run of notes when he grows, a falling one when he shrinks.
@@ -305,6 +306,8 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 ## Visuals and screens
 
 Everything is drawn as glowing vector strokes at the screen's native resolution. Nothing is a sprite.
+
+- **Resolution and frame rate.** The canvas uses up to 2 pixels per CSS pixel, and at most about 4.1 million pixels in all (roughly 2560 x 1600). On a big tablet that lowers it, but never below 1 per CSS pixel. When more than 15% of the frames in a 60-frame window come over 1.5 times late, the game makes drawing lighter, one step per window. On a screen of 100 Hz or more it first draws on every other refresh, so 120 Hz runs at an even 60. After that, each step cuts the resolution by 20%, down to half, or to 1 pixel per CSS pixel if that comes first. It never steps back up while the page is open. A steady throttle, such as a battery saver's 30 fps, doesn't count as slow. Add `?perf` to the address to see the frame rate and what was chosen.
 
 - **One stroke.** Wavell leaves the line at his back toe, loops through his arms and head, and returns at his front toe. Creatures are spliced into the same stroke. Nothing crosses his face.
 - **Appearing.** He climbs out of the line hands first, then head, then a press-up and his legs. On first load the line stays flat for 0.8 s and he rises slowly over 3 s; after that, appearing takes 1 s.

@@ -32,7 +32,7 @@ import { Input, usesTouch, type Controls } from '../core/input';
 import { SpringLine } from './line';
 import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
 import { audioPrefs } from '../core/audioPrefs';
-import { LAYERS, meterById } from '../core/music';
+import { LAYERS, METERS, meterById } from '../core/music';
 import { sfx } from '../core/sfx';
 import { DIFF, at, levelStart } from '../data/difficulty';
 import { TUNE } from '../data/tune';
@@ -46,6 +46,7 @@ import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, audioButton, n
 import { drawGame } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
 import { MORPH_TIME, TitleDust } from './title';
+import { endWordGone } from './endWord';
 
 type Mode = 'title' | 'play' | 'over';
 
@@ -131,6 +132,8 @@ export class Game {
   boss: Flattener | null = null;
   /** Seconds left of the pause after the boss is flattened, before the levels start over. */
   private winT = 0;
+  /** Seconds THE LINE CONTINUES has been going by on the nearest line behind, after the boss (-1: it isn't). */
+  endWord = -1;
   /** Times the boss has been beaten this game: each loop starts the levels harder. */
   loop = 0;
   /** The score this loop started at: levels go by what has been scored since. */
@@ -284,6 +287,7 @@ export class Game {
     this.tidals = [];
     this.boss = null;
     this.winT = 0;
+    this.endWord = -1;
     this.loop = 0;
     this.loopBase = 0;
     this.bannerText = '';
@@ -327,6 +331,7 @@ export class Game {
     this.boss?.sink();
     this.bossHush?.();
     this.winT = 0;
+    this.endWord = -1;
     this.hintT = 0;
     this.banner = 0;
     this.tremor = 0;
@@ -362,8 +367,8 @@ export class Game {
     sfx.restartMusic();
   }
 
-  /** How many layers of the music play: one instrument more for each level, up to level 5. */
-  get musicLayers() { return clamp(this.level, 1, LAYERS); }
+  /** How many layers of the music play: one instrument more for each level, up to level 5, and all of them once the boss has been beaten. */
+  get musicLayers() { return this.loop > 0 ? LAYERS : clamp(this.level, 1, LAYERS); }
 
   /** The level the difficulty ramps read: each loop after beating the boss counts some levels harder. */
   get ramp() { return this.level + this.loop * DIFF.loopBoost; }
@@ -498,6 +503,11 @@ export class Game {
       if (this.titleMusic && this.beat.step(DIFF.startLevel)) sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, LAYERS);
       return;
     }
+    // THE LINE CONTINUES goes on by after the boss, a game over or not.
+    if (this.endWord >= 0) {
+      this.endWord += dt;
+      if (endWordGone(this.neon.viewW, this.endWord)) this.endWord = -1;
+    }
     if (this.mode === 'over') { this.overT += dt; this.updateSinepedes(dt); this.updateUrchins(dt); this.idleBoss(dt); this.keepApart(); return; }
 
     this.playTime += dt;
@@ -584,7 +594,14 @@ export class Game {
         this.level = 1;
         this.playTime = 0;
         this.sineClock = at('sineEvery', this.ramp) - DIFF.sineFirst;
-        this.levelUp('THE LINE CONTINUES');
+        // No banner: THE LINE CONTINUES is written along the nearest line behind, right to left.
+        this.tremor = 1.2;
+        this.neon.shake = 1.5;
+        sfx.play('level');
+        this.endWord = 0;
+        // A new time signature, at random: it comes in on the next bar.
+        const others = METERS.filter((m) => m.id !== this.beat.meter.id);
+        this.beat.setMeter(others[Math.floor(Math.random() * others.length)]);
       }
     }
     // Level 10 is the last: the boss fight.
@@ -616,10 +633,9 @@ export class Game {
     this.backwaves = [];
     this.refluxes = [];
     this.boss = new Flattener(W.x + this.bossAhead);
-    this.bannerText = 'THE FLATTENER';
-    this.banner = 2.6;
-    this.tremor = 2;
-    this.neon.shake = 1.5;
+    // No title: the screen shakes as he climbs out.
+    this.tremor = 2.5;
+    this.neon.shake = 2.2;
     this.bossHush = sfx.rumble(this.heard(2.2));
     this.teach('boss', 'THE FLATTENER: nothing you do hurts him. Only his own wave sent back can!', 'THE FLATTENER: nothing you do hurts him. Only his own wave sent back can!');
   }
@@ -659,18 +675,26 @@ export class Game {
       W.bounce(-DIFF.bounce);
     }
     this.updateSaw(B);
+    this.bossSparks(B);
     for (const e of B.events.splice(0)) {
       if (e === 'windup') {
-        this.bossHush = sfx.rumble(this.heard(B.stepTime || 2 * BEAT_SECONDS));
-        this.teach('tidal', 'HE IS ABOUT TO SMASH THE LINE: SWIPE ↕ facing the wave to send it back at him', 'HE IS ABOUT TO SMASH THE LINE: {drag} facing the wave sends it back at him');
+        // Tide-Al builds up: a deep sound rising until it crashes (or, with no crash coming, for the step).
+        this.bossHush = sfx.tideRise(this.heard(B.buildTime || B.stepTime || 2 * BEAT_SECONDS), this.heard(2 * BEAT_SECONDS));
+        this.teach('tidal', 'TIDE-AL IS BUILDING UP: SWIPE ↕ facing the wave to send it back at him', 'TIDE-AL IS BUILDING UP: {drag} facing the wave sends it back at him');
       } else if (e === 'slam') {
         const x = B.front - 6;
         L.pulse(x, -DIFF.bossWaveAmp, TIDAL_WIDTH, -1, DIFF.bossWaveSpeed);
         L.impulse(B.x, 120, 16);
         this.tidals.push({ x, dir: -1, amp: DIFF.bossWaveAmp, done: false, gone: false });
+        this.bossHush?.();
+        this.bossHush = null;
         this.fx.burst(x, L.sample(x), 24, 70, COLORS.danger, 0, 0.5);
-        n.shake = Math.max(n.shake, 1.4);
-        sfx.slam();
+        // It bursts into a splash where it comes down, all along it.
+        this.fx.splash(B.front, B.front + (B.back - B.front) * 0.6, (sx) => L.sample(sx), COLORS.line, B.scale);
+        for (let i = 0; i < 14; i++) this.fx.spark(x + rand(-10, 14), L.sample(x) - rand(0, 6), rand(-90, 30), rand(-120, -30), rand(0.4, 0.9), '#ffffff', 220);
+        n.shake = Math.max(n.shake, 1.8);
+        this.tremor = Math.max(this.tremor, 0.5);
+        sfx.tideCrash();
       } else if (e === 'meow') {
         sfx.meow();
         this.teach('bossCat', 'THE CAT SHOOTS ALONG THE LINE: be on the other side of it', 'THE CAT SHOOTS ALONG THE LINE: {down} or {up} to be on the other side of it');
@@ -694,6 +718,27 @@ export class Game {
         this.teach('bossToad', 'THE TOAD\'S BUBBLES FLOAT UP AND BURST: keep clear, or get under the line', 'THE TOAD\'S BUBBLES FLOAT UP AND BURST: keep clear, or get under the line');
       } else if (e === 'bubble') this.toadBubble(B);
       else if (e === 'melted') this.bossBeaten(B);
+    }
+  }
+
+  /**
+   * What his charging throws off. Tide-Al building up: spray off the crest, more as it
+   * grows. The cat charging a shot: sparks drawn in to its rear, faster as it fills.
+   */
+  private bossSparks(B: Flattener) {
+    const L = this.line, s = B.step;
+    if (!s || !B.charging) return;
+    if (s.fire === 'shoot') {
+      if (!B.chargingShot) return;
+      const c = B.shotCharge, [bx, by] = B.butt(L);
+      for (let i = 0; i < 3; i++) {
+        if (Math.random() > 0.25 + 0.75 * c) continue;
+        const a = rand(0, Math.PI * 2), r = rand(8, 16) * (1.2 - 0.5 * c), life = rand(0.18, 0.3);
+        this.fx.spark(bx + Math.cos(a) * r, by + Math.sin(a) * r, (-Math.cos(a) * r) / life, (-Math.sin(a) * r) / life, life, Math.random() < 0.4 ? '#fff1b0' : COLORS.danger, 0, 0);
+      }
+    } else if (B.buildTime > 0 && Math.random() < 0.3 + 0.6 * B.charge) {
+      const [cx, cy] = B.crest(L);
+      this.fx.spark(cx + rand(-6, 6), cy - rand(0, 3), rand(-70, 10), rand(-60, -10), rand(0.3, 0.6), Math.random() < 0.6 ? '#ffffff' : '#bfe8ff', 160);
     }
   }
 
@@ -752,8 +797,6 @@ export class Game {
     this.boss = null;
     this.tidals = [];
     this.winT = 3.5;
-    this.bannerText = 'FLATTENED!';
-    this.banner = 3;
     this.tremor = 1.5;
     this.neon.shake = 2;
     sfx.play('level');
@@ -774,6 +817,8 @@ export class Game {
       t.x += vel * dt;
       const short = Math.max(0, t.amp + L.sample(t.x));
       L.carry(t.x, -t.amp, TIDAL_WIDTH, vel, -short * 0.05);
+      // Spray blown off its crest as it rolls.
+      if (Math.random() < 0.5) this.fx.spark(t.x + t.dir * rand(0, 6), L.sample(t.x) - rand(0, 3), t.dir * rand(20, 70), rand(-50, -10), rand(0.25, 0.5), t.dir < 0 ? '#ffd0c0' : '#ffffff', 160);
       if (t.dir > 0) {
         if (!B || B.away || t.x < B.front + 4) continue;
         t.gone = true;
@@ -1328,9 +1373,9 @@ export class Game {
     this.sparkles = this.sparkles.filter((s) => s.life > 0 && s.x > n.camX - 40 && s.x < n.camX + n.viewW + 40);
   }
 
-  /** Explain an enemy the first time it shows up, in the words of the controls in use. */
+  /** Explain an enemy the first time it shows up, in the words of the controls in use. Not again once the levels start over after the boss. */
   private teach(key: string, touch: string, keys: string) {
-    if (this.quiet || this.taught.has(key)) return;
+    if (this.quiet || this.loop > 0 || this.taught.has(key)) return;
     this.taught.add(key);
     this.hint = usesTouch(this.input) ? touch : keys.replace(/\{(\w+)\}/g, (_, action) => pressFor(this.input, action));
     this.hintT = 3.5;

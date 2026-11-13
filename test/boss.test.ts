@@ -2,19 +2,23 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DIFF, levelStart } from '../src/data/difficulty';
-import type { BossPower, Flattener } from '../src/game/actors/flattener';
+import { Flattener, type BossPower } from '../src/game/actors/flattener';
+import { END_WORD } from '../src/game/endWord';
+import { strokeWord } from '../src/game/lettering';
 import { BOSS } from '../src/data/boss';
 import { HEIGHT } from '../src/game/actors/wavell';
 import { reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() {}, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, muted: true } }));
 
 DIFF.beatOn = 0;
 
 const STEPS_PER_SECOND = 120;
 const WIPE = { ...IDLE, dragPressed: true };
 type G = ReturnType<typeof headlessGame>;
+/** The Flattener with his insides open, for tests of his moves. */
+type Open = { pts: Float32Array; state: string; shapeName: string; buildTime: number; begin(p: string, r: () => number): void; update(dt: number, onBeat: boolean, active: boolean): void };
 
 /** Score enough for the last level: the boss climbs out of the line. */
 function atBoss() {
@@ -100,7 +104,7 @@ describe('the Flattener', () => {
 
   it('keeps his outline on the line, root to root, in every shape', () => {
     const g = atBoss(), B = g.boss!;
-    for (const p of ['wave', 'cat', 'saw', 'toad'] as BossPower[]) {
+    for (const p of ['tideAl', 'cat', 'saw', 'toad'] as BossPower[]) {
       use(B, p);
       for (let i = 0; i < 8; i++) {
         run(g, 0.1);
@@ -244,5 +248,135 @@ describe('the Flattener', () => {
     expect(g.level).toBe(1);
     expect(g.ramp).toBe(1 + DIFF.loopBoost);
     expect(g.levelLabel).toBe('LOOP 2 · LEVEL 1');
+  });
+
+  it('after him, the music keeps every layer, no banner shows, and THE LINE CONTINUES goes by on the line behind', () => {
+    const g = atBoss(), B = g.boss!;
+    standing(B);
+    B.hp = 1;
+    g.tidals.push({ x: B.front - 30, dir: 1, amp: 30, done: false, gone: false });
+    run(g, 6);
+    expect(g.loop).toBe(1);
+    expect(g.musicLayers).toBe(5);
+    expect(g.banner).toBe(0);
+    expect(g.bannerText).not.toBe('FLATTENED!');
+    expect(g.endWord).toBeGreaterThan(0);
+    run(g, 60);
+    expect(g.endWord).toBe(-1);
+  });
+
+  it('climbs out with the screen shaking, and no title', () => {
+    const g = atBoss();
+    expect(g.boss).not.toBeNull();
+    expect(g.bannerText).not.toBe('THE FLATTENER');
+  });
+
+  it('the cat rolls over to under the line and back without ever going flat', () => {
+    const B = new Flattener(0) as unknown as Open;
+    for (let i = 0; i < 300; i++) B.update(1 / 120, false, false);
+    B.begin('cat', seeded(3));
+    let lowest = Infinity, under = false;
+    for (let i = 0; i < 120 * 8 && B.state === 'power'; i++) {
+      B.update(1 / 120, i % 48 === 0, true);
+      let hi = 0;
+      for (let j = 1; j < B.pts.length; j += 2) hi = Math.max(hi, Math.abs(B.pts[j]));
+      lowest = Math.min(lowest, hi);
+      if (B.shapeName === 'catCrouch' && B.pts[41] < 0) under = true;
+    }
+    expect(under).toBe(true);
+    expect(lowest).toBeGreaterThan(5);
+  });
+
+  it('Tide-Al builds up through its shapes, with the time left until it crashes', () => {
+    const B = new Flattener(0) as unknown as Open;
+    for (let i = 0; i < 300; i++) B.update(1 / 120, false, false);
+    B.begin('tideAl', Math.random);
+    const steps = BOSS.powers.tideAl.steps, slam = steps.findIndex((s) => s.fire === 'slam');
+    const total = steps.slice(0, slam + 1).reduce((a, s) => a + s.morph + s.hold, 0);
+    expect(B.buildTime).toBeCloseTo(total, 5);
+    const seen: string[] = [];
+    for (let i = 0; i < 120 * 4 && B.state === 'power'; i++) {
+      if (seen[seen.length - 1] !== B.shapeName) seen.push(B.shapeName);
+      B.update(1 / 120, i % 96 === 0, true);
+    }
+    expect(seen.slice(0, 4)).toEqual(['wave', 'lean', 'crash', 'splash']);
+  });
+
+  it('the cat charges its shot only once it has reached its pose', () => {
+    const B = new Flattener(0) as unknown as Open & { step: { fire: string; morph: number } | null; t: number; chargingShot: boolean; shotCharge: number };
+    for (let i = 0; i < 300; i++) B.update(1 / 120, false, false);
+    B.begin('cat', Math.random);
+    let checked = 0;
+    for (let i = 1; i < 120 * 6 && B.state === 'power'; i++) {
+      B.update(1 / 120, i % 96 === 0, true);
+      const s = B.step;
+      if (s?.fire !== 'shoot') continue;
+      if (B.t < s.morph) expect(B.chargingShot).toBe(false);
+      else { expect(B.chargingShot).toBe(true); checked++; }
+      expect(B.shotCharge).toBeGreaterThanOrEqual(0);
+      expect(B.shotCharge).toBeLessThanOrEqual(1);
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('Tide-Al leans over on a beat and crashes down as its steps say', () => {
+    const B = new Flattener(0) as unknown as Open & { events: string[] };
+    for (let i = 0; i < 300; i++) B.update(1 / 120, false, false);
+    B.events.length = 0;
+    B.begin('tideAl', Math.random);
+    let leanAt = -1, slamAt = -1;
+    for (let i = 1; i < 120 * 6 && slamAt < 0; i++) {
+      B.update(1 / 120, i % 96 === 0, true);
+      if (leanAt < 0 && B.shapeName === 'lean') leanAt = i;
+      if (B.events.includes('slam')) slamAt = i;
+      B.events.length = 0;
+    }
+    expect(leanAt % 96).toBe(0);
+    const steps = BOSS.powers.tideAl.steps, from = steps.findIndex((s) => s.shape === 'lean');
+    const slam = steps.findIndex((s) => s.fire === 'slam');
+    if (steps.slice(from + 1, slam + 1).some((s) => s.beat)) expect((slamAt - leanAt) % 96).toBe(0);
+    else {
+      const ticks = steps.slice(from, slam + 1).reduce((a, s) => a + s.morph + s.hold, 0) * 120;
+      expect(Math.abs(slamAt - leanAt - ticks)).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it('after him, the next loop picks another time signature at random, from the next bar', () => {
+    const picked = new Set<string>();
+    for (let k = 0; k < 8; k++) {
+      const g = atBoss(), B = g.boss!, was = g.beat.meter.id;
+      standing(B);
+      B.hp = 1;
+      g.tidals.push({ x: B.front - 30, dir: 1, amp: 30, done: false, gone: false });
+      run(g, 6);
+      expect(g.loop).toBe(1);
+      const next = (g.beat as unknown as { nextMeter: { id: string } | null }).nextMeter;
+      expect(next).not.toBeNull();
+      expect(next!.id).not.toBe(was);
+      picked.add(next!.id);
+    }
+    expect(picked.size).toBeGreaterThan(1);
+  });
+
+  it('THE LINE CONTINUES can be written in one stroke', () => {
+    expect(strokeWord(END_WORD).width).toBeGreaterThan(1000);
+  });
+
+  it('never uses a power twice in a row, and sends the front wave after 2, 3, then 4 others as he shrinks', () => {
+    const hurts = (p: string) => BOSS.powers[p].steps.some((s) => s.fire === 'slam');
+    for (let seed = 1; seed <= 12; seed++) {
+      const rand = seeded(seed);
+      for (const hp of [3, 2, 1]) {
+        const B = new Flattener(0) as unknown as { hp: number; waveGap: number; choose(r: () => number): string; begin(p: string, r: () => number): void };
+        B.hp = hp;
+        const picks: string[] = [];
+        for (let i = 0; i < 30; i++) { const p = B.choose(rand); picks.push(p); B.begin(p, rand); }
+        for (let i = 1; i < picks.length; i++) expect(picks[i]).not.toBe(picks[i - 1]);
+        const waves = picks.map((p, i) => (hurts(p) ? i : -1)).filter((i) => i >= 0);
+        expect(waves[0]).toBe(0);
+        for (let i = 1; i < waves.length; i++) expect(waves[i] - waves[i - 1] - 1).toBe(B.waveGap);
+        expect(B.waveGap).toBe(5 - hp);
+      }
+    }
   });
 });
