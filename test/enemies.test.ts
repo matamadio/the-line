@@ -68,6 +68,19 @@ describe('enemies on the line', () => {
   ].sort((a, b) => a[0] - b[0]);
   const overlap = (g: ReturnType<typeof ready>) => spans(g).some((s, i, all) => i > 0 && s[0] < all[i - 1][1]);
 
+  it('a crawler queues behind a Disturchin pulling its spikes back in, not through it', () => {
+    const g = ready();
+    const u = new Urchin(g.wavell.x + 90, 0.01, 0.01), sine = new Sinepede(g.wavell.x + 130, 100, 1);
+    g.urchins.push(u);
+    g.sinepedes.push(sine);
+    for (let i = 0; i < STEPS_PER_SECOND && u.state !== 'close'; i++) g.tick(IDLE);
+    expect(u.state).toBe('close');
+    while (u.state === 'close') {
+      g.tick(IDLE);
+      if (u.state === 'close') expect(sine.x).toBeGreaterThanOrEqual(u.x + u.reach);
+    }
+  });
+
   it('a faster one queues behind a slower one', () => {
     const g = ready();
     const worm = new Worm(g.wavell.x + 80, 40), sine = new Sinepede(g.wavell.x + 130, 100, 1);
@@ -237,6 +250,27 @@ describe('the Backwave', () => {
     expect(g.endX).toBeLessThan(end);
     expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
     expect(g.wavell.alive).toBe(true);
+  });
+
+  it.each([['standing', 0], ['walking back left', -1]] as const)('keeps the end off the screen for its pause after a wipe, %s', (_name, walk) => {
+    const g = ready();
+    g.endX = g.wavell.x - 160;
+    holding(g, WIPE);
+    const b = coming(g, g.wavell.x - 90);
+    run(g, 0.1);
+    expect(b.dir).toBe(-1);
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && g.backwaves.length; i++) g.tick(IDLE);
+    expect(g.backwaves.length).toBe(0);
+    const k = { ...IDLE, left: walk < 0 };
+    for (let i = 0; i < (DIFF.backEarn - 0.1) * STEPS_PER_SECOND; i++) {
+      g.tick(k);
+      expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
+    }
+    expect(g.wavell.alive).toBe(true);
+    // Then it crumbles in again as usual.
+    const end = g.endX;
+    run(g, 0.5, k);
+    expect(g.endX).toBeGreaterThan(end);
   });
 
   it('carries the end all the way to the left on a screen wider than his lead', () => {
@@ -960,8 +994,39 @@ describe('the game', () => {
 
     it('is one segment at level 1 and gets longer with the level, up to its limit', () => {
       expect(Math.floor(at('sineSegs', 1))).toBe(1);
-      expect(Math.floor(at('sineSegs', 3))).toBe(2);
-      expect(Math.floor(at('sineSegs', 500))).toBe(6);
+      expect([1, 4, 5, 8, 9].map((l) => Math.floor(at('sineSegs', l)))).toEqual([1, 1, 2, 2, 3]);
+      expect(Math.floor(at('sineSegs', 500))).toBe(4);
+    });
+
+    it('is set back a little by each right attack, so a long one can be worn down', () => {
+      const g = ready();
+      const s = new Sinepede(g.wavell.x + 60, 0, 3, 1);
+      g.sinepedes.push(s);
+      run(g, 0.3);
+      const from = s.x;
+      g.tick(PULL);
+      for (let i = 0; i < STEPS_PER_SECOND && s.count === 3; i++) g.tick(IDLE);
+      expect(s.count).toBe(2);
+      run(g, 1);
+      // Past the faded segment, and further on still.
+      expect(s.x).toBeGreaterThan(from + SEG_W + 10);
+    });
+
+    it.each([4, 6])('a perfect player wears down %i segments at level 9', (count) => {
+      const g = ready();
+      g.level = 9;
+      const W = g.wavell, s = new Sinepede(W.x + 200, at('sineSpeed', 9), count, 1);
+      g.sinepedes.push(s);
+      for (let i = 0; i < STEPS_PER_SECOND * 8 && s.harmful && W.alive; i++) {
+        const f = s.front(W.x), near = f && s.frontCentre(W.x) - W.x < 90;
+        const k = { ...IDLE };
+        if (near && f && W.state === 'ground') { if (f.side === W.side) k.pullPressed = true; else k.dragPressed = true; }
+        g.tick(k);
+        expect(s.count).toBeLessThanOrEqual(count);
+      }
+      expect(s.harmful).toBe(false);
+      expect(W.alive).toBe(true);
+      expect(W.size).toBe(0);
     });
 
     it('alternates crests and troughs', () => {
@@ -1054,6 +1119,19 @@ describe('the game', () => {
       for (let i = 0; i < STEPS_PER_SECOND * 2 && u.size === size && u.hold === hold && !u.moving; i++) g.tick(IDLE);
       expect(u.moving).toBe(true);
     };
+
+    it('comes up ahead of him even when he has turned round, away from the end of the line', () => {
+      const g = ready();
+      g.quiet = false;
+      g.playTime = DIFF.urchinFrom + 1;
+      g.wavell.facing = -1;
+      const clocks = g as unknown as { urchinClock: number; sineClock: number; wormClock: number; bubbleClock: number };
+      clocks.urchinClock = 99;
+      clocks.sineClock = clocks.wormClock = clocks.bubbleClock = -99;
+      for (let i = 0; i < STEPS_PER_SECOND && !g.urchins.length; i++) { g.wavell.facing = -1; g.tick(IDLE); }
+      expect(g.urchins.length).toBe(1);
+      expect(g.urchins[0].x).toBeGreaterThan(g.wavell.x + 60);
+    });
 
     it('starts its time over, and lasts longer, when wiped', () => {
       const g = ready();

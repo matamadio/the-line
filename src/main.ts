@@ -4,6 +4,8 @@ import { Game } from './game/game';
 import { Input } from './core/input';
 import { Neon } from './core/neon';
 import { Pacing } from './core/pacing';
+import { hoot } from './core/hoot';
+import { audioPrefs } from './core/audioPrefs';
 
 initApp();
 
@@ -26,9 +28,41 @@ document.addEventListener('visibilitychange', () => pacing.pause());
 const perf = new URLSearchParams(location.search).has('perf');
 let fps = 0, frames = 0, fpsFrom = performance.now();
 
+// The loading screen: black until the game is ready. If loading took a while (and always in
+// the installed app) the owl has come out of the black, see index.html: then he hoots, stays
+// a moment, and fades slowly into the game. The game's clock only starts as the black or the
+// owl fades, so the title isn't half over by then.
+/** How long the owl takes to come out of the black (as in index.html), stays, and fades into the game (ms). */
+const OWL_IN = 1600, OWL_STAY = 1400, OWL_OUT = 1600;
+/** Without the owl, the black just lifts (ms). */
+const QUICK_OUT = 300;
+/** The longest wait for the font before going on without it (ms). */
+const FONT_WAIT = 3000;
+let booting = true;
+const boot = document.getElementById('boot');
+const owlAt = () => (window as unknown as { owlAt?: number }).owlAt;
+if (!audioPrefs.muted) {
+  if (owlAt() !== undefined) hoot();
+  else window.addEventListener('owl', () => hoot(), { once: true });
+}
+void Promise.race([
+  document.fonts?.load('16px Audiowide').catch(() => null),
+  new Promise((r) => setTimeout(r, FONT_WAIT)),
+]).then(async () => {
+  const at = owlAt();
+  const out = at === undefined ? QUICK_OUT : OWL_OUT;
+  if (at !== undefined) await new Promise((r) => setTimeout(r, Math.max(0, at + OWL_IN + OWL_STAY - performance.now())));
+  booting = false;
+  if (!boot) return;
+  boot.style.transition = `opacity ${out}ms ease-out`;
+  boot.classList.add('gone');
+  setTimeout(() => boot.remove(), out + 100);
+});
+
 let last = performance.now();
 function loop(now: number) {
   requestAnimationFrame(loop);
+  if (booting) { last = now; return; }
   if (!pacing.tick(now)) return;
   game.frame((now - last) / 1000);
   last = now;

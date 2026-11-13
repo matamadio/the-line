@@ -11,6 +11,7 @@
   <link rel="icon" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/icons/icon-180.png">
   <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="preload" href="/loading.jpg" as="image">
   <title>The Line</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,10 +20,37 @@
     html, body { margin: 0; height: 100%; background: #05030f; overflow: hidden; overscroll-behavior: none; }
     #view { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block;
       touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    /* The loading screen, over the game until it is ready: see main.ts. */
+    #boot { position: fixed; inset: 0; background: #010101; transition: opacity 0.3s ease; pointer-events: none; }
+    #boot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+      opacity: 0; transition: opacity 1.6s ease-in; }
+    #boot.owl img { opacity: 1; }
+    #boot.gone { opacity: 0; }
   </style>
 </head>
 <body>
   <canvas id="view"></canvas>
+  <div id="boot"><img src="/loading.jpg" alt=""></div>
+  <script>
+    // The owl only comes out when there is loading to cover: always in the installed app,
+    // and in a browser tab only if the game isn't up within half a second. main.ts does the rest.
+    (function () {
+      var boot = document.getElementById('boot');
+      var app = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches
+        || matchMedia('(display-mode: fullscreen)').matches;
+      // He fades in once the picture is in, from a black that has been drawn first.
+      function show() {
+        var img = boot.querySelector('img');
+        if (!img.complete) { img.addEventListener('load', show, { once: true }); return; }
+        if (!boot.isConnected || boot.classList.contains('gone')) return;
+        void boot.offsetWidth;
+        boot.classList.add('owl');
+        window.owlAt = performance.now();
+        window.dispatchEvent(new Event('owl'));
+      }
+      if (app) show(); else setTimeout(show, 500);
+    })();
+  </script>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

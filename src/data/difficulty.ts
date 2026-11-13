@@ -34,6 +34,7 @@ export const DIFF_KNOBS = {
   sineSegs: knob('Sinepede', 'Segments at level 1', 1, 1, 8, 1),
   sineSegsPer: knob('Sinepede', '… added per level (rounded down)', 0.5, 0, 3, 0.25),
   sineSegsCap: knob('Sinepede', '… at most', 6, 1, 12, 1),
+  sineSetBack: knob('Sinepede', 'Right attack: what is left of it is set back (knockback)', 150, 0, 1000, 10),
   sineMaxSegs: knob('Sinepede', 'Most it can grow to with wrong attacks', 8, 1, 16, 1),
 
   urchinEvery: knob('Disturchin', 'One every (s) at level 1', 7, 1, 30, 0.25),
