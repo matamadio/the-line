@@ -326,8 +326,8 @@ The game runs in the browser at <https://matamadio.github.io/the-line/> and inst
 - **Saved in the browser:** best score, key bindings, audio choices (mute, style, time signature) and Nostalgia mode. Nothing is saved online.
 - **Phones:** play held sideways. The corners icon goes fullscreen, except on iPhone. Install from the start screen's install button; on iPhone, from the Share menu.
 - **Shared origin:** several apps live on matamadio.github.io, so the manifest needs its own explicit id (`/the-line/`).
-- **Loading screen:** black until the game is ready. When there is loading to cover (always in the installed app; in a browser tab only if the game is not up within 0.5 s) the owl picture (`public/loading.jpg`) fades in from black over 1.6 s and hoots ("hoo, HOOO... hoo, hoo", synthesized, not when muted), stays 1.4 s, then fades into the game over 1.6 s. If the browser holds the sound back, he hoots at the first tap or key while still showing. The game waits for the font (at most 3 s), and the title starts only as the screen fades. The picture is in the offline cache.
-- **Sound** only starts after the first tap or key press, as browsers require.
+- **Loading screen:** black until the game is ready. When there is loading to cover (always in the installed app; in a browser tab only if the game is not up within 0.5 s) the owl picture (`public/loading.jpg`) fades in from black over 1.6 s and hoots ("hoo, HOOO... hoo, hoo", synthesized, not when muted), stays 0.2 s, then fades into the game over 1.6 s. If the browser holds the sound back, he hoots at the first tap or key while still showing. The game waits for the font (at most 3 s), and the title and menu animations start only once the screen has fully faded. The picture is in the offline cache.
+- **Sound** starts at once where the browser allows it (as the installed app often does), so the title music needs no tap; otherwise it starts after the first tap or key press.
 
 ## Where the rules live
 

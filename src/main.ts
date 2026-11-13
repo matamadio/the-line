@@ -6,6 +6,7 @@ import { Neon } from './core/neon';
 import { Pacing } from './core/pacing';
 import { hoot } from './core/hoot';
 import { audioPrefs } from './core/audioPrefs';
+import { sfx } from './core/sfx';
 
 initApp();
 
@@ -30,15 +31,17 @@ let fps = 0, frames = 0, fpsFrom = performance.now();
 
 // The loading screen: black until the game is ready. If loading took a while (and always in
 // the installed app) the owl has come out of the black, see index.html: then he hoots, stays
-// a moment, and fades slowly into the game. The game's clock only starts as the black or the
-// owl fades, so the title isn't half over by then.
+// a moment, and fades slowly into the game. The game's clock only starts once the black or the
+// owl has gone, so the title and the menu begin in full view.
 /** How long the owl takes to come out of the black (as in index.html), stays, and fades into the game (ms). */
-const OWL_IN = 1600, OWL_STAY = 1400, OWL_OUT = 1600;
+const OWL_IN = 1600, OWL_STAY = 200, OWL_OUT = 1600;
 /** Without the owl, the black just lifts (ms). */
 const QUICK_OUT = 300;
 /** The longest wait for the font before going on without it (ms). */
 const FONT_WAIT = 3000;
 let booting = true;
+// Where the browser lets sound start by itself, the title music needn't wait for a tap.
+sfx.autoplay();
 const boot = document.getElementById('boot');
 const owlAt = () => (window as unknown as { owlAt?: number }).owlAt;
 if (!audioPrefs.muted) {
@@ -52,11 +55,10 @@ void Promise.race([
   const at = owlAt();
   const out = at === undefined ? QUICK_OUT : OWL_OUT;
   if (at !== undefined) await new Promise((r) => setTimeout(r, Math.max(0, at + OWL_IN + OWL_STAY - performance.now())));
-  booting = false;
-  if (!boot) return;
+  if (!boot) { booting = false; return; }
   boot.style.transition = `opacity ${out}ms ease-out`;
   boot.classList.add('gone');
-  setTimeout(() => boot.remove(), out + 100);
+  setTimeout(() => { booting = false; boot.remove(); }, out);
 });
 
 let last = performance.now();
