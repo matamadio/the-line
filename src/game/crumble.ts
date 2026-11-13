@@ -1,10 +1,9 @@
 // A creature caught by the end of the line goes the way Wavell does: a break with a hot
 // ember runs along its contour, from the end it was caught by to the other, and what it
-// has passed drifts off as sparks. The line now starts where the creature ends, so the
-// creature is the end of the line until the break has run its length.
+// has passed drifts off as sparks. The break is the end of the line itself: it crosses the
+// creature as fast as the line crumbles, and the line carries on crumbling past it.
 
 import { COLORS, Neon, clamp, polyPath, rand, smoothPath } from '../core/neon';
-import { TUNE } from '../data/tune';
 import { arcLengths, pointAt } from './actors/wavell';
 import type { Fx } from './fx';
 import type { SpringLine } from './line';
@@ -16,9 +15,6 @@ export interface Shape { contours: Part[]; bits: Part[] }
 
 /** A spark for about every this many units of stroke. */
 const PIECE = 2.5;
-/** However short or long the contour, the break takes between these (s). */
-const MIN_TIME = 0.5;
-const MAX_TIME = 1.25;
 /** The stretch glowing ahead of the ember (u). */
 const HOT = 10;
 
@@ -36,7 +32,19 @@ class Stroke {
   }
 
   get total() { return this.lens[this.lens.length - 1]; }
+  get firstX() { return this.rel[0]; }
   get lastX() { return this.rel[this.rel.length - 2]; }
+
+  /** How far along it the stroke first gets as far right as x. */
+  along(x: number) {
+    const r = this.rel;
+    if (x <= r[0]) return 0;
+    for (let i = 1; i < this.lens.length; i++) {
+      const x0 = r[i * 2 - 2], x1 = r[i * 2];
+      if (x1 >= x) return this.lens[i - 1] + (this.lens[i] - this.lens[i - 1]) * clamp((x - x0) / (x1 - x0 || 1), 0, 1);
+    }
+    return this.total;
+  }
 
   world(line: SpringLine) {
     return this.rel.map((v, i) => (i % 2 ? v + line.sample(this.rel[i - 1]) : v));
@@ -65,14 +73,16 @@ export class Crumble {
   private readonly contours: Stroke[];
   /** Soonest to go first. */
   private readonly bits: { stroke: Stroke; at: number }[];
-  private readonly time: number;
-  private t = 0;
+  /** From 0 to 1, how far the break has run. */
+  progress = 0;
+  /** How far right the end of the line has reached on it. */
+  front: number;
   private ember: [number, number] | null = null;
 
   constructor(shape: Shape, line: SpringLine) {
     this.contours = shape.contours.map((c) => new Stroke(c, line));
     const main = this.contours[0], mainPts = shape.contours[0].pts;
-    this.time = clamp(Math.max(...this.contours.map((c) => c.total)) / TUNE.crumbleSpeed, MIN_TIME, MAX_TIME);
+    this.front = main.firstX;
     this.bits = shape.bits.map((bit) => {
       // How far along the contour the break reaches it.
       let best = Infinity, at = 0;
@@ -84,21 +94,22 @@ export class Crumble {
     }).sort((a, b) => a.at - b.at);
   }
 
-  /** From 0 to 1, how far the break has run. */
-  get progress() { return clamp(this.t / this.time, 0, 1); }
-  get done() { return this.t >= this.time; }
+  get done() { return this.progress >= 1; }
   /** Where the line starts again. */
   get right() { return this.contours[0].lastX; }
 
-  update(dt: number, line: SpringLine, fx: Fx) {
-    this.t += dt;
+  /** The end of the line has crumbled in as far as x: the break is there on the creature, and never goes back. */
+  update(x: number, line: SpringLine, fx: Fx) {
+    const main = this.contours[0];
+    this.front = Math.max(this.front, x);
+    if (x >= this.right) this.progress = 1;
+    else this.progress = Math.max(this.progress, main.along(x) / main.total);
     const k = this.progress;
     for (const c of this.contours) c.shed(k * c.total, line, fx);
     while (this.bits.length && this.bits[0].at <= k) {
       const { stroke } = this.bits.shift()!;
       stroke.shed(stroke.total, line, fx);
     }
-    const main = this.contours[0];
     this.ember = pointAt(main.world(line), main.lens, k * main.total);
     if (Math.random() < 0.3) fx.disperse(this.ember[0], this.ember[1], '#fff1b0');
     if (Math.random() < 0.12) fx.disperse(this.ember[0], this.ember[1], COLORS.danger);

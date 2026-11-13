@@ -161,16 +161,16 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g); g.endX = g.wavell.x - 6; },
   },
   {
-    name: 'End of the line: a Sinepede comes apart', dur: 2.5, end: true,
-    setup: (g) => { ready(g); g.endX = g.wavell.x - 78; g.wavell.safe = 1; const s = new Sinepede(g.endX + 4, 100, 2, 1); for (const seg of s.segs) seg.g = 1; g.sinepedes.push(s); },
+    name: 'End of the line: a Sinepede comes apart', dur: 2.2, end: true,
+    setup: (g) => { ready(g); g.endGrace = 0; g.endX = g.wavell.x - 92; g.wavell.safe = 1; const s = new Sinepede(g.endX + 4, 100, 2, 1); for (const seg of s.segs) seg.g = 1; g.sinepedes.push(s); },
   },
   {
-    name: 'End of the line: a Disturchin comes apart', dur: 3.2, end: true,
-    setup: (g) => { ready(g); g.endX = g.wavell.x - 75; g.urchins.push(new Urchin(g.endX + 20, 0.1, 5)); },
+    name: 'End of the line: a Disturchin comes apart', dur: 2.2, end: true,
+    setup: (g) => { ready(g); g.endGrace = 0; g.endX = g.wavell.x - 92; g.urchins.push(new Urchin(g.endX + 20, 0.1, 5)); },
   },
   {
-    name: 'End of the line: a Worm comes apart', dur: 2.5, end: true,
-    setup: (g) => { ready(g); g.endX = g.wavell.x - 75; const w = new Worm(g.endX + 12); w.state = 'move'; g.worms.push(w); },
+    name: 'End of the line: a Worm comes apart', dur: 2.2, end: true,
+    setup: (g) => { ready(g); g.endGrace = 0; g.endX = g.wavell.x - 92; const w = new Worm(g.endX + 12); w.state = 'move'; g.worms.push(w); },
   },
   {
     name: 'Reflux: on his side, hits him', dur: 2.5,

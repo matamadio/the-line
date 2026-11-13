@@ -163,7 +163,7 @@ export class Game {
   private chain = 0;
   private chainT = 0;
   /** Seconds before the end of the line starts crumbling again after a spawn. */
-  private endGrace = 0;
+  endGrace = 0;
   /** A wiped Backwave has carried the end of the line further back than the lead he can build up. */
   private endCarried = false;
   /** Once a wiped Backwave is gone: the end stays off the left of the screen for its pause, even if he walks back. */
@@ -476,7 +476,10 @@ export class Game {
     L.step(dt / 2);
     L.step(dt / 2);
     this.fx.update(dt);
-    for (const c of this.crumbles) c.update(dt, L, this.fx);
+    // A creature caught by the end of the line burns as far as the end has crumbled in. Once he
+    // is gone and the end stops, what is left of it goes on burning at the same speed.
+    const front = this.mode === 'play' && W.alive ? this.endX + 7 : null;
+    for (const c of this.crumbles) c.update(front ?? c.front + this.endSpeed * dt, L, this.fx);
     this.crumbles = this.crumbles.filter((c) => !c.done);
     this.banner = Math.max(0, this.banner - dt);
     this.onBeat = this.cue = !DIFF.beatOn;
@@ -546,8 +549,8 @@ export class Game {
     // The end of the line crumbles in, faster every level, and
     // a lead can only be built up so far. Stopping for anything costs ground.
     if (this.endGrace > 0) this.endGrace -= dt;
-    // A burning creature is the end of the line: it waits for the burn to finish.
-    else if (W.alive && W.state !== 'appear' && !this.crumbles.length) this.endX += (this.bossTime ? DIFF.bossEnd : at('endSpeed', this.ramp)) * dt;
+    // It keeps going through a burning creature: the burn is the end of the line.
+    else if (W.alive && W.state !== 'appear') this.endX += this.endSpeed * dt;
     // Carried back by a wiped Backwave: the usual limit on his lead waits until the wave is gone
     // and the end has crumbled back within it, or it would pull the end straight back in.
     if (W.x - this.endX <= DIFF.endLead && !this.backwaves.some((b) => b.dir < 0)) this.endCarried = false;
@@ -1062,14 +1065,15 @@ export class Game {
   }
 
   /**
-   * Caught by the end of the line, a creature burns along its contour, and the line now
-   * starts where it ends, so nothing runs under it. That end never takes him with it.
+   * Caught by the end of the line, a creature burns along its contour as the end crumbles
+   * through it, and nothing runs under it meanwhile.
    */
   private crumble(shape: Shape) {
-    const c = new Crumble(shape, this.line);
-    this.crumbles.push(c);
-    this.endX = Math.max(this.endX, Math.min(c.right - 7, this.wavell.x - 12));
+    this.crumbles.push(new Crumble(shape, this.line));
   }
+
+  /** How fast the end of the line crumbles in (u/s). */
+  private get endSpeed() { return this.bossTime ? DIFF.bossEnd : at('endSpeed', this.ramp); }
 
   private updateSinepedes(dt: number) {
     const W = this.wavell, L = this.line, n = this.neon;

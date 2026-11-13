@@ -13,7 +13,7 @@ This page explains the design. For every rule with its current numbers in one pl
 
 ## Time is the pressure
 
-The end of the line crumbles in, slowly at first and faster every level, and a lead of at most 240 units can be built up. A gauge under the size counter shows what is left. Every flip, attack or stop costs ground. If the end reaches Wavell he crumbles with it: the break runs along his outline from one foot to the other, and the burnt stroke drifts away in sparks, in every direction. Any creature it reaches burns the same way, along its own contour, and the end of the line jumps to its far side.
+The end of the line crumbles in, slowly at first and faster every level, and a lead of at most 240 units can be built up. A gauge under the size counter shows what is left. Every flip, attack or stop costs ground. If the end reaches Wavell he crumbles with it: the break runs along his outline from one foot to the other, and the burnt stroke drifts away in sparks, in every direction. Any creature it reaches burns the same way, along its own contour, as fast as the end of the line crumbles in, and the end carries on from its far side.
 
 ## Two attacks
 

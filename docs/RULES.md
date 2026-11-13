@@ -58,7 +58,7 @@ Wavell has one life, and his size is his armour. The game ends when he is hit wi
 - It crumbles in at 40 u/s at level 1, +3 u/s per level, up to 80 u/s. During the boss fight it crumbles at 60 u/s.
 - Wavell can build a lead of at most 240 u. A gauge under the size counter shows what is left.
 - After (re)spawning, the end waits 1.6 s before it moves.
-- If it reaches Wavell he burns away along his outline, whatever his size. A creature it reaches burns the same way, and the end jumps to that creature's far side.
+- If it reaches Wavell he burns away along his outline, whatever his size. A creature it reaches burns the same way: the break crosses it at the speed the end crumbles in, and the end carries on from its far side.
 
 ### Moving
 

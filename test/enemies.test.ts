@@ -1401,19 +1401,28 @@ describe('reaching the end of the line', () => {
     ['spiked Urchin', (g) => { const u = new Urchin(g.endX + 1, 0, 5); u.state = 'spikes'; u.t = 0.1; g.urchins.push(u); }],
   ];
 
-  it.each(ENEMIES)('a %s burns along its contour, and the line starts past it', (_name, put) => {
+  it.each(ENEMIES)('a %s burns along its contour as fast as the line, which crumbles on right after it', (_name, put) => {
     const g = caught(put);
     expect(g.sinepedes.length + g.urchins.length + g.worms.length).toBe(0);
     expect(g.crumbles.length).toBe(1);
     const c = g.crumbles[0];
-    expect(g.endX).toBeGreaterThanOrEqual(c.right - 7);
-    const end = g.endX;
-    run(g, 0.2);
-    expect(c.progress).toBeGreaterThan(0);
-    expect(c.progress).toBeLessThan(1);
-    expect(g.endX).toBe(end);
-    run(g, 1.5);
+    // The end of the line does not jump: it crumbles on through the creature at its own speed.
+    g.endGrace = 0;
+    const step = (g as unknown as { endSpeed: number }).endSpeed / STEPS_PER_SECOND;
+    // A small one can be caught when the end has already reached its far side: then it goes at once.
+    const past = Math.max(0, g.endX + 7 - c.right);
+    let last = g.endX, frames = 0;
+    while (g.crumbles.length && frames++ < 10 * STEPS_PER_SECOND) {
+      g.tick(IDLE);
+      expect(g.endX - last).toBeCloseTo(step, 6);
+      last = g.endX;
+      // The break is where the end of the line has got to.
+      if (g.crumbles.length) expect(c.front).toBeCloseTo(g.endX + 7 - step, 6);
+    }
     expect(g.crumbles.length).toBe(0);
+    // Burnt away just as the end of the line reached its far side.
+    expect(g.endX + 7).toBeGreaterThanOrEqual(c.right);
+    expect(g.endX + 7 - c.right).toBeLessThanOrEqual(Math.max(step * 2, past + step * 2));
   });
 
   it('never takes him with it', () => {
