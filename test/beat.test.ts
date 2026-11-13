@@ -9,7 +9,7 @@ import { BASE_BPM, BeatClock } from '../src/game/beat';
 import { HERALD_STEPS } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic: vi.fn(), setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic: vi.fn(), setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, muted: true } }));
 
 describe('the beat clock', () => {
   it('has a beat every 96 steps and a bar every four beats', () => {

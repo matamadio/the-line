@@ -61,6 +61,8 @@ const RETRO_W = 320, RETRO_SHADES = 32, RETRO_TEXT_STEP = 7;
 const RETRO_WORD_STEP = 4.5;
 /** How many strokes make up a line out of focus, and how much of its light they keep at their centre. */
 const BLUR_STROKES = 6, BLUR_GAIN = 1.3;
+/** The most canvas pixels drawn each frame, about 2560 x 1600: a big tablet's full density costs more than it shows. */
+const PIXEL_BUDGET = 4_100_000;
 const RETRO_LUT = Uint8ClampedArray.from({ length: 256 }, (_, v) => {
   const step = 255 / (RETRO_SHADES - 1);
   return Math.round(v / step) * step;
@@ -77,6 +79,8 @@ export class Neon {
   /** CSS pixels per world unit. */
   unit = 1;
   dpr = 1;
+  /** Share of the full resolution to draw at, lowered by Pacing on a slow device. Never below one canvas pixel per CSS pixel. Call resize() after changing it. */
+  quality = 1;
   /** The play area's size and where it sits on the canvas, in CSS pixels. */
   w = 0;
   h = 0;
@@ -109,7 +113,8 @@ export class Neon {
     this.fullW = Math.max(1, this.canvas.clientWidth || window.innerWidth);
     this.fullH = Math.max(1, this.canvas.clientHeight || window.innerHeight);
     const a = fitArea(this.fullW, this.fullH);
-    this.dpr = this.retro ? RETRO_W / a.w : Math.min(window.devicePixelRatio || 1, 2);
+    const full = Math.min(window.devicePixelRatio || 1, 2, Math.max(1, Math.sqrt(PIXEL_BUDGET / (this.fullW * this.fullH))));
+    this.dpr = this.retro ? RETRO_W / a.w : Math.max(Math.min(1, full), full * this.quality);
     this.canvas.width = Math.round(this.fullW * this.dpr);
     this.canvas.height = Math.round(this.fullH * this.dpr);
     this.canvas.style.imageRendering = this.retro ? 'pixelated' : '';

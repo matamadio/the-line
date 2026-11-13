@@ -18,6 +18,7 @@ import { COLORS, Neon, smoothPath } from '../../core/neon';
 import { Flattener } from '../../game/actors/flattener';
 import { Wavell } from '../../game/actors/wavell';
 import { BEAT_SECONDS } from '../../game/beat';
+import { Fx } from '../../game/fx';
 import type { Editor } from './keyframes';
 
 const PICK = 12;
@@ -56,6 +57,8 @@ export function createBossEditor(neon: Neon, root: HTMLElement): Editor {
   let selStep = 0;
   const log: string[] = [];
   const shots: { x: number; side: 1 | -1; h: number; life: number }[] = [];
+  /** Splashes and sparks, as the game shows them. */
+  const fx = new Fx();
   const undo: string[] = [];
   const redo: string[] = [];
 
@@ -288,6 +291,8 @@ export function createBossEditor(neon: Neon, root: HTMLElement): Editor {
           shots.push({ x: bx, side: boss.shot.side, h: boss.shot.height, life: 2 });
         }
         if (e === 'flatten') boss.reform(0);
+        // A wave crashing down: the same splash as in the game.
+        if (e === 'slam') fx.splash(boss.front, boss.front + (boss.back - boss.front) * 0.6, (x) => line.sample(x), COLORS.line, boss.scale);
         log.unshift(`${clock.toFixed(2)} s  ${e}${e === 'shoot' ? ` (side ${boss.shot.side}, height ${boss.shot.height})` : ''}${st ? ` · step ${boss.stepIndex + 1}` : ''}`);
         if (log.length > 8) log.pop();
       }
@@ -296,6 +301,7 @@ export function createBossEditor(neon: Neon, root: HTMLElement): Editor {
       const si = boss.power ? boss.stepIndex : -1;
       if (si !== selStep && si >= 0) { selStep = si; markStep(); }
     } else boss.update(d, false, false);
+    fx.update(d);
     for (const s of shots) { s.x -= SHOT_SPEED * d; s.life -= d; }
     while (shots.length && shots[0].life <= 0) shots.shift();
     q('bo-clock').textContent = `${boss.state}${boss.power ? ' · step ' + (boss.stepIndex + 1) : ''}${dirty ? ' · unsaved' : ''}`;
@@ -332,6 +338,7 @@ export function createBossEditor(neon: Neon, root: HTMLElement): Editor {
     else { n.glow(smoothPath([L, 0, ...w, R, 0]), COLORS.line, 0.9); if (o.length) n.glow(smoothPath(o), COLORS.line, 0.9); }
     fig.drawFeatures(n, line);
     boss.drawFeatures(n, line, fig.x);
+    fx.draw(n);
     // Shots, at the height they run at.
     for (const s of shots) {
       const y = -s.side * fig.height * s.h, p = new Path2D();

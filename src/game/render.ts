@@ -7,7 +7,20 @@ import { BUBBLE_GREEN } from './actors/bubble';
 import type { Sinepede, Skirts } from './actors/sinepede';
 import type { Game } from './game';
 import { drawHud } from './hud';
+import { END_WORD, END_WORD_SCALE, endWordX } from './endWord';
+import { strokeWord } from './lettering';
 import { BACK_LINES, backWave, depthScale } from './menu';
+
+
+/** THE LINE CONTINUES on screen, as flat points riding a line: base(x) is the line's y at x px. */
+function endWordPoints(viewW: number, t: number, base: (x: number) => number, u: number): number[] {
+  const { pts } = strokeWord(END_WORD), c = endWordX(viewW, t) * u, k = END_WORD_SCALE * u, out: number[] = [];
+  for (let i = 0; i < pts.length; i += 2) {
+    const x = c + pts[i] * k;
+    out.push(x, base(x) + pts[i + 1] * k);
+  }
+  return out;
+}
 
 export function drawGame(g: Game, dt: number) {
   const n = g.neon, c = n.ctx;
@@ -69,14 +82,25 @@ function drawBackdrop(g: Game) {
   c.globalAlpha = 1;
   // Two faint lines far away, scrolling slower: depth without clutter. The menu has lines of its own.
   n.fade = g.quiet || g.menu.backdropShows ? 1 : 0;
-  for (const line of BACK_LINES) {
+  BACK_LINES.forEach((line, i) => {
+    const u = n.unit, base = (x: number) => n.lineY - line.off * u + backWave(line, x / u + n.camX, n.camX, g.time) * u;
+    // After the boss the nearest one writes THE LINE CONTINUES, going by from right to left.
+    const word = i === 0 && g.endWord >= 0 ? endWordPoints(n.viewW, g.endWord, base, u) : null;
     const p = new Path2D();
+    p.moveTo(-10, base(-10));
+    // The word is written once: past it, the line simply goes on.
+    let written = !word;
     for (let x = -10; x <= n.w + 10; x += 6) {
-      const y = n.lineY - line.off * n.unit + backWave(line, x / n.unit + n.camX, n.camX, g.time) * n.unit;
-      if (x === -10) p.moveTo(x, y); else p.lineTo(x, y);
+      if (!written && x >= word![0]) {
+        written = true;
+        smoothPath(word!, p, false);
+        x = word![word!.length - 2];
+      }
+      p.lineTo(x, base(x));
     }
-    n.glow(p, COLORS.line, n.unit * 0.5, line.alpha);
-  }
+    // The letters are the line itself: the same colour and brightness.
+    n.glow(p, COLORS.line, u * 0.5, line.alpha);
+  });
   n.fade = 1;
 }
 
@@ -242,7 +266,23 @@ function drawTidals(g: Game) {
     const crest: number[] = [];
     for (let x = Math.max(t.x - 22, g.endX); x <= t.x + 22; x += 2) crest.push(x, L.sample(x));
     if (crest.length < 4) continue;
-    n.glow(smoothPath(crest), t.dir < 0 ? COLORS.danger : '#ffffff', 1.3, 1);
+    const color = t.dir < 0 ? COLORS.danger : '#ffffff';
+    n.glow(smoothPath(crest), color, 1.3, 1);
+    // Its lip curls over the way it rolls, with a twist of foam under it.
+    const d = t.dir, x = t.x, y = L.sample(x), wob = Math.sin(g.time * 14) * 0.8;
+    const lip = new Path2D();
+    lip.moveTo(x - d * 4, y + 1);
+    lip.quadraticCurveTo(x + d * 4, y - 6, x + d * 10, y - 1 + wob);
+    lip.quadraticCurveTo(x + d * 12, y + 4, x + d * 8, y + 6);
+    lip.quadraticCurveTo(x + d * 5, y + 7, x + d * 5.5, y + 4.5);
+    n.glow(lip, color, 1.1, 1);
+    const foam = new Path2D();
+    for (let i = 0; i < 4; i++) {
+      const fx = x + d * (2 + i * 2.5), fy = y + 3 + Math.sin(g.time * 9 + i * 2) * 1.5;
+      foam.moveTo(fx + 0.9, fy);
+      foam.arc(fx, fy, 0.9, 0, Math.PI * 2);
+    }
+    n.glow(foam, '#ffffff', 0.5, 0.8);
   }
 }
 

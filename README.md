@@ -36,6 +36,8 @@ npm start
 
 **To start at a later level**, add `?level=N` to the address, for example `?level=10` to go straight to the boss. It lasts for that page only and saves nothing.
 
+**To check performance on a device**, add `?perf` to the address. The top left corner then shows the frame rate, whether the game draws on every refresh or every other one, and the resolution it settled on.
+
 ## How to play
 
 Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your size counter shows how much lead is left.
@@ -183,7 +185,7 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 - "Copy as new shape" starts a new one from the shape shown.
 - **Connecting loose ends:** stroke ends that touch nothing are ringed in orange. Drag one near an outline point, another stroke's point or the line and it snaps exactly onto it (a green ring shows where); hold Alt to drag freely. With a stroke point selected, "Join to nearest stroke" makes it and the stroke whose end is nearest one stroke, and "Close stroke" brings its end back to its start.
 
-**Powers** are lists of steps. Each step flows into a shape (over or under the line) for a time, holds it, then can wait for the beat and fire: a slam (the front wave), a shot (a line reflux at a height in Wavell's heights) or a roll (the saw). A step can also make a sound as it starts, blister up bubbles while it holds, rear up (scale its heights), glow while charging, and hurt to walk into. Each power also has the phase it comes in from and how often he picks it.
+**Powers** are lists of steps. Each step flows into a shape (over or under the line) for a time, holds it, then can wait for the beat and fire: a slam (the front wave, Tide-Al), a shot (a line reflux at a height in Wavell's heights) or a roll (the saw). A step can also make a sound as it starts, blister up bubbles while it holds, rear up (scale its heights), glow while charging, and hurt to walk into. Each power also has the phase it comes in from and how often he picks it. Two path shapes with the same number of points flow into each other point for point (and so do their strokes, if they match in number and length): make a new pose of a shape by moving its points rather than drawing it again. A step with no hold, beat or action flows straight into the next without slowing down, and a step on the other side of the line from the last rolls over to it.
 
 - ▶ Play (or Space) plays the power on a loop, with a beat every 0.8 s. The shots are drawn as red dashes at their height.
 - Add, move, copy and delete steps; copy a power to make a new one.

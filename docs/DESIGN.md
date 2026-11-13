@@ -34,7 +34,7 @@ Up to level 3, threats come one at a time, with a second of clear line between t
 
 ## Levels
 
-There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. The end of the line crumbles faster each level. Level 10 is the last: the boss fight against THE FLATTENER (see [The boss](#the-boss)). Beating him starts the levels over from level 1, on a harder loop: the line continues.
+There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. The end of the line crumbles faster each level. Level 10 is the last: the boss fight against THE FLATTENER (see [The boss](#the-boss)). Beating him starts the levels over from level 1, on a harder loop in a random time signature, with the music still in full: the line continues.
 
 ## The threats
 
@@ -65,12 +65,14 @@ He is made of the line, so he can take any shape, and **each shape is one power*
 
 | Power | His shape | What it does | Answer |
 | --- | --- | --- | --- |
-| **Front wave** | A curling breaker | Rears up and crashes, sending a wave rolling at Wavell, like a Backwave from the front | Wipe it facing it: it rolls back and hits him. The only way to hurt him |
-| **Cat** | A chunky cat, its rear at Wavell | Shoots three line refluxes from its rear, in a random order: crouched, at Wavell's height along the top of the line; risen, over his head (it only reaches him at full size, or floating); rolled on its back to under the line, along the bottom | Be on the other side of the line from each low shot; stay on the line under the high one |
+| **Front wave: Tide-Al** | A breaking wave with a face: angry eyes, a toothy mouth under a lip dripping foam | Flows from his blob into its full curl, spraying, as a deep sound rises; leans over and crashes down on the line with a roar, bursting into a splash of water jets and drops, and sending a wave rolling at Wavell, like a Backwave from the front. Its timing follows a reference animation, kept out of the repo | Wipe it facing it: it rolls back and hits him. The only way to hurt him |
+| **Cat** | A chunky cat, its rear at Wavell | Charges with sparks drawn into its rear, and shoots three line refluxes from it, in a random order: crouched, at Wavell's height along the top of the line; risen, over his head (it only reaches him at full size, or floating); rolled on its back over to under the line (turning over round it like a barrel, never going flat), along the bottom | Be on the other side of the line from each low shot; stay on the line under the high one |
 | **Saw** | A sawblade through the line, cutting it | Spins up for a second, then rolls at Wavell and flattens out before the end of the line | Float over it |
 | **Toad** | A toad that sinks into the line until only its bulging eyes show | Bubbles blister up along the line, float off and burst | Keep clear, or get under the line |
 
-As in the original, nothing Wavell does hurts him directly: only his own front wave, sent back. His sizes are his armour, as Wavell's are: three hits flatten him, and each makes him angrier. Phase 1 has the wave and the cat, phase 2 adds the saw, phase 3 the toad, and sometimes one power straight after another. He never uses three powers in a row without the wave, so there is always a way to hurt him coming. Walking into him hurts.
+As in the original, nothing Wavell does hurts him directly: only his own front wave, sent back. His sizes are his armour, as Wavell's are: three hits flatten him, and each makes him angrier. Phase 1 has the wave, the cat and the saw, phase 3 adds the toad, and sometimes one power straight after another. He never repeats a power, and the wave, the only way to hurt him, comes on a fixed rhythm that slows as he shrinks: after every 2 other powers at full size, then 3, then 4. Walking into him hurts.
+
+He climbs out with the screen shaking rather than a title. Beaten, the music plays on in full, and THE LINE CONTINUES is written by the nearest background line, in the title's hand, going by from right to left.
 
 His shapes and powers are data (`src/data/boss.json`), made in the lab's boss editor: a shape is an outline drawn point by point with eyes and extra strokes, and a power is a list of steps, each flowing into a shape, on either side of the line, holding it and firing (a front wave, a reflux at a set height, a roll). New attacks can be put together there without code, from the same few actions.
 

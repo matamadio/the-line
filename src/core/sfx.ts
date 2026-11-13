@@ -47,6 +47,15 @@ function roomImpulse(ctx: BaseAudioContext, seconds: number) {
   return buf;
 }
 
+/** White noise, for surf and crashes. */
+function noise(ctx: BaseAudioContext, seconds: number) {
+  const len = Math.round(ctx.sampleRate * seconds), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  return src;
+}
+
 /** Brighter waves sound louder at the same level: this evens them out. */
 const WAVE_LOUDNESS: Partial<Record<OscillatorType, number>> = { square: 0.45, sawtooth: 0.5, triangle: 0.9 };
 
@@ -203,6 +212,109 @@ class Sfx {
     this.tone(95, 0.8, 0.7, 28);
     this.tone(190, 0.3, 0.3, 60);
     this.crunch(0.12, 0.6);
+  }
+
+  /**
+   * Tide-Al building up: a deep bass swelling over `seconds`. A sub an octave under a
+   * driven, detuned bass, both rising a fifth, the bass's filter opening as it comes, and
+   * the whole of it throbbing faster and faster. It holds its peak up to `hold` more, until
+   * the crash cuts it off. Returns how to cut it off.
+   */
+  tideRise(seconds: number, hold: number): () => void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return () => {};
+    const at = this.now(ctx), peak = at + Math.max(0.3, seconds), end = peak + hold;
+    const sub = ctx.createOscillator(), a = ctx.createOscillator(), b = ctx.createOscillator();
+    sub.type = 'sine';
+    a.type = b.type = 'sawtooth';
+    for (const [o, f] of [[sub, 41], [a, 82], [b, 82.8]] as const) {
+      o.frequency.setValueAtTime(f, at);
+      o.frequency.exponentialRampToValueAtTime(f * 1.5, peak);
+    }
+    // The bass is driven into saturation, so its overtones carry on small speakers too.
+    const drive = ctx.createWaveShaper(), tone = ctx.createBiquadFilter();
+    drive.curve = SATURATION;
+    tone.type = 'lowpass';
+    tone.Q.value = 7;
+    tone.frequency.setValueAtTime(320, at);
+    tone.frequency.exponentialRampToValueAtTime(1800, peak);
+    a.connect(drive);
+    b.connect(drive);
+    drive.connect(tone);
+    // The throb: 3 a second at first, 16 at the peak.
+    const throb = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+    throb.gain.value = 0.65;
+    depth.gain.value = 0.35;
+    lfo.frequency.setValueAtTime(3, at);
+    lfo.frequency.exponentialRampToValueAtTime(16, peak);
+    lfo.connect(depth).connect(throb.gain);
+    const env = ctx.createGain();
+    // Heard at once (a ramp from silence stays inaudible for most of its length), then swelling.
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.linearRampToValueAtTime(0.2, at + 0.12);
+    env.gain.exponentialRampToValueAtTime(0.55, peak);
+    env.gain.setValueAtTime(0.55, end);
+    env.gain.exponentialRampToValueAtTime(0.0001, end + 0.3);
+    sub.connect(throb);
+    tone.connect(throb);
+    throb.connect(env).connect(this.out!);
+    const all = [sub, a, b, lfo];
+    for (const o of all) { o.start(at); o.stop(end + 0.35); }
+    return () => {
+      const now = ctx.currentTime;
+      env.gain.cancelScheduledValues(now);
+      env.gain.setTargetAtTime(0, now, 0.02);
+      for (const o of all) o.stop(now + 0.15);
+    };
+  }
+
+  /**
+   * Tide-Al crashes down: a crash cymbal (bright noise and a cluster of clashing square
+   * waves, ringing out over 2 s), the slap of the water, and a deep boom under it.
+   */
+  tideCrash() {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const at = this.now(ctx), ring = 2.2;
+    this.tone(70, 1.1, 0.9, 28);
+    this.tone(140, 0.35, 0.4, 45);
+    // The cymbal's wash.
+    const wash = noise(ctx, ring), hi = ctx.createBiquadFilter(), wg = ctx.createGain();
+    hi.type = 'highpass';
+    hi.frequency.value = 3500;
+    wg.gain.setValueAtTime(0.0001, at);
+    wg.gain.exponentialRampToValueAtTime(0.55, at + 0.005);
+    wg.gain.exponentialRampToValueAtTime(0.0001, at + ring);
+    wash.connect(hi).connect(wg).connect(this.out!);
+    wash.start(at);
+    wash.stop(at + ring);
+    // Its metal: square waves at clashing pitches, as the old drum machines made a cymbal.
+    const metal = ctx.createBiquadFilter(), mg = ctx.createGain();
+    metal.type = 'highpass';
+    metal.frequency.value = 6500;
+    mg.gain.setValueAtTime(0.0001, at);
+    mg.gain.exponentialRampToValueAtTime(0.22, at + 0.005);
+    mg.gain.exponentialRampToValueAtTime(0.0001, at + ring * 0.7);
+    metal.connect(mg).connect(this.out!);
+    for (const f of [205.3, 304.4, 369.6, 522.7, 540, 800]) {
+      const o = ctx.createOscillator();
+      o.type = 'square';
+      o.frequency.value = f;
+      o.connect(metal);
+      o.start(at);
+      o.stop(at + ring);
+    }
+    // The water slapping down.
+    const slap = noise(ctx, 0.7), lo = ctx.createBiquadFilter(), sg = ctx.createGain();
+    lo.type = 'lowpass';
+    lo.frequency.setValueAtTime(2400, at);
+    lo.frequency.exponentialRampToValueAtTime(300, at + 0.6);
+    sg.gain.setValueAtTime(0.0001, at);
+    sg.gain.exponentialRampToValueAtTime(0.6, at + 0.01);
+    sg.gain.exponentialRampToValueAtTime(0.0001, at + 0.65);
+    slap.connect(lo).connect(sg).connect(this.out!);
+    slap.start(at);
+    slap.stop(at + 0.7);
   }
 
   /** The Flattener as a cat: a meow, a buzzy tone through a vowel-like filter that opens and closes. */
