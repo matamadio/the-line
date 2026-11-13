@@ -513,11 +513,7 @@ export class Menu {
   /** The menu's part of the HUD, on the start screen. */
   drawHud() {
     const n = this.g.neon, s = hudSize(n), inp = this.g.input, touch = usesTouch(inp);
-    if (this.page === 'main') {
-      n.fade = this.stack;
-      n.text(touch ? 'swipe to choose   tap to select' : '↑ ↓ choose   Enter select', n.w / 2, n.lineY + s * 2.4, s * 0.7, COLORS.hud, 'center', 0.55 + 0.45 * Math.sin(this.g.time * 4));
-      n.fade = 1;
-    } else if (this.page === 'credits') {
+    if (this.page === 'credits') {
       this.drawCredits();
       n.text(touch ? 'tap to go back' : 'Enter to go back', n.w / 2, n.h - s * 1.4, s * 0.55, '#c9a640');
     } else if (touch) this.drawTouchGuide();

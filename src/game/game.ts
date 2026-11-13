@@ -193,6 +193,8 @@ export class Game {
   private deathHandled = false;
   /** The time until which the start screen explains how to install by hand. */
   installNote = -1;
+  /** When the start screen's hints began, once he had climbed out of the line; -1 until then. */
+  hintsFrom = -1;
   stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), z: rand(0.04, 0.3), s: rand(0.6, 1.8), p: rand(0, 6) }));
 
   constructor(readonly neon: Neon, readonly input: Input) {
@@ -318,6 +320,7 @@ export class Game {
     this.titleDust = null;
     this.menu.reset();
     this.morphT = morph ? 0 : MORPH_TIME;
+    this.hintsFrom = -1;
     for (const s of this.sinepedes) s.sink();
     for (const u of this.urchins) u.sink();
     for (const w of this.worms) w.sink();
@@ -491,6 +494,8 @@ export class Game {
       this.updateWorms(dt);
       this.idleBoss(dt);
       if (W.state === 'dead' && W.t > W.linger + 0.3 && !this.menu.holdsHimDown) W.rise(W.x);
+      // The hints wait for him to have climbed out, and then start from the first.
+      if (this.hintsFrom < 0 && W.state === 'ground') this.hintsFrom = this.time;
       // The line lies flat until he has risen out of it, or while the names run along it.
       if ((W.state === 'ground' || this.menu.page === 'credits') && Math.random() < dt * 1.5) L.impulse(n.camX + Math.random() * n.viewW, rand(-50, 50), 5);
       this.menu.step(dt);

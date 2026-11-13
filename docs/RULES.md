@@ -301,6 +301,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 
 - The start screen plays the chosen style, all five instruments, once the title has formed and Wavell has risen out of the line. Browsers only allow sound after the first tap or key, so on a first visit it starts then.
 - It keeps the game's own beat clock, so it keeps playing through the audio menu without going back to the first bar.
+- Under the menu, hints take turns, 5 s each, fading in and out. They start from the first once Wavell has climbed out of the line, and start over each time the start screen comes back. The "↑ ↓ choose, Enter select" prompt is gone: how to use the menu is under Menu, in the controls.
 - Picking START doesn't restart it: the same beat and bar carry on, and the music thins to level 1's one instrument while the other four fade away over a second or two. Each level then adds one back.
 
 ## Visuals and screens

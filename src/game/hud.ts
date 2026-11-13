@@ -329,9 +329,11 @@ export function drawHud(g: Game) {
     g.menu.drawHud();
     c.canvas.style.cursor = '';
     if (g.menu.page === 'main') {
-      const inHint = g.time % HINT_TIME;
-      const hintAlpha = clamp(Math.min(inHint, HINT_TIME - inHint) / HINT_FADE, 0, 1);
-      n.text(TITLE_HINTS[Math.floor(g.time / HINT_TIME) % TITLE_HINTS.length], cx, n.lineY + s * 3.9, s * 0.55, '#c9a640', 'center', hintAlpha);
+      if (g.hintsFrom >= 0) {
+        const t = g.time - g.hintsFrom, inHint = t % HINT_TIME;
+        const hintAlpha = clamp(Math.min(inHint, HINT_TIME - inHint) / HINT_FADE, 0, 1);
+        n.text(TITLE_HINTS[Math.floor(t / HINT_TIME) % TITLE_HINTS.length], cx, n.lineY + s * 3.9, s * 0.55, '#c9a640', 'center', hintAlpha);
+      }
       drawDevMenu(g);
       if (canInstall()) drawInstall(g);
       drawVersion(n);

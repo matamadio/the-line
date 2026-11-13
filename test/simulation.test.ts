@@ -497,7 +497,7 @@ describe('nostalgia mode', () => {
   it('has a pixel font for every character the game writes', () => {
     const texts = [...TITLE_HINTS, '← → walk   ↓ through the line   ↑ float / back up', 'left thumb: walk  ·  down: through the line', 'SWIPE ↔ to pull  ·  swipe ↕ to wipe',
       'WRONG ATTACK, IT GREW! BACKWAVE: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM', VERSION_TEXT, '×4  FINAL LEVEL 10', 'BIGGER IS RICHER: every point now counts ×2', ...ENTRIES, ...CREDIT_NAMES, ...ACTIONS.map((a) => a.label),
-      '↑ ↓ choose   Enter select', 'swipe to choose   tap to select', 'Enter to go back', 'PRESS A KEY...', 'PRESS A BUTTON...', '< KEYBOARD >', '< JOYPAD >', 'RESTORE DEFAULTS',
+      'Enter to go back', 'PRESS A KEY...', 'PRESS A BUTTON...', '< KEYBOARD >', '< JOYPAD >', 'RESTORE DEFAULTS',
       'NO JOYPAD FOUND: CONNECT ONE AND PRESS A BUTTON', 'THE LEFT STICK WALKS AS WELL   ·   BACK: MENU', 'Esc: leave it as it is', 'TOWARDS THE LINE: THROUGH IT', 'SWIPE SIDEWAYS: PULL', 'SWIPE UP OR DOWN: WIPE',
       'AUDIO', 'SOUND', 'MUSIC', 'TIME', '> CLOSE <', '< ON >', '< OFF >', 'MUSIC BITCRUSHED', ...STYLES.map((st) => `< ${st.name} >`), ...METERS.map((m) => `< ${m.id} >`),
       ...Object.values(defaultBindings().keys).flat().map(keyLabel), ...Array.from({ length: 18 }, (_, i) => padLabel(i))];
@@ -757,6 +757,24 @@ describe('the menu', () => {
     run(g, MORPH_TIME);
     expect(g.menu.stack).toBe(1);
     expect(g.menu.backdropShows).toBe(false);
+  });
+
+  it('starts the hints, from the first, once he has climbed out of the line', () => {
+    const g = headlessGame();
+    expect(g.hintsFrom).toBe(-1);
+    run(g, TUNE.riseHold + 0.1);
+    expect(g.wavell.state).toBe('appear');
+    expect(g.hintsFrom).toBe(-1);
+    run(g, TUNE.riseTime);
+    expect(g.wavell.state).toBe('ground');
+    expect(g.hintsFrom).toBeGreaterThan(0);
+    const from = g.hintsFrom;
+    g.menu.go(1);
+    run(g, 1);
+    expect(g.hintsFrom).toBe(from);
+    g.start();
+    g.backToTitle(false);
+    expect(g.hintsFrom).toBe(-1);
   });
 
   it('forgets where it was on going back to the start screen', () => {
