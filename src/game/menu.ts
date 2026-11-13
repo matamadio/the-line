@@ -28,10 +28,7 @@ const WORD_CENTRE = 0.57, WORD_SCALE = 0.22;
 const WORD_HEIGHT = 94;
 export const ENTRIES = ['START', 'CONTROL', 'CREDITS'] as const;
 /** Fake names for now. */
-export const CREDIT_NAMES = [
-  'Taddelya', 'Sine Wavington', 'Anna Logue', 'Rick O\'Chet', 'Phil Harmonic', 'Crest Fallen', 'Trudy Trough', 'Amp Litude', 'Sue Perposition',
-  'Al Gorithm', 'Dee Bugger', 'Hugh Mungous Wave', 'Justin Case', 'Flat Stanley Jr.', 'Ty Dwave', 'Moh Mentum', 'Mr. Wavell\'s Hairdresser',
-];
+export const CREDIT_NAMES = ['A game by SkepticOwl', 'Vibecoded with Claude Code', 'Thanks to:', Taddelya', 'Cherry Pie', 'Tatosgames', 'Sine Wavington', 'Anna Logue', 'Rick O\'Chet', 'Phil Harmonic', 'Amp Litude', 'Al Gorithm', 'Dee Bugger', 'Justin Case', 'Ty Dwave', 'Mr. Wavell\'s Hairdresser',];
 
 /** How quickly the lines shrink with depth, and how far above the front line they all meet (u). */
 const DEPTH = 0.5, HORIZON = 90;
