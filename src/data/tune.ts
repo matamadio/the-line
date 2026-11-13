@@ -32,7 +32,6 @@ export const KNOBS = {
   meltDrift: knob('Enemies', 'Melt drift (u/s)', 70, 0, 300, 5),
   meltSpread: knob('Enemies', 'Melt spread', 1.4, 0, 4, 0.05),
   meltHeight: knob('Enemies', 'Melt hump height', 0.6, 0.1, 1.5, 0.05),
-  crumbleSpeed: knob('Enemies', 'End of the line: burns along it at (u/s)', 120, 20, 600, 5),
 
   cancelStart: knob('Cancelling', 'Starts at distance', 80, 25, 200, 1),
   cancelSpan: knob('Cancelling', 'Shrinks over distance', 57, 5, 180, 1),

@@ -238,8 +238,8 @@ function drawBar(g: Game, x: number, y: number, s: number) {
 
 /** How much line is left behind Wavell before the break: the time you have. */
 function drawLead(g: Game, x: number, y: number, s: number) {
-  const n = g.neon, W = g.wavell;
-  const lead = clamp((W.x - g.endX) / DIFF.endLead, 0, 1);
+  const n = g.neon;
+  const lead = g.lead;
   const w = s * 6.5;
   const color = lead > 0.5 ? COLORS.hud : lead > 0.25 ? COLORS.danger : '#ff3b30';
   if (lead < 0.25 && Math.floor(g.time * 6) % 2 === 0 && g.mode === 'play') return;

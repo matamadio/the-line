@@ -106,6 +106,17 @@ class Sfx {
     else void this.ctx?.resume();
   }
 
+  /**
+   * Starts the sound at once where the browser allows it without a tap or key (an installed
+   * app often does), so the title music needn't wait for one. Elsewhere it waits as before.
+   */
+  autoplay() {
+    if (this.ctx || typeof AudioContext === 'undefined') return;
+    const probe = new AudioContext(), allowed = probe.state === 'running';
+    void probe.close();
+    if (allowed) this.unlock();
+  }
+
   unlock() {
     if (this.ctx) { void this.ctx.resume(); return; }
     const ctx = this.ctx = new AudioContext();
