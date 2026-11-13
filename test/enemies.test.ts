@@ -239,6 +239,27 @@ describe('the Backwave', () => {
     expect(g.wavell.alive).toBe(true);
   });
 
+  it.each([['standing', 0], ['walking back left', -1]] as const)('keeps the end off the screen for its pause after a wipe, %s', (_name, walk) => {
+    const g = ready();
+    g.endX = g.wavell.x - 160;
+    holding(g, WIPE);
+    const b = coming(g, g.wavell.x - 90);
+    run(g, 0.1);
+    expect(b.dir).toBe(-1);
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && g.backwaves.length; i++) g.tick(IDLE);
+    expect(g.backwaves.length).toBe(0);
+    const k = { ...IDLE, left: walk < 0 };
+    for (let i = 0; i < (DIFF.backEarn - 0.1) * STEPS_PER_SECOND; i++) {
+      g.tick(k);
+      expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
+    }
+    expect(g.wavell.alive).toBe(true);
+    // Then it crumbles in again as usual.
+    const end = g.endX;
+    run(g, 0.5, k);
+    expect(g.endX).toBeGreaterThan(end);
+  });
+
   it('carries the end all the way to the left on a screen wider than his lead', () => {
     const g = ready();
     // Wide enough that the left of the screen is further back than the 240 u lead.

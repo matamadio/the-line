@@ -166,6 +166,8 @@ export class Game {
   private endGrace = 0;
   /** A wiped Backwave has carried the end of the line further back than the lead he can build up. */
   private endCarried = false;
+  /** Once a wiped Backwave is gone: the end stays off the left of the screen for its pause, even if he walks back. */
+  private endHeld = false;
   hint = '';
   hintT = 0;
   private taught = new Set<string>();
@@ -304,6 +306,7 @@ export class Game {
     this.titleMusic = false;
     this.endX = this.wavell.x - DIFF.endLead;
     this.endGrace = DIFF.endGrace;
+    this.endHeld = false;
     this.deathHandled = false;
     if (this.level >= DIFF.lastLevel) this.startBoss();
   }
@@ -549,6 +552,10 @@ export class Game {
     // and the end has crumbled back within it, or it would pull the end straight back in.
     if (W.x - this.endX <= DIFF.endLead && !this.backwaves.some((b) => b.dir < 0)) this.endCarried = false;
     this.endX = Math.max(this.endX, this.endCarried ? n.camX - BACKWAVE_OFF : W.x - DIFF.endLead);
+    // He had to turn left to wipe it, so he is often still walking left: the camera follows him,
+    // and the end must not slide into view and meet him before its pause is over.
+    if (this.endGrace <= 0) this.endHeld = false;
+    if (this.endHeld) this.endX = Math.min(this.endX, n.camX - BACKWAVE_OFF);
     // Sparks come off the break; the line trembles near it. While he burns,
     // he is the end of the line, so the break itself keeps still.
     const crumbling = (W.state === 'dead' && W.death === 'fall') || this.crumbles.length > 0;
@@ -1168,7 +1175,7 @@ export class Game {
         // It carries the end of the line back with it, all the way to the left of the screen.
         this.endX = Math.max(backTo, Math.min(this.endX, b.x - BACKWAVE_MARGIN));
         // He has earned some time: there the end of the line stops for a moment.
-        if (b.x < backTo) { this.endGrace = Math.max(this.endGrace, DIFF.backEarn); L.calm(b.x, 16); }
+        if (b.x < backTo) { this.endGrace = Math.max(this.endGrace, DIFF.backEarn); this.endHeld = this.endGrace > 0; L.calm(b.x, 16); }
         continue;
       }
       // Past him it is on its own: a ripple running out along the line.
@@ -1468,6 +1475,7 @@ export class Game {
         W.spawn(W.x);
         this.endX = W.x - DIFF.endLead;
         this.endGrace = DIFF.endGrace;
+        this.endHeld = false;
       } else {
         this.mode = 'over';
         this.overT = 0;
