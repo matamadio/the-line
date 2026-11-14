@@ -99,6 +99,11 @@ export const DIFF_KNOBS = {
   growSafe: knob('Growing', 'Safe after losing a size (s)', 1.2, 0, 5, 0.1),
   sizePoints: knob('Growing', 'Points multiplier added per size', 0.5, 0, 3, 0.25),
 
+  rageLevel: knob('Rage', 'One knot a level, from level', 4, 1, 10, 1),
+  rageAfter: knob('Rage', 'It comes this far into the level (s)', 10, 0, 120, 1),
+  rageStay: knob('Rage', 'A knot stays for (s)', 12, 2, 60, 1),
+  rageSpeed: knob('Rage', 'Its waves run at (u/s)', 130, 40, 600, 10),
+  ragePoints: knob('Rage', 'Points for each creature it clears', 5, 0, 50, 1),
   sparkleKill: knob('Sparkles', 'Left by each enemy killed', 2, 0, 10, 1),
   sparkleEvery: knob('Sparkles', 'One on its own every (s, roughly)', 3, 0.5, 20, 0.1),
   sparkleMax: knob('Sparkles', 'Most at once, of those on their own', 6, 0, 20, 1),

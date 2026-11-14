@@ -7,6 +7,7 @@ import { SEG_W, Sinepede } from '../src/game/actors/sinepede';
 import { BubbleBurst } from '../src/game/actors/bubble';
 import { Urchin } from '../src/game/actors/urchin';
 import { Worm } from '../src/game/actors/worm';
+import { RAGE_GAP, RAGE_LEAD, RageKnot, UNTIE } from '../src/game/actors/rage';
 import { backwave, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
@@ -1321,6 +1322,173 @@ describe('the game', () => {
       u.sink();
       expect(hush).toHaveBeenCalledOnce();
     });
+  });
+});
+
+describe('the Rage knot', () => {
+  /** A knot this far ahead of him, waiting. */
+  const knotted = (d = 30) => {
+    const g = ready();
+    g.knot = new RageKnot(g.wavell.x + d, DIFF.rageStay);
+    return g;
+  };
+  /** Walks him into it and waits until it is untied. */
+  const untie = (g: ReturnType<typeof ready>) => {
+    for (let i = 0; i < 3 * STEPS_PER_SECOND && g.knot?.waiting; i++) g.tick({ ...IDLE, right: true });
+    expect(g.knot?.waiting).toBe(false);
+    run(g, UNTIE + 0.05);
+    expect(g.knot).toBeNull();
+  };
+
+  /** At this level, `left` seconds before its knot is due. */
+  const into = (g: ReturnType<typeof ready>, level: number, left: number) => {
+    g.level = level;
+    g.tick(IDLE);
+    Object.assign(g, { rageClock: DIFF.rageAfter - left });
+  };
+
+  it('turns up a while into a level, ahead of him, from level rageLevel on', () => {
+    const g = ready();
+    g.quiet = false;
+    into(g, DIFF.rageLevel, 0.3);
+    run(g, 0.2);
+    expect(g.knot).toBeNull();
+    run(g, 0.2);
+    expect(g.knot).not.toBeNull();
+    expect(g.knot!.x).toBeGreaterThan(g.wavell.x + 50);
+  });
+
+  it('never comes before level rageLevel', () => {
+    const g = ready();
+    g.quiet = false;
+    into(g, DIFF.rageLevel - 1, -5);
+    run(g, 0.5);
+    expect(g.knot).toBeNull();
+  });
+
+  it('comes once a level at most', () => {
+    const g = ready();
+    g.quiet = false;
+    into(g, DIFF.rageLevel, 0.1);
+    run(g, 0.2);
+    expect(g.knot).not.toBeNull();
+    g.knot = null;
+    Object.assign(g, { rageClock: DIFF.rageAfter + 20 });
+    run(g, 0.5);
+    expect(g.knot).toBeNull();
+    into(g, DIFF.rageLevel + 1, 0.1);
+    run(g, 0.2);
+    expect(g.knot).not.toBeNull();
+  });
+
+  it('has him beat the line up and down in both hands, a wave at each stroke, until they are gone', () => {
+    const g = knotted();
+    untie(g);
+    expect(g.wavell.powered).toBe(true);
+    const W = g.wavell, L = g.line;
+    // Arms up: the first waves go, crests, and the line in his hands is up with them.
+    run(g, RAGE_LEAD - 0.05);
+    let [bx, by, fx, fy] = W.hands(L);
+    const ground = L.sample(W.x);
+    expect(Math.abs(fx - bx)).toBeGreaterThan(20);
+    expect(ground - by).toBeGreaterThan(15);
+    expect(ground - fy).toBeGreaterThan(15);
+    expect(ground - L.sample(fx)).toBeGreaterThan(10);
+    expect(ground - L.sample(bx)).toBeGreaterThan(10);
+    expect(g.rageWaves.filter((r) => r.delay <= 0).length).toBe(2);
+    // Arms down: the next ones go, troughs, his hands at the line.
+    run(g, RAGE_GAP);
+    [bx, by, fx, fy] = W.hands(L);
+    expect(ground - by).toBeLessThan(4);
+    expect(ground - fy).toBeLessThan(4);
+    expect(g.rageWaves.filter((r) => r.delay <= 0).length).toBe(4);
+    expect(L.sample(W.x)).toBeCloseTo(ground, 3);
+    run(g, 6);
+    expect(g.rageWaves.length).toBe(0);
+    expect(g.wavell.powered).toBe(false);
+    expect(g.wavell.rageT).toBe(-1);
+  });
+
+  it('holds him still and safe while he unties it, then sends three waves each way', () => {
+    const g = knotted();
+    for (let i = 0; i < 3 * STEPS_PER_SECOND && g.knot?.waiting; i++) g.tick({ ...IDLE, right: true });
+    const x = g.wavell.x;
+    g.wavell.hurt('zap');
+    run(g, UNTIE * 0.8, { ...IDLE, right: true });
+    expect(g.wavell.x).toBe(x);
+    expect(g.wavell.alive).toBe(true);
+    run(g, UNTIE);
+    expect(g.rageWaves.filter((r) => r.dir < 0).length).toBe(3);
+    expect(g.rageWaves.filter((r) => r.dir > 0).length).toBe(3);
+  });
+
+  it('keeps him still, safe and level until the last wave is gone', () => {
+    const g = knotted();
+    untie(g);
+    const x = g.wavell.x;
+    let most = 0;
+    while (g.raging) {
+      expect(g.wavell.shielded).toBe(true);
+      g.tick({ ...IDLE, right: true });
+      most = Math.max(most, Math.abs(g.line.sample(g.wavell.x)));
+    }
+    expect(g.wavell.x).toBe(x);
+    expect(most).toBeLessThan(1);
+    expect(g.wavell.shielded).toBe(false);
+    run(g, 0.3, { ...IDLE, right: true });
+    expect(g.wavell.x).toBeGreaterThan(x);
+  });
+
+  it('clears every creature on both sides, off the screen too, leaving their sparkles', () => {
+    const g = knotted();
+    const n = g.neon;
+    const ahead = new Sinepede(n.camX + n.viewW + 120, 0, 3, 1);
+    const behind = new Worm(g.wavell.x - 80, 0);
+    behind.state = 'move';
+    const urchin = new Urchin(g.wavell.x + 120, 0.01, 9);
+    g.sinepedes.push(ahead);
+    g.worms.push(behind);
+    g.urchins.push(urchin);
+    const score = g.score;
+    untie(g);
+    run(g, 4);
+    expect(ahead.count).toBe(0);
+    expect(behind.harmful).toBe(false);
+    expect(urchin.standing).toBe(false);
+    expect(g.score).toBeGreaterThanOrEqual(score + 3 * DIFF.ragePoints);
+    expect(g.rageWaves.length).toBe(0);
+  });
+
+  it('carries the end of the line back off the screen and holds it there', () => {
+    const g = knotted();
+    g.endX = g.wavell.x - 60;
+    untie(g);
+    run(g, 3);
+    expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
+    run(g, 0.3);
+    expect(g.lead).toBeGreaterThan(0.9);
+  });
+
+  it('is picked from under the line, and by his bubble', () => {
+    const under = knotted();
+    under.wavell.side = -1;
+    under.wavell.flip = 1;
+    untie(under);
+    const bubble = knotted(60);
+    bubble.tick({ ...IDLE, upPressed: true });
+    for (let i = 0; i < 4 * STEPS_PER_SECOND && bubble.knot?.waiting; i++) bubble.tick({ ...IDLE, right: true, down: true });
+    expect(bubble.knot?.waiting).toBe(false);
+  });
+
+  it('goes after a while if nobody takes it, or when the end of the line reaches it', () => {
+    const g = knotted(150);
+    g.endGrace = 99;
+    run(g, DIFF.rageStay + 0.1);
+    expect(g.knot).toBeNull();
+    const eaten = knotted(150);
+    eaten.endX = eaten.knot!.x;
+    eaten.tick(IDLE);
+    expect(eaten.knot).toBeNull();
   });
 });
 

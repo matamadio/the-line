@@ -12,6 +12,7 @@ const SAMPLES = {
   appear: 'compare', vanish: 'sparisce', drag: 'colpisce', kill: 'snawave_sparisce',
   flipDown: 'rovescia_in_giu', flipUp: 'rovescia_in_su', offline: 'offline', eaten: 'eated',
   snawave: 'snawave', level: 'levelpass', reflux: 'reflux', pop: 'bollapop', bonus: 'linesaver',
+  powerup: 'bonus', yeah: 'yeah.mp3',
 } as const;
 export type Sample = keyof typeof SAMPLES;
 
@@ -141,7 +142,7 @@ class Sfx {
     this.music.setCrush(this.crushed);
     this.applyTint(60 / 75);
     for (const [key, file] of Object.entries(SAMPLES) as [Sample, string][]) {
-      fetch(`assets/sounds/${file}.wav`)
+      fetch(`assets/sounds/${file.includes('.') ? file : file + '.wav'}`)
         .then((r) => r.arrayBuffer())
         .then((b) => this.ctx!.decodeAudioData(b))
         .then((buf) => this.buffers.set(key, buf))

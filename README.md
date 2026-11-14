@@ -103,12 +103,13 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | Sinepede, Worm, Disturchin, Bubble Burst | Speed, how often they come, when they first appear. Also: the Sinepede's segments and its clock rate while Wavell stands, the Worm's while he is under the line, the Disturchin's warning and how long its spikes stay out, the Bubble's time to burst, its side, and when it starts floating off the line |
 | Backwave, Reflux | Chance per roll, how often it rolls, when it first appears |
 | Fighting | Knockback, the most sizes a creature can grow |
+| Rage | From which level a knot comes (one a level), how far into the level, how long it stays, its waves' speed and the points for each creature it clears |
 | Sparkles | How many an enemy leaves, how often one comes on its own and how many at once, how many are gold, the chain window |
 | Growing | How many sparkles make a size, how long he glows, how many times he can grow, and what each size adds to his scale, walking speed and bubble |
 | Progress | Lives, points per level, extra lives, the starting level |
 | Beat | Whether the beat is on, the tempo ramp, and from which level enemies come on more beats. See [docs/DESIGN.md](docs/DESIGN.md#the-beat) |
 
-**The bar under the game** has restart, pause, level up and down, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
+**The bar under the game** has restart, pause, level up and down, a button that drops a Rage knot ahead of Wavell, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
 
 **The buttons:**
 
@@ -123,7 +124,7 @@ Rows that differ from the saved file turn orange, and double-clicking a row puts
 
 ![The animation lab](docs/images/lab.png)
 
-The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave and the burn.
+The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave, Rage and the burn.
 
 **Playback**
 

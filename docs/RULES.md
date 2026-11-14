@@ -193,7 +193,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 
 ## Sparkles and power-ups
 
-Sparkles are the only pickup in the game today. They are the bait: chasing them gives ground to the line.
+Sparkles are the bait: chasing them gives ground to the line. The Rage knot is the one power-up so far.
 
 - Every enemy killed leaves 2 sparkles, one on each side of the line.
 - More appear on their own about every 3 s, at most 6 at a time, as many below the line as above, often behind Wavell.
@@ -202,7 +202,19 @@ Sparkles are the only pickup in the game today. They are the bait: chasing them 
 - Each sparkle counts towards his next size (10 per size).
 - Catching them in a chain within 2.2 s of each other scores 1, 2, 3… up to 8 points each (see [Scoring](#scoring-and-levels)).
 
-**Planned power-ups (not built yet):** RAGE and KILLERWAVE, collected and then used once. Their look and behaviour are still to be decided.
+### Rage
+
+A small scribble of loops tangled into the line (24 u long, up to 15 u off it on each side). It throbs fast and keeps changing shape and colour. It is the original game's Nuke, used the moment it is picked.
+
+- **When:** at most one a level, from level 4 on, 10 s into the level; never during the boss fight. A level passed in under 10 s has none. It sits 100–160 u ahead of Wavell and stays 12 s, blinking for the last 2 s. The end of the line eats it if it gets there first.
+- **Picking it:** walk into it from either side of the line, or touch it with the bubble.
+- **Untying it:** sparks of every colour burst out of it, and his outline takes on its changing colours until the last wave is gone. For 0.55 s he tugs the loops apart, shaking, as they pull out into his hands. From then until the last wave is gone, Wavell holds still on a flat stretch of line, nothing can hurt him, and his bubble's time stands still if he picked it in the air. The end of the line stops while he unties it.
+- **Making the waves:** he shouts YEEEEH! and the screen shakes; no word comes up. His eyes go red and look up. He crouches and grabs the line with both hands, 13 u out on each side (0.2 s), and heaves it up over his head (to 0.45 s). The line in his hands follows them, down to rest 17 u further out, while the stretch under his feet stays flat. Then he beats it down and up, one stroke every 0.36 s. A huge wave (50 u tall) goes out each way at the end of each stroke: a crest with his arms up, a trough with them down, a crest again: three each way, at 130 u/s. Then he lowers the line back to rest over 0.6 s.
+- **Clearing:** the waves end every creature they pass, and once they reach the edge of the screen, everything beyond it on that side. That covers Sinepedes, Worms, Disturchins, Bubble Bursts (in the air too), Backwaves, Line refluxes and spray. Each creature cleared scores 5 and leaves its 2 sparkles. A Sinepede still on its way in is called off.
+- **The line:** the waves going left carry the end of the line back off the screen, and it then stops for 2 s, as after a wiped Backwave. The lead gauge fills.
+- **After it:** no new enemy comes until all the waves are gone.
+
+**Planned:** KILLERWAVE, still to be decided.
 
 ## Scoring and levels
 
@@ -224,6 +236,7 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 | Boss hit | 50 |
 | Boss flattened | 250 |
 | Sparkle | Chain position (1–8), ×5 if gold |
+| Creature cleared by Rage | 5 |
 
 ### Levels
 
@@ -289,8 +302,8 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - **The Flattener:** a low tremble as he rises and as he rears up, a deep bass building up as his wave rears and a crash cymbal, a slap of water and a boom when it crashes, a meow for the cat (a buzzy tone through a vowel-like filter), a whine that spins up for the saw, a low three-rasp croak for the toad, a tone rising away when his wave is sent back at him, and a big falling groan when it hits.
 - **Sinepede:** pure sine tones whatever the style. It announces itself with one note per segment, high for a crest, low for a trough. Each cancelled segment plays its own note. The nearest one also hums: a sine at 220 Hz for one segment and 110 Hz more for each segment after it (330 Hz for 2, 440 Hz for 3), slightly saturated and with a little reverb. The hum starts 2 beats before a Sinepede comes in and gets louder as it closes in.
 - **Disturchin:** a low tremble under the fuzz, then a harsh, clipped sound while its spikes are out.
-- **Wavell:** a bright run of notes when he grows, a falling one when he shrinks.
-- **Samples** from the original 2003 game cover the rest: appearing, vanishing, flipping down and up, hits, kills, being eaten, Reflux, bubble pop, level pass and the Backwave bonus.
+- **Wavell:** a bright run of notes when he grows, a falling one when he shrinks, and a recorded shout, YEEEEH!, when he strikes the Rage pose (`yeah.mp3`).
+- **Samples** from the original 2003 game cover the rest: appearing, vanishing, flipping down and up, hits, kills, being eaten, Reflux, bubble pop, level pass, the Backwave bonus and the Rage knot appearing (the original's bonus sound).
 
 ### Audio menu
 

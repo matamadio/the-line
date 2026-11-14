@@ -1,7 +1,8 @@
 // Draws the game world: the backdrop, the line with its creatures spliced in, and
 // everything flying around it. Only reads the game's state; the HUD is in hud.ts.
 
-import { COLORS, rand, smoothPath } from '../core/neon';
+import { COLORS, type Neon, rand, smoothPath } from '../core/neon';
+import { wildHue } from './actors/rage';
 import { DIFF } from '../data/difficulty';
 import { BUBBLE_GREEN } from './actors/bubble';
 import type { Sinepede, Skirts } from './actors/sinepede';
@@ -52,6 +53,7 @@ export function drawGame(g: Game, dt: number) {
   for (const u of g.urchins) if (u.standing && u.size > 0) pips(u.x, g.line.sample(u.x) - u.tip - 5, u.size + 1);
   for (const e of g.worms) if (e.harmful && e.size > 0) pips(e.centre, g.line.sample(e.centre) + 9 * e.sc * e.squash + 5, e.size + 1);
   drawDrops(g);
+  drawRage(g);
   drawSparkles(g);
   drawBackwaves(g);
   drawTidals(g);
@@ -108,13 +110,24 @@ function drawBackdrop(g: Game) {
  * The line, with Wavell and every creature spliced into the same stroke: the
  * characters are knots and waves of the line itself.
  */
+/** A stroke in Rage's colours: in pieces, each its own colour, every colour jumping about all the time. */
+function drawWild(n: Neon, pts: number[], t: number, width: number, intensity: number, flicker = true) {
+  const pieces = 5, per = Math.ceil(pts.length / 2 / pieces);
+  for (let p = 0; p < pieces; p++) {
+    const part = pts.slice(p * per * 2, Math.min(pts.length, ((p + 1) * per + 1) * 2));
+    if (part.length < 4) continue;
+    const light = flicker ? 62 + 10 * Math.sin(t * 19 + p) : 76;
+    n.glow(smoothPath(part), wildHue(t, p, light), width, intensity + 0.5 * Math.sin(t * 17 + p * 1.3));
+  }
+}
+
 function drawLine(g: Game): Map<Sinepede, Skirts> {
   const n = g.neon, L = g.line;
   const right = n.camX + n.viewW + 10 + n.depthPad;
   // A creature burning at the end of the line is its end: nothing runs under it.
   const left = Math.max(g.endX + 7, n.camX - 10 - n.depthPad, ...g.crumbles.map((c) => c.right));
   const path = new Path2D();
-  interface Knot { pts: number[]; x0: number; x1: number; flash: number; solo?: boolean }
+  interface Knot { pts: number[]; x0: number; x1: number; flash: number; solo?: boolean; wild?: boolean }
   const knots: Knot[] = [];
   for (const u of g.urchins) {
     const pts = u.outline(L);
@@ -148,7 +161,7 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
   for (const s of g.sinepedes) ahead(s.x, s.back);
   const w = g.wavell.stroke(L, room);
   // While he crumbles, what is left of him no longer joins the line.
-  if (w) knots.push({ pts: w, x0: Math.min(w[0], w[w.length - 2]), x1: Math.max(w[0], w[w.length - 2]), flash: 0, solo: g.wavell.burning });
+  if (w) knots.push({ pts: w, x0: Math.min(w[0], w[w.length - 2]), x1: Math.max(w[0], w[w.length - 2]), flash: 0, solo: g.wavell.burning, wild: g.wavell.rageT >= 0 && g.wavell.alive });
   // A Sinepede's shoulders share out the room on each side of it, so they never run into what is next to them.
   const skirts = new Map<Sinepede, Skirts>();
   const others = [...knots.map((k): [number, number] => [k.x0, k.x1]), ...g.sinepedes.map((s): [number, number] => [s.x, s.back])];
@@ -181,7 +194,9 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
   while (i < L.count) {
     const x = L.xAt(i), k = splice[next];
     if (k && x >= k.x0) {
-      smoothPath(k.pts, path, false);
+      // In Rage's colours he is drawn on his own; the line jumps from toe to toe.
+      if (k.wild) path.moveTo(k.pts[k.pts.length - 2], k.pts[k.pts.length - 1]);
+      else smoothPath(k.pts, path, false);
       i = Math.max(i, Math.ceil((k.x1 - L.base) / L.spacing));
       next++;
       continue;
@@ -194,7 +209,8 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
   }
   const width = g.menu.lineWidthAt(g.mode === 'title' ? g.menu.z : 0);
   n.glow(path, COLORS.line, width, 1 + (DIFF.beatOn ? g.beat.flash * 1.6 : 0));
-  for (const k of solo) n.glow(smoothPath(k.pts), COLORS.line, width, 1 + k.flash);
+  for (const k of solo) if (!k.wild) n.glow(smoothPath(k.pts), COLORS.line, width, 1 + k.flash);
+  for (const k of [...splice, ...solo]) if (k.wild) drawWild(n, k.pts, g.time, width, 1.3, false);
   for (const k of splice) if (k.flash > 0.05) n.glow(smoothPath(k.pts), '#ffffff', 0.8, k.flash);
   // The frayed end of the line (not while he burns: then he is its end).
   const W = g.wavell;
@@ -255,6 +271,20 @@ function drawBackwaves(g: Game) {
     const crest: number[] = [];
     for (let x = Math.max(b.x - 16, g.endX); x <= b.x + 16; x += 2) crest.push(x, L.sample(x));
     n.glow(smoothPath(crest), b.dir > 0 ? COLORS.danger : '#ffffff', 1.1, 0.9);
+  }
+}
+
+/** The Rage knot, hot pink and never still, blinking out at the end; and the crests of its waves. */
+function drawRage(g: Game) {
+  const n = g.neon, L = g.line, k = g.knot;
+  if (k && !(k.waiting && k.life < 2 && Math.floor(k.life * 8) % 2 === 0)) {
+    drawWild(n, k.points(L), k.t, 0.6, k.waiting ? 1.2 : 1.8, k.waiting);
+  }
+  for (const r of g.rageWaves) {
+    if (r.delay > 0) continue;
+    const crest: number[] = [];
+    for (let x = r.x - 24; x <= r.x + 24; x += 2) crest.push(x, L.sample(x));
+    n.glow(smoothPath(crest), '#ffd0e0', 1.3, 1.1);
   }
 }
 
