@@ -152,6 +152,7 @@ The bar also has a timeline to scrub, speeds from 0.05× to 1×, zoom and a loop
 
 - **Wavell:** walk cycle, wipe, pull, Rage (after untying the knot), idle pose
 - **Killerwave (orca):** outline, eye and teeth (an upper and a lower zigzag, each moving with its jaw as the mouth shuts), all as one target. Drag any point; hover one to see what it is (the fin tip is where Wavell holds on, the last four points are the jaws, drawn open: the game shuts them by moving the upper tip and the corner of the mouth).
+- **Killerwave: fin rising:** how its fin grows out of the line before the body comes up, keyed over time. Drag the tip handle up and down for how tall the fin has grown (g, 1 = full), left and right for how far its tip leans back (back: 0 over the middle of its foot, 1 where the outline has it). Four more handles shape it: the two points either side of the tip (b2, b1 before it, f1, f2 after it), each moved by an offset from where the growing fin puts it; the offsets fade out as the body comes up. The last key's time is how long the rise takes.
 - **Snawave** (no longer in the game): outline, rise, bite, sink
 - **Worm:** rise, bite, sink
 

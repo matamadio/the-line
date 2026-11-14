@@ -13,17 +13,29 @@
 
 import type { SpringLine } from '../line';
 import { DIFF } from '../../data/difficulty';
-import { ANIM } from '../../data/anim';
+import { ANIM, motion, motionLength } from '../../data/anim';
 import { COLORS, Neon, clamp, polyPath, smooth } from '../../core/neon';
 
 /** How deep it starts under the line: enough to hide even the fin (u). */
 const DEPTH = 50;
 /**
  * While only the fin shows, the fin (its tip and the point either side) rises on its own: the
- * part of it above FIN_SINK (u) grows out of the line over FIN_RISE (s), from a low bulge to the
- * full fin, as its tip leans back into place.
+ * part of it above FIN_SINK (u) grows out of the line, from a low bulge to the full fin, as its
+ * tip leans back into place. How, and how fast, is the motion ANIM.motions['orca.fin'] (the lab
+ * edits it): g, how tall the fin has grown (1 = full), and back, how far its tip has leaned
+ * back from over the middle of its foot (1 = where the outline has it).
  */
-const FIN_SINK = 16, FIN_RISE = 1;
+const FIN_SINK = 16;
+const finRise = () => motionLength('orca.fin');
+const FIN_M: Record<string, number> = {};
+/**
+ * The motion also moves the two points either side of the tip, to shape the fin as it rises:
+ * u and v offsets (u) for the points two and one before the tip (b2, b1) and one and two after
+ * it (f1, f2). They fade out as the body comes up.
+ */
+export const FIN_POINTS = ['b2', 'b1', 'f1', 'f2'] as const;
+/** The fin's points the motion shapes, as steps (in points) from the tip. */
+const FIN_STEPS = [-2, -1, 1, 2];
 /** Out this far (0 to 1), all of it hits, and it clears what is in its way. */
 const BODY_OUT = 0.6;
 /**
@@ -34,6 +46,19 @@ const BODY_OUT = 0.6;
 export const STALK_LEAD = 0.35, HEAD_GAP = 8;
 /** Jaws opening (s); slowing down after a ride (s); going back under (s). */
 const OPEN = 0.5, SLOW = 0.6, SINK = 1.1;
+
+/** The fin's tip: the highest point of the outline (its index, flat, as u's). */
+function finTipIndex() {
+  const s = ANIM.shapes.orca;
+  let best = 0;
+  for (let i = 2; i < s.length; i += 2) if (s[i + 1] > s[best + 1]) best = i;
+  return best;
+}
+/** The middle of the fin's foot (u): as a bulge, the fin is gathered over it. */
+function finMid(ti: number) {
+  const s = ANIM.shapes.orca;
+  return (s[Math.max(0, ti - 4)] + s[Math.min(s.length - 2, ti + 4)]) / 2;
+}
 
 /** (u, v) moved along with a jaw, from the line a→b (as edited) to a2→b2 (as it is now). */
 function follow(u: number, v: number, a: number[], b: number[], a2: number[], b2: number[]): [number, number] {
@@ -56,6 +81,8 @@ export class Orca {
   private up = 0;
   /** How far its fin is up on its own, 0 (under) to 1 (FIN_SINK deep). */
   private fin = 0;
+  /** How far its fin's tip has leaned back into place, 0 (over the middle of its foot) to 1. */
+  private back = 0;
   /** Jaws, 0 shut to 1 wide. */
   private open = 0;
   speed = 0;
@@ -63,9 +90,12 @@ export class Orca {
   hit = false;
   /** Shown still, for the animation lab. */
   private still = false;
-  /** Mounted while still coming up: how far out it was then (fin, body, jaws), and how long it takes to come all the way up (s). */
-  private from = [1, 1, 1];
+  /** Coming up from part way (mounted early, or the body after the fin): how far out it was then (fin, body, jaws, the fin's lean), and how long it takes to come all the way up (s). */
+  private from = [1, 1, 1, 1];
   private surface = 0;
+  /** The fin's shaping offsets from the motion (u, v for b2, b1, f1, f2), and how much of them shows (0 to 1). */
+  private off = [0, 0, 0, 0, 0, 0, 0, 0];
+  private offW = 0;
 
   /** x is its tail root, at the left. */
   constructor(public x: number) {}
@@ -87,13 +117,40 @@ export class Orca {
     this.state = 'ride';
     this.t = 0;
     // Caught on the way up, it carries on coming up, with him on it, at its own pace.
-    this.from = [this.fin, this.up, this.open];
-    this.surface = Math.max(FIN_RISE * (1 - this.fin), DIFF.orcaRise * (1 - this.up), OPEN * (1 - this.open));
+    this.from = [this.fin, this.up, this.open, this.back, this.offW];
+    this.surface = Math.max(finRise() * (1 - Math.min(1, this.fin)), DIFF.orcaRise * (1 - this.up), OPEN * (1 - this.open));
   }
   /** Gone off the screen at the right. */
   leave() { this.state = 'done'; }
   /** Fully up, jaws this open, and still: how the animation lab shows it. */
-  show(open = 1) { this.up = 1; this.fin = 1; this.open = open; this.still = true; this.speed = 0; }
+  show(open = 1) { this.up = 1; this.fin = 1; this.back = 1; this.offW = 0; this.open = open; this.still = true; this.speed = 0; }
+  /** Only the fin, grown and leaned as in the motion's channels (g, back): the lab shows the fin rising so. */
+  showFin(v: Record<string, number>) {
+    this.up = 0; this.open = 0; this.still = true; this.speed = 0;
+    this.fin = v.g ?? 1; this.back = v.back ?? 1;
+    this.readOffsets(v);
+  }
+  private readOffsets(v: Record<string, number>) {
+    FIN_POINTS.forEach((p, i) => { this.off[i * 2] = v[p + 'u'] ?? 0; this.off[i * 2 + 1] = v[p + 'v'] ?? 0; });
+    this.offW = 1;
+  }
+  /**
+   * The fin as the lab needs it: its tip (u, v), the middle of its foot (u), the depth it rises
+   * from (u), and the outline's points b2, b1, f1, f2 (u, v each).
+   */
+  static finGeom() {
+    const s = ANIM.shapes.orca, ti = finTipIndex();
+    const pts = FIN_STEPS.map((d) => { const i = clamp(ti + d * 2, 0, s.length - 2); return [s[i], s[i + 1]]; });
+    return { tipU: s[ti], tipV: s[ti + 1], mid: finMid(ti), sink: FIN_SINK, pts };
+  }
+  /**
+   * Where one of the shaped points (0 to 3: b2, b1, f1, f2) is drawn with the fin grown g and
+   * leaned back, before its offset: the near ones grow with the fin, the far ones stay on the line.
+   */
+  static finBase(i: number, g: number, back: number): [number, number] {
+    const G = Orca.finGeom(), [u, v] = G.pts[i];
+    return Math.abs(FIN_STEPS[i]) === 1 ? [G.mid + (u - G.mid) * back, (v - FIN_SINK) * g] : [u, 0];
+  }
 
   /** Is x on the part of it that is out of the line? Only the fin, until it is nearly all up. */
   reaches(x: number) {
@@ -111,20 +168,32 @@ export class Orca {
     // Chasing, but never running its head into him before it is up.
     const after = () => { this.speed = chase; this.x = Math.min(this.x + chase * dt, Math.max(this.x, target - HEAD_GAP - len)); };
     switch (this.state) {
-      case 'rise':
-        this.fin = smooth(clamp(t / FIN_RISE, 0, 1));
+      case 'rise': {
+        const m = motion('orca.fin', t, FIN_M);
+        this.fin = m.g ?? 1;
+        this.back = m.back ?? 1;
+        this.readOffsets(m);
         after();
-        if (t >= FIN_RISE) { this.state = 'stalk'; this.t = 0; }
+        if (t >= finRise()) { this.state = 'stalk'; this.t = 0; }
+        return;
+      }
         return;
       case 'stalk':
         // Only the fin, cutting along the line after him.
         after();
-        if (this.head >= target - chase * DIFF.orcaRise * STALK_LEAD || t >= DIFF.orcaStalk) { this.state = 'emerge'; this.t = 0; }
+        if (this.head >= target - chase * DIFF.orcaRise * STALK_LEAD || t >= DIFF.orcaStalk) {
+          this.state = 'emerge';
+          this.t = 0;
+          this.from = [this.fin, 0, 0, this.back];
+        }
         return;
       case 'emerge':
         // Coming up, it keeps its pace: no holding back for him any more.
-        this.fin = 1;
         this.up = smooth(clamp(t / DIFF.orcaRise, 0, 1));
+        // The fin, as the motion left it, comes into its place with the body.
+        this.fin = this.from[0] + (1 - this.from[0]) * this.up;
+        this.back = this.from[3] + (1 - this.from[3]) * this.up;
+        this.offW = 1 - this.up;
         this.speed = chase;
         this.x += chase * dt;
         if (t >= DIFF.orcaRise) { this.state = 'open'; this.t = 0; }
@@ -139,8 +208,10 @@ export class Orca {
         this.speed = Math.max(chase, DIFF.orcaSpeed * smooth(clamp(t / 0.35, 0, 1)));
         break;
       case 'ride': {
-        const k = this.surface > 0 ? smooth(clamp(t / this.surface, 0, 1)) : 1, [f, u, o] = this.from;
+        const k = this.surface > 0 ? smooth(clamp(t / this.surface, 0, 1)) : 1, [f, u, o, b, w] = this.from;
+        this.offW = w * (1 - k);
         this.fin = f + (1 - f) * k;
+        this.back = b + (1 - b) * k;
         this.up = u + (1 - u) * k;
         this.open = o + (1 - o) * k;
         this.speed = DIFF.orcaRideSpeed * smooth(clamp(t / 0.3, 0, 1));
@@ -154,6 +225,7 @@ export class Orca {
       case 'sink':
         this.up = 1 - smooth(clamp(t / SINK, 0, 1));
         this.open = this.fin = this.up;
+        this.back = this.up * this.up;
         if (t >= SINK) this.state = 'done';
         break;
     }
@@ -164,15 +236,23 @@ export class Orca {
   /** k: the point's index in the outline (flat, as u's), so the fin's points can rise on their own. */
   private tf(line: SpringLine) {
     const sink = (1 - this.up) * DEPTH, swim = this.still ? 0 : this.speed > 60 ? 1.2 : 0.4;
-    const s = ANIM.shapes.orca, f = this.fin, [, , ti] = this.finTipLocal();
-    // The middle of the fin's foot: as a bulge, the fin is gathered over it.
-    const mid = (s[Math.max(0, ti - 4)] + s[Math.min(s.length - 2, ti + 4)]) / 2;
+    const f = this.fin, ti = finTipIndex(), mid = finMid(ti);
     return (u: number, v: number, k = -1): [number, number] => {
       let h = v - sink;
-      if (k >= 0 && Math.abs(k - ti) <= 2) {
+      const step = k >= 0 ? (k - ti) / 2 : 9;
+      if (step === 0) {
         // The fin, out on its own: as tall as it has grown, and leaning back as it grows.
         h = Math.max(h, (v - FIN_SINK) * f);
-        if (h > v - sink) u = mid + (u - mid) * f * f;
+        if (h > v - sink) u = mid + (u - mid) * this.back;
+      } else if (Math.abs(step) <= 2) {
+        // Either side of the tip, shaped by the motion: the near ones grow with the fin, the far ones sit on the line.
+        const j = FIN_STEPS.indexOf(step), W = this.offW;
+        const near = Math.abs(step) === 1;
+        const fh = (near ? (v - FIN_SINK) * f : 0) + this.off[j * 2 + 1] * W;
+        if (fh > h && (near || W > 0)) {
+          h = fh;
+          u = (near ? mid + (u - mid) * this.back : u) + this.off[j * 2] * W;
+        }
       }
       // It swims: a ripple runs back along the body, and the line hides what is still under it.
       const vv = Math.max(0, h + (v > 1 ? swim * Math.sin(this.time * 11 - u * 0.12) : 0));
@@ -194,10 +274,8 @@ export class Orca {
 
   /** The highest point of the outline: the fin's tip, in body space, and its index. */
   private finTipLocal(): [number, number, number] {
-    const s = ANIM.shapes.orca;
-    let best = 0;
-    for (let i = 2; i < s.length; i += 2) if (s[i + 1] > s[best + 1]) best = i;
-    return [s[best], s[best + 1], best];
+    const s = ANIM.shapes.orca, i = finTipIndex();
+    return [s[i], s[i + 1], i];
   }
 
   outline(line: SpringLine): number[] {

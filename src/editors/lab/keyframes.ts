@@ -10,13 +10,13 @@ import {
 import { SpringLine } from '../../game/line';
 import { COLORS, Neon, smoothPath } from '../../core/neon';
 import { Snawave } from '../../game/actors/snawave';
-import { Orca } from '../../game/actors/orca';
+import { FIN_POINTS, Orca } from '../../game/actors/orca';
 import { Wavell } from '../../game/actors/wavell';
 import { Worm } from '../../game/actors/worm';
 
 const STEP = 1 / 120;
 type Target = 'idle' | 'appear' | 'sink' | 'inflate' | 'deflate' | 'walk' | 'walkStrut' | 'wipe' | 'pull' | 'rage' | 'orca' | 'snawave'
-  | 'snawave.rise' | 'snawave.bite' | 'snawave.sink' | 'worm.rise' | 'worm.bite' | 'worm.sink';
+  | 'orca.fin' | 'snawave.rise' | 'snawave.bite' | 'snawave.sink' | 'worm.rise' | 'worm.bite' | 'worm.sink';
 const TARGETS: [Target, string][] = [
   ['appear', 'Wavell: climbing out'],
   ['sink', 'Wavell: sinking (killed)'],
@@ -29,6 +29,7 @@ const TARGETS: [Target, string][] = [
   ['rage', 'Wavell: Rage (after untying the knot)'],
   ['idle', 'Wavell: idle pose'],
   ['orca', 'Killerwave (orca): outline, eye and teeth'],
+  ['orca.fin', 'Killerwave: fin rising'],
   ['snawave', 'Snawave: outline'],
   ['snawave.rise', 'Snawave: rise'],
   ['snawave.bite', 'Snawave: bite'],
@@ -43,6 +44,15 @@ const CHANNELS: Record<string, [string, number, number, number]> = {
   lean: ['Lean (units)', -30, 30, 0.5],
   mouth: ['Mouth open (0..1)', 0, 1, 0.01],
   lunge: ['Head lunge (units)', -12, 15, 0.25],
+  back: ['Fin tip leaned back (0 = over the middle, 1 = in place)', -0.5, 1.5, 0.01],
+  b2u: ['Fin, 2nd point before the tip: along (u)', -25, 25, 0.1],
+  b2v: ['Fin, 2nd point before the tip: up (u)', -25, 25, 0.1],
+  b1u: ['Fin, point before the tip: along (u)', -25, 25, 0.1],
+  b1v: ['Fin, point before the tip: up (u)', -25, 25, 0.1],
+  f1u: ['Fin, point after the tip: along (u)', -25, 25, 0.1],
+  f1v: ['Fin, point after the tip: up (u)', -25, 25, 0.1],
+  f2u: ['Fin, 2nd point after the tip: along (u)', -25, 25, 0.1],
+  f2v: ['Fin, 2nd point after the tip: up (u)', -25, 25, 0.1],
 };
 /** Any key: a pose key (Wavell) or a motion key (enemies). */
 type AnyKey = Partial<Key> & Partial<MotionKey> & { t: number };
@@ -188,6 +198,16 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
   function handles(): number[] {
     if (isMotion()) {
       const v = motionAt();
+      if (target === 'orca.fin') {
+        // The tip, then the points either side of it: b2, b1, f1, f2.
+        const G = Orca.finGeom(), g = v.g ?? 1, back = v.back ?? 1;
+        const out = [orca.x + G.mid + (G.tipU - G.mid) * back, -(G.tipV - G.sink) * g];
+        FIN_POINTS.forEach((p, i) => {
+          const [bu, bv] = Orca.finBase(i, g, back);
+          out.push(orca.x + bu + (v[p + 'u'] ?? 0), -(bv + (v[p + 'v'] ?? 0)));
+        });
+        return out;
+      }
       if (target.startsWith('snawave.')) return [sna.x + 15 + (v.lean ?? 0), -SNA_H * (v.g ?? 1)];
       return [wrm.x + 13 - (v.lunge ?? 0) * 0.5, WORM_D * (v.g ?? 1), wrm.x - (v.lunge ?? 0), 0];
     }
@@ -252,6 +272,20 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
     const snap = (v: number) => Math.round(v * 10) / 10;
     if (isMotion()) {
       const d = editableMotion();
+      if (target === 'orca.fin') {
+        // Up and down: how tall it has grown. Left and right: how far its tip leans back.
+        const G = Orca.finGeom(), r = (v: number) => Math.round(v * 100) / 100;
+        if (drag > 0) {
+          // A point either side of the tip: where it goes is an offset from where the fin puts it.
+          const p = FIN_POINTS[drag - 1], [bu, bv] = Orca.finBase(drag - 1, d.g ?? 1, d.back ?? 1);
+          d[p + 'u'] = snap(wx - orca.x - bu);
+          d[p + 'v'] = snap(-wy - bv);
+          return;
+        }
+        d.g = r(Math.max(0, Math.min(1.5, -wy / Math.max(1, G.tipV - G.sink))));
+        if (Math.abs(G.tipU - G.mid) > 0.5) d.back = r(Math.max(-0.5, Math.min(1.5, (wx - orca.x - G.mid) / (G.tipU - G.mid))));
+        return;
+      }
       if (target.startsWith('snawave.')) {
         d.g = Math.round(Math.max(0, Math.min(2, -wy / SNA_H)) * 100) / 100;
         if ('lean' in d) d.lean = snap(wx - (sna.x + 15));
@@ -306,7 +340,19 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
     c.restore();
 
     const L = n.camX - 5, R = n.camX + n.viewW + 5;
-    if (isMotion()) {
+    if (target === 'orca.fin') {
+      if (onion) {
+        const ks = keys();
+        const prev = [...ks].reverse().find((k) => k.t < t - 1e-4), next = ks.find((k) => k.t > t + 1e-4);
+        for (const [k, col] of [[prev, ONION_PREV], [next, ONION_NEXT]] as const) {
+          if (!k?.v) continue;
+          orca.showFin(k.v);
+          n.glow(smoothPath([L, 0, ...orca.outline(line), R, 0]), col, 0.6, 0.35);
+        }
+      }
+      orca.showFin(motionAt());
+      n.glow(smoothPath([L, 0, ...orca.outline(line), R, 0]), COLORS.line, 0.9);
+    } else if (isMotion()) {
       const cr = creature();
       wrm.state = target === 'worm.bite' ? 'bite' : 'sink';
       if (onion) {
@@ -338,6 +384,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
       n.glow(smoothPath([L, 0, ...o, R, 0]), COLORS.line, 0.9);
       sna.drawFeatures(n, line);
     } else if (isOrca()) {
+      orca.show(1);
       const o = orca.outline(line);
       n.glow(smoothPath([L, 0, ...o, R, 0]), COLORS.line, 0.9);
       orca.drawFeatures(n, line);
@@ -360,7 +407,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
     // Handles, in screen space.
     n.screen();
     const h = handles(), onKey = target === 'idle' || isShape() || keyAt() >= 0;
-    const motionLabels = target.startsWith('snawave.') ? ['height · lean'] : ['depth', 'lunge'];
+    const motionLabels = target === 'orca.fin' ? ['fin tip: height · lean back', '2nd point before the tip', 'point before the tip', 'point after the tip', '2nd point after the tip'] : target.startsWith('snawave.') ? ['height · lean'] : ['depth', 'lunge'];
     for (let i = 0; i < h.length / 2; i++) {
       const [x, y] = n.toScreen(h[i * 2], h[i * 2 + 1]);
       const j = isShape() || isMotion() ? null : JOINTS[i];
