@@ -130,7 +130,7 @@ export class AudioMenu {
     });
     const foot = n.retro ? 'MUSIC BITCRUSHED'
       : touch ? 'tap a choice to change it   tap outside to close'
-        : '← → change   Esc close';
+        : inp.tv ? '← → change   BACK close' : '← → change   Esc close';
     n.text(foot, n.w / 2, b.y + b.h - s * 0.9, s * 0.48, GOLD, 'center', 0.8);
     c.canvas.style.cursor = '';
   }

@@ -218,6 +218,8 @@ export class Game {
   private viewSet = false;
   /** Asked for by a key since the last frame. */
   private menuAsked = false;
+  /** The TV remote's Back, this frame: it pauses a game rather than ending it. */
+  private backAsked = false;
   /** The music is playing on the start screen. */
   private titleMusic = false;
   private deathHandled = false;
@@ -231,6 +233,7 @@ export class Game {
     try { this.best = Number(localStorage.getItem(STORE)) || 0; } catch { /* storage blocked */ }
     input.onKey.set('KeyM', () => sfx.toggleMute());
     input.onKey.set('Escape', () => { this.menuAsked = true; });
+    input.onKey.set('BrowserBack', () => { this.backAsked = true; });
     input.onKey.set('KeyF', () => { void toggleFullscreen(); });
     input.onKey.set('KeyN', () => this.setNostalgia(!this.neon.retro));
     input.onGesture = () => sfx.unlock();
@@ -450,6 +453,14 @@ export class Game {
     dt = clamp(dt, 0, 0.05);
     this.input.poll();
     const ready = this.mode === 'over' && this.overT > 0.8;
+    // Back on the TV remote: a game pauses first, and goes to the menu only from the pause.
+    // Anywhere else it is Esc. While paused there, OK carries on.
+    let resumed = false;
+    if (this.backAsked && this.mode === 'play' && !this.audio.open) {
+      if (this.paused) this.menuAsked = true; else this.setPaused(true);
+    } else if (this.backAsked) this.menuAsked = true;
+    else if (this.input.tv && this.paused && this.input.confirm && this.mode === 'play' && !this.audio.open) { this.setPaused(false); resumed = true; }
+    this.backAsked = false;
     if (this.audio.open) {
       if (this.menuAsked || this.input.backPressed) this.closeAudio();
       else this.audio.handle(this.input);
@@ -465,6 +476,8 @@ export class Game {
     this.titleDust?.update(dt, this.neon, this.time);
     if (this.titleDust?.done) this.titleDust = null;
     let controls: Controls = this.mode === 'play' ? { ...this.input } : NO_INPUT;
+    // The OK that carried on isn't also a wipe.
+    if (resumed) controls = { ...controls, upPressed: false, downPressed: false, dragPressed: false, pullPressed: false };
     // The world keeps the beat's tempo, on the start screen too once its music plays.
     this.acc += dt * (DIFF.beatOn && (this.mode !== 'title' || this.titleMusic) ? this.beat.speed : 1);
     while (this.acc >= STEP) {

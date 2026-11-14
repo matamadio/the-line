@@ -1,0 +1,14 @@
+{
+  "id": "io.github.matamadio.theline",
+  "version": "1.0.0",
+  "vendor": "Bepposoft",
+  "type": "web",
+  "main": "index.html",
+  "title": "The Line",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#05030f",
+  "iconColor": "#05030f",
+  "resolution": "1920x1080",
+  "disableBackHistoryAPI": true
+}

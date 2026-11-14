@@ -31,19 +31,20 @@ Wavell walks right along a line while its end crumbles in behind him. He has to 
 
 The player can change keys and joypad buttons under CONTROL in the menu. These are the defaults.
 
-| Action | Keyboard | Joypad | Touch |
-| --- | --- | --- | --- |
-| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways |
-| Go through the line | Towards it: ↓/S on top, ↑/W underneath | Towards it | Left thumb, towards the line |
-| Float in a bubble | Away from it: ↑/W on top, ↓/S underneath | Away from it | Left thumb, away from the line |
-| Pull | X or Ctrl | X | Right thumb, swipe sideways |
-| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down |
-| Mute | M | | Speaker icon |
-| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) |
-| Nostalgia (low-resolution look) | N | | Checkerboard icon |
-| Pause | P | Start | |
-| Back to the start screen | Esc | Back | |
+| Action | Keyboard | Joypad | Touch | LG TV remote |
+| --- | --- | --- | --- | --- |
+| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways | ← → |
+| Go through the line | Towards it: ↓/S on top, ↑/W underneath | Towards it | Left thumb, towards the line | Towards it (↑ ↓) |
+| Float in a bubble | Away from it: ↑/W on top, ↓/S underneath | Away from it | Left thumb, away from the line | Away from it (↑ ↓) |
+| Pull | X or Ctrl | X | Right thumb, swipe sideways | CH ↑ or CH ↓ (or green) |
+| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down | OK (or red) |
+| Mute | M | | Speaker icon | |
+| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) | |
+| Nostalgia (low-resolution look) | N | | Checkerboard icon | |
+| Pause | P | Start | | Back (OK carries on), or Play |
+| Back to the start screen | Esc | Back | | Back, while paused |
 
+- **LG TV.** On webOS the remote's buttons are keys like any other, and can be bound under CONTROL (one the game has no name for shows as REMOTE and its number). Back never leaves the page: in a game it pauses, and pressed again while paused it goes back to the start screen; while paused, OK carries on (that OK is not also a wipe). Anywhere else Back does what Esc does. In the TV app there is no fullscreen icon: it is always fullscreen.
 - **Directions are relative to the line.** "Towards" goes through it and "away" floats off, on whichever side Wavell is.
 - **Menu.** ↑ and ↓ cycle the entries (START, CONTROL, CREDITS). Enter, a wipe, a pull or joypad A picks the front one: Wavell pulls it in to open it. On a phone, swipe up or down and tap.
 - **First-time hints.** Each enemy and each mistake (such as a wrong attack) shows a hint the first time, for 3.5 s, worded for keys or touch depending on the input in use. Once the levels start over after the boss, no hints show again.
