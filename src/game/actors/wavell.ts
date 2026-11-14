@@ -15,7 +15,7 @@ import { COLORS, Neon, clamp, lerp, polyPath, smooth } from '../../core/neon';
 import { DIFF } from '../../data/difficulty';
 import { TUNE } from '../../data/tune';
 import { ANIM, I, TILT, clipLength, mark, mix, namedPose, pose, type Joint, type Pose } from '../../data/anim';
-import { GRAB, UNTIE, armsUp } from './rage';
+import { UNTIE } from './rage';
 
 
 
@@ -548,12 +548,11 @@ export class Wavell {
       const s = Math.sin(this.rageT * 70) * 0.8, c = Math.cos(this.rageT * 55) * 0.8;
       target[I.handF] += s; target[I.handB] -= s; target[I.handF + 1] += c; target[I.handB + 1] -= c;
       target[I.head] += s * 0.3;
-    } else mix(namedPose('rageLow', target), namedPose('rageHigh', this.from2), armsUp(this.rageT - UNTIE), target);
+    } else pose('rage', this.rageT - UNTIE, target);
   }
-  private from2 = namedPose('idle');
 
   /** Holding the line in both hands, so it follows them. */
-  get gripping() { return this.rageT - UNTIE >= GRAB && this.state === 'ground' && this.alive; }
+  get gripping() { return this.rageT - UNTIE >= mark('rage', 'grab') && this.state === 'ground' && this.alive; }
 
   /** Where his hands hold the line, from his feet: back hand across and up, front hand across and up (world units; up is down under the line). */
   grips(): [number, number, number, number] {

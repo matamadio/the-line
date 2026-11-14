@@ -149,7 +149,7 @@ The bar also has a timeline to scrub, speeds from 0.05× to 1×, zoom and a loop
 
 **Edit keyframes**, at the top of the lab, switches to the keyframe editor. Choose what to edit from the list:
 
-- **Wavell:** walk cycle, wipe, pull, idle pose
+- **Wavell:** walk cycle, wipe, pull, Rage (after untying the knot), idle pose
 - **Snawave** (no longer in the game): outline, rise, bite, sink
 - **Worm:** rise, bite, sink
 
@@ -159,8 +159,8 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 
 - Drag a joint to change the current key. Dragging between keys adds a new one.
 - Each key has a time, an ease (smooth, linear, in, out, spline, hold) and a pose.
-- A pose is either one of the shared poses (idle, reach, lift, haul), which changes every key that uses it, or the key's own.
-- Clips have named marks the game listens for: `grab` and `release` (when the hands hold and let go of the line), `haul`, and the walk's footfalls.
+- A pose is either one of the shared poses (idle, reach, lift, haul, rageLow, rageHigh), which changes every key that uses it, or the key's own.
+- Clips have named marks the game listens for: `grab` and `release` (when the hands hold and let go of the line), `haul`, and the walk's footfalls. In Rage, `grab` is when he takes hold of the line, and each `wave…` mark sends a wave out each way: a crest if his hands are up then, a trough if they are down. The editor moves marks; to change how many waves there are, add or remove `wave` marks in `src/data/anim.json`.
 - In the walk, the knees follow the hips and feet automatically.
 
 **The enemies' motions** are keyed numbers rather than poses: height or depth (`g`), lean and mouth for the Snawave, depth and head lunge for the Worm.

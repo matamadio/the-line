@@ -14,7 +14,7 @@ import { Wavell } from '../../game/actors/wavell';
 import { Worm } from '../../game/actors/worm';
 
 const STEP = 1 / 120;
-type Target = 'idle' | 'appear' | 'sink' | 'inflate' | 'deflate' | 'walk' | 'walkStrut' | 'wipe' | 'pull' | 'snawave'
+type Target = 'idle' | 'appear' | 'sink' | 'inflate' | 'deflate' | 'walk' | 'walkStrut' | 'wipe' | 'pull' | 'rage' | 'snawave'
   | 'snawave.rise' | 'snawave.bite' | 'snawave.sink' | 'worm.rise' | 'worm.bite' | 'worm.sink';
 const TARGETS: [Target, string][] = [
   ['appear', 'Wavell: climbing out'],
@@ -25,6 +25,7 @@ const TARGETS: [Target, string][] = [
   ['walkStrut', 'Wavell: walk cycle (proposal)'],
   ['wipe', 'Wavell: wipe'],
   ['pull', 'Wavell: pull'],
+  ['rage', 'Wavell: Rage (after untying the knot)'],
   ['idle', 'Wavell: idle pose'],
   ['snawave', 'Snawave: outline'],
   ['snawave.rise', 'Snawave: rise'],
@@ -86,7 +87,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
 
   // ---------------------------------------------------------------- helpers
 
-  const isClip = () => target === 'appear' || target === 'sink' || target === 'inflate' || target === 'deflate' || target === 'walk' || target === 'walkStrut' || target === 'wipe' || target === 'pull';
+  const isClip = () => target === 'appear' || target === 'sink' || target === 'inflate' || target === 'deflate' || target === 'walk' || target === 'walkStrut' || target === 'wipe' || target === 'pull' || target === 'rage';
   const isMotion = () => target.includes('.');
   /** Has a timeline: a clip or a motion. */
   const timed = () => isClip() || isMotion();

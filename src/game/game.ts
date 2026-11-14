@@ -42,7 +42,7 @@ import { BUBBLE_GREEN, BubbleBurst } from './actors/bubble';
 import { Wavell, type Attack, HEIGHT as WAVELL_HEIGHT } from './actors/wavell';
 import { WORM_W, Worm } from './actors/worm';
 import { Flattener } from './actors/flattener';
-import { KNOT_HALF, RAGE_GAP, RAGE_LEAD, RAGE_WAVES, RageKnot, wildHue } from './actors/rage';
+import { KNOT_HALF, RageKnot, rageWaves, wildHue } from './actors/rage';
 import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, audioButton, nostalgiaButton } from './hud';
 import { drawGame } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
@@ -1591,8 +1591,8 @@ export class Game {
   private rage(x: number) {
     // They start just past the line he holds, each at the end of a stroke of his arms.
     const off = (13 + GRIP_FALL) * this.wavell.scale + RAGE_WIDTH;
-    for (let i = 0; i < RAGE_WAVES; i++) {
-      for (const dir of [-1, 1] as const) this.rageWaves.push({ x: x + dir * off, from: x, dir, side: (i % 2 ? -1 : 1) as 1 | -1, delay: RAGE_LEAD + i * RAGE_GAP, age: 0 });
+    for (const w of rageWaves()) {
+      for (const dir of [-1, 1] as const) this.rageWaves.push({ x: x + dir * off, from: x, dir, side: w.side, delay: w.t, age: 0 });
     }
     // Nothing more is on its way in either.
     this.herald = null;

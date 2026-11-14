@@ -5,26 +5,22 @@
 
 import { clamp, lerp, smooth } from '../../core/neon';
 import type { SpringLine } from '../line';
+import { ANIM, I, SIZE, pose } from '../../data/anim';
 
 /** How long untying it takes (s): he holds still meanwhile. */
 export const UNTIE = 0.55;
 /**
- * After untying it: he reaches down and grabs the line on both sides (GRAB s), heaves it
- * up (until RAGE_LEAD s), then beats it down and up, a wave going out at the end of each
- * stroke, RAGE_GAP s apart: the first and last with his arms high (crests), the one between
- * with his arms low (a trough). Then he lowers it slowly back to rest (RAGE_REST s).
+ * After untying it, Wavell plays the "rage" clip (the animation lab edits it): he grabs the
+ * line at its "grab" mark and holds it until the clip ends, and a wave goes out each way at
+ * each of its "wave…" marks: a crest if his hands are up then, a trough if they are down.
  */
-export const GRAB = 0.2, RAGE_LEAD = 0.45, RAGE_GAP = 0.36, RAGE_WAVES = 3, RAGE_REST = 0.6;
-
-/** t s after the knot is untied: how high his hands are, 0 at the line, 1 over his head. */
-export function armsUp(t: number) {
-  if (t < GRAB) return 0;
-  if (t < RAGE_LEAD) return smooth((t - GRAB) / (RAGE_LEAD - GRAB));
-  const s = t - RAGE_LEAD, i = Math.floor(s / RAGE_GAP);
-  if (i >= RAGE_WAVES - 1) return 1 - smooth(clamp((s - (RAGE_WAVES - 1) * RAGE_GAP) / RAGE_REST, 0, 1));
-  const k = smooth((s - i * RAGE_GAP) / RAGE_GAP);
-  return i % 2 === 0 ? 1 - k : k;
+export function rageWaves(): { t: number; side: 1 | -1 }[] {
+  const c = ANIM.clips.rage, p = new Float32Array(SIZE);
+  return Object.entries(c.marks ?? {}).filter(([k]) => k.startsWith('wave')).map(([, t]) => t).sort((x, y) => x - y)
+    .map((t) => ({ t, side: pose('rage', t, p)[I.handF + 1] > RAGE_MID ? 1 : -1 }));
 }
+/** Hands higher than this (pose units) send a crest, lower a trough. */
+const RAGE_MID = 9;
 
 /** Half its length along the line, and its tallest loop off it (u). */
 export const KNOT_HALF = 12, KNOT_HIGH = 15;

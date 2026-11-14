@@ -7,7 +7,7 @@ import { SEG_W, Sinepede } from '../src/game/actors/sinepede';
 import { BubbleBurst } from '../src/game/actors/bubble';
 import { Urchin } from '../src/game/actors/urchin';
 import { Worm } from '../src/game/actors/worm';
-import { RAGE_GAP, RAGE_LEAD, RageKnot, UNTIE } from '../src/game/actors/rage';
+import { RageKnot, UNTIE, rageWaves } from '../src/game/actors/rage';
 import { backwave, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
@@ -1387,7 +1387,9 @@ describe('the Rage knot', () => {
     expect(g.wavell.powered).toBe(true);
     const W = g.wavell, L = g.line;
     // Arms up: the first waves go, crests, and the line in his hands is up with them.
-    run(g, RAGE_LEAD - 0.05);
+    const [w1, w2] = rageWaves();
+    expect([w1.side, w2.side]).toEqual([1, -1]);
+    run(g, w1.t - 0.05);
     let [bx, by, fx, fy] = W.hands(L);
     const ground = L.sample(W.x);
     expect(Math.abs(fx - bx)).toBeGreaterThan(20);
@@ -1397,7 +1399,7 @@ describe('the Rage knot', () => {
     expect(ground - L.sample(bx)).toBeGreaterThan(10);
     expect(g.rageWaves.filter((r) => r.delay <= 0).length).toBe(2);
     // Arms down: the next ones go, troughs, his hands at the line.
-    run(g, RAGE_GAP);
+    run(g, w2.t - w1.t);
     [bx, by, fx, fy] = W.hands(L);
     expect(ground - by).toBeLessThan(4);
     expect(ground - fy).toBeLessThan(4);

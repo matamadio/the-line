@@ -73,11 +73,11 @@
       "footF": [6, 0.5],
       "toeF": [8, 0],
       "neck": [0, 11],
-      "elbowB": [-7, 6.5],
+      "elbowB": [-9.5, 7.8],
       "handB": [-13, 0.8],
-      "elbowF": [7, 6.5],
+      "elbowF": [7.8, 8.7],
       "handF": [13, 0.8],
-      "head": [0.6, 17.4],
+      "head": [-0.8, 16.2],
       "tilt": -0.2
     },
     "rageHigh": {
@@ -89,11 +89,11 @@
       "footF": [6, 0.5],
       "toeF": [8, 0],
       "neck": [0, 14.2],
-      "elbowB": [-7, 18],
+      "elbowB": [-8.6, 13.1],
       "handB": [-13, 22],
-      "elbowF": [7, 18],
+      "elbowF": [8.6, 14],
       "handF": [13, 22],
-      "head": [-0.6, 21.4],
+      "head": [-2.3, 19.5],
       "tilt": -0.45
     }
   },
@@ -872,6 +872,40 @@
             "tilt": 0.08
           },
           "ease": "spline"
+        }
+      ]
+    },
+    "rage": {
+      "marks": {
+        "grab": 0.2,
+        "wave1": 0.45,
+        "wave2": 0.81,
+        "wave3": 1.17
+      },
+      "keys": [
+        {
+          "t": 0,
+          "pose": "haul"
+        },
+        {
+          "t": 0.2,
+          "pose": "rageLow"
+        },
+        {
+          "t": 0.45,
+          "pose": "rageHigh"
+        },
+        {
+          "t": 0.81,
+          "pose": "rageLow"
+        },
+        {
+          "t": 1.17,
+          "pose": "rageHigh"
+        },
+        {
+          "t": 1.77,
+          "pose": "rageLow"
         }
       ]
     },
