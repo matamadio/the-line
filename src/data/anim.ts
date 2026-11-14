@@ -1,4 +1,4 @@
-// Keyframed animation data: Wavell's skeleton poses and clips, the Snawave's
+// Keyframed animation data: Wavell's skeleton poses and clips, the Killerwave's
 // outline, and the enemies' motions (rise, bite, sink) as keyed numbers. The numbers live in anim.json, which the animation lab (lab.html) edits
 // and saves; the game reads them live from ANIM, so edits show without a reload.
 //
@@ -36,11 +36,10 @@ export interface Clip {
   marks?: Record<string, number>;
 }
 /**
- * A motion key: values for the creature's channels (g: height or depth, lean,
- * mouth, lunge...). `eases` overrides the key's ease for single channels.
- * `chatter` (per second) makes the mouth snap open and shut on the way to this key.
+ * A motion key: values for the creature's channels (g: height or depth, lunge...).
+ * `eases` overrides the key's ease for single channels.
  */
-export interface MotionKey { t: number; v: Record<string, number>; ease?: Ease; eases?: Record<string, Ease>; chatter?: number }
+export interface MotionKey { t: number; v: Record<string, number>; ease?: Ease; eases?: Record<string, Ease> }
 export interface Motion { keys: MotionKey[]; marks?: Record<string, number> }
 export interface AnimData {
   poses: Record<string, PoseData>;
@@ -176,7 +175,6 @@ export function motion(name: string, t: number, out: Record<string, number> = {}
     const e = b.eases?.[ch] ?? b.ease ?? 'smooth';
     out[ch] = a.v[ch] + ((b.v[ch] ?? a.v[ch]) - a.v[ch]) * easeFn[e === 'spline' ? 'smooth' : e](u);
   }
-  if (b.chatter && b !== a && 'mouth' in out) out.mouth *= Math.abs(Math.sin(t * b.chatter));
   return out;
 }
 

@@ -11,7 +11,7 @@ import { STYLES, styleById, type Style } from './styles';
 const SAMPLES = {
   appear: 'compare', vanish: 'sparisce', drag: 'colpisce', kill: 'snawave_sparisce',
   flipDown: 'rovescia_in_giu', flipUp: 'rovescia_in_su', offline: 'offline', eaten: 'eated',
-  snawave: 'snawave', level: 'levelpass', reflux: 'reflux', pop: 'bollapop', bonus: 'linesaver',
+  grow: 'snawave', level: 'levelpass', reflux: 'reflux', pop: 'bollapop', bonus: 'linesaver',
 } as const;
 export type Sample = keyof typeof SAMPLES;
 

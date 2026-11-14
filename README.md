@@ -149,7 +149,6 @@ The bar also has a timeline to scrub, speeds from 0.05× to 1×, zoom and a loop
 **Edit keyframes**, at the top of the lab, switches to the keyframe editor. Choose what to edit from the list:
 
 - **Wavell:** walk cycle, wipe, pull, idle pose
-- **Snawave** (no longer in the game): outline, rise, bite, sink
 - **Worm:** rise, bite, sink
 
 The real stroke is drawn over a grid, with the keys either side shown faintly (onion skin).
@@ -162,10 +161,10 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 - Clips have named marks the game listens for: `grab` and `release` (when the hands hold and let go of the line), `haul`, and the walk's footfalls.
 - In the walk, the knees follow the hips and feet automatically.
 
-**The enemies' motions** are keyed numbers rather than poses: height or depth (`g`), lean and mouth for the Snawave, depth and head lunge for the Worm.
+**The enemies' motions** are keyed numbers rather than poses: depth (`g`) and head lunge for the Worm.
 
-- Drag the handle on the crest (height and lean), or on the Worm's belly (depth) and head (lunge), or use the sliders.
-- Each number can have its own ease, and the Snawave's last bite key can make the mouth chatter.
+- Drag the handles on the Worm's belly (depth) and head (lunge), or use the sliders.
+- Each number can have its own ease.
 - In the bite motions, Wavell is drawn where the jaws close, and the `hit` mark is when they close on him.
 - The melt after a kill is not keyed. Tune it with the lab's number sliders.
 
@@ -208,7 +207,7 @@ src/
     line.ts        The line itself: a wave-equation string
     crumble.ts     A creature coming apart at the end of the line
     fx.ts          Sparks, score popups
-    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, the Flattener (the boss), and the retired Snawave
+    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, the Flattener (the boss)
   data/            The tunable numbers and the files the editors save
   editors/         The difficulty editor and the animation lab
 test/              Headless tests: the real simulation, no browser

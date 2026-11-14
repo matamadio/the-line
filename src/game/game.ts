@@ -1647,7 +1647,7 @@ export class Game {
     grow();
     this.fx.burst(x, y, 12, 30, color, 0, 0.4);
     this.neon.shake = Math.max(this.neon.shake, 0.3);
-    sfx.play('snawave', 0.5);
+    sfx.play('grow', 0.5);
     this.teach('grow', hint[0], hint[1]);
   }
 
