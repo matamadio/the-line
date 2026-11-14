@@ -8,10 +8,11 @@ import { BubbleBurst } from '../src/game/actors/bubble';
 import { Urchin } from '../src/game/actors/urchin';
 import { Worm } from '../src/game/actors/worm';
 import { RageKnot, UNTIE, rageWaves } from '../src/game/actors/rage';
+import { STALK_LEAD } from '../src/game/actors/orca';
 import { backwave, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
 
 // These script each enemy to the second; test/beat.test.ts covers them on the beat.
 DIFF.beatOn = 0;
@@ -1622,5 +1623,141 @@ describe('reaching the end of the line', () => {
     const g = caught(ENEMIES[0][1]);
     run(g, 2);
     expect(g.wavell.alive).toBe(true);
+  });
+});
+
+describe('the Killerwave', () => {
+  /** A game at its level, with room behind him, and the orca called up. */
+  const called = () => {
+    const g = ready();
+    g.level = DIFF.orcaLevel;
+    g.endX = g.wavell.x - DIFF.orcaRoom - 20;
+    g.dropOrca();
+    expect(g.orca).not.toBeNull();
+    return g;
+  };
+  /** Up in the bubble, at (x, y). */
+  const floatAt = (g: ReturnType<typeof ready>, x: number, y: number) => {
+    const W = g.wavell;
+    W.state = 'fly';
+    W.t = TUNE.takeoff + 0.01;
+    W.x = x;
+    W.by = y;
+  };
+
+  it('comes up behind him when there is room, fin first', () => {
+    const g = ready();
+    g.quiet = false;
+    g.level = DIFF.orcaLevel;
+    g.endX = g.wavell.x - DIFF.orcaRoom - 20;
+    Object.assign(g, { orcaClock: DIFF.orcaEvery });
+    g.tick(IDLE);
+    const o = g.orca!;
+    expect(o).not.toBeNull();
+    expect(o.head).toBeLessThan(g.wavell.x);
+    expect(o.x).toBeGreaterThan(g.endX);
+    // At first only the fin is out: the line is flat over its back and head.
+    run(g, 0.5);
+    expect(['rise', 'stalk']).toContain(o.state);
+    const [fx, ty] = o.finTip(g.line), L = g.line;
+    expect(L.sample(fx) - ty).toBeGreaterThan(5);
+    expect(o.outline(L).filter((_, i) => i % 2 === 0).every((x) => x < o.x + 50)).toBe(true);
+  });
+
+  it('sends its fin after him, a little faster than he walks, then comes up close behind him', () => {
+    const g = called();
+    const W = g.wavell, o = g.orca!;
+    run(g, 0.4);
+    const gap = W.x - o.head, at = W.x;
+    run(g, 0.5, { ...IDLE, right: true });
+    expect(W.x - at).toBeGreaterThan(30);
+    expect(W.x - o.head).toBeLessThan(gap - 3);
+    // Standing still, it closes in fast, well within its longest chase.
+    for (let i = 0; i < 6 * STEPS_PER_SECOND && (o.state === 'rise' || o.state === 'stalk'); i++) g.tick(IDLE);
+    expect(o.state).toBe('emerge');
+    expect(W.x - o.head).toBeLessThan(TUNE.walkSpeed * W.speedMul * DIFF.orcaChase * DIFF.orcaRise * STALK_LEAD + 3);
+    expect(W.x - o.head).toBeGreaterThan(0);
+  });
+
+  it('does not come without room behind him, or before its level', () => {
+    const g = ready();
+    g.quiet = false;
+    g.level = DIFF.orcaLevel;
+    g.endX = g.wavell.x - DIFF.orcaRoom + 30;
+    Object.assign(g, { orcaClock: DIFF.orcaEvery });
+    run(g, 0.2);
+    expect(g.orca).toBeNull();
+    const h = ready();
+    h.quiet = false;
+    h.level = DIFF.orcaLevel - 1;
+    h.endX = h.wavell.x - DIFF.orcaRoom - 20;
+    Object.assign(h, { orcaClock: DIFF.orcaEvery });
+    run(h, 0.2);
+    expect(h.orca).toBeNull();
+  });
+
+  it('hits him if he stays on the line', () => {
+    const g = called();
+    g.wavell.size = 1;
+    run(g, DIFF.orcaStalk + DIFF.orcaRise + 2);
+    expect(g.wavell.size).toBe(0);
+    expect(g.wavell.alive).toBe(true);
+  });
+
+  it('goes by under his bubble, clearing what is ahead, and leaves the screen', () => {
+    const g = called();
+    const W = g.wavell, n = g.neon;
+    const urchin = new Urchin(W.x + 60, 0.01, 9);
+    g.urchins.push(urchin);
+    for (let i = 0; i < 10 * STEPS_PER_SECOND && g.orca!.state !== 'emerge'; i++) g.tick(IDLE);
+    floatAt(g, W.x, g.line.sample(W.x) - 70);
+    const score = g.score;
+    for (let i = 0; i < 6 * STEPS_PER_SECOND && g.orca; i++) { g.tick(IDLE); W.by = g.line.sample(W.x) - 70; }
+    expect(g.orca).toBeNull();
+    expect(W.alive).toBe(true);
+    expect(W.state).toBe('fly');
+    expect(urchin.standing).toBe(false);
+    expect(g.score).toBeGreaterThan(score);
+    expect(n.camX + n.viewW).toBeGreaterThan(W.x);
+  });
+
+  it('is ridden when the bubble comes down behind its fin: fast, untouchable, deaf to the controls, then he is set down', () => {
+    const g = called();
+    const W = g.wavell, L = g.line;
+    run(g, 1);
+    const [tx, ty] = g.orca!.finTip(L);
+    floatAt(g, tx - 4, ty - 4);
+    g.tick(IDLE);
+    expect(W.state).toBe('ride');
+    expect(g.orca!.ridden).toBe(true);
+    const x = W.x;
+    // Way ahead, a creature in its path.
+    const worm = new Worm(x + 600, 0);
+    worm.state = 'move';
+    g.worms.push(worm);
+    W.hurt('zap');
+    run(g, DIFF.orcaRide, { ...IDLE, left: true, upPressed: true });
+    expect(W.state).toBe('ride');
+    expect(W.alive).toBe(true);
+    expect(W.x - x).toBeGreaterThan(DIFF.orcaRideSpeed * (DIFF.orcaRide - 0.5));
+    expect(worm.harmful).toBe(false);
+    // It slows, sinks, and sets him down on the line, his own again.
+    for (let i = 0; i < 3 * STEPS_PER_SECOND && W.state === 'ride'; i++) g.tick(IDLE);
+    expect(W.state).toBe('ground');
+    expect(W.shielded).toBe(false);
+    run(g, 1.5);
+    expect(g.orca).toBeNull();
+    const at = W.x;
+    run(g, 0.3, { ...IDLE, right: true });
+    expect(W.x).toBeGreaterThan(at);
+  });
+
+  it('is not ridden from in front of its fin', () => {
+    const g = called();
+    run(g, 1);
+    const [tx, ty] = g.orca!.finTip(g.line);
+    floatAt(g, tx + 14, ty + 4);
+    g.tick(IDLE);
+    expect(g.wavell.state).toBe('fly');
   });
 });

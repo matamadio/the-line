@@ -40,6 +40,7 @@ export function drawGame(g: Game, dt: number) {
   for (const u of g.urchins) u.drawFeatures(n, g.line);
   for (const w of g.worms) w.drawFeatures(n, g.line);
   for (const b of g.bubbles) b.drawFeatures(n, g.line);
+  g.orca?.drawFeatures(n, g.line);
   g.boss?.drawFeatures(n, g.line, g.wavell.x);
   // A grown creature shows how many right waves it still takes, as dots off its tip.
   const pips = (x: number, y: number, count: number) => {
@@ -147,6 +148,11 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
     const pts = g.boss.outline(L);
     knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: g.boss.flash });
   }
+  // The Killerwave is the line too, risen up into an orca.
+  if (g.orca) {
+    const pts = g.orca.outline(L);
+    if (pts.length >= 4) knots.push({ pts, x0: pts[0], x1: pts[pts.length - 2], flash: 0 });
+  }
   // The menu's word is written by the line itself.
   const word = g.menu.wordOnRealLine();
   if (word) knots.push({ pts: word, x0: word[0], x1: word[word.length - 2], flash: 0 });
@@ -161,7 +167,7 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
   for (const s of g.sinepedes) ahead(s.x, s.back);
   const w = g.wavell.stroke(L, room);
   // While he crumbles, what is left of him no longer joins the line.
-  if (w) knots.push({ pts: w, x0: Math.min(w[0], w[w.length - 2]), x1: Math.max(w[0], w[w.length - 2]), flash: 0, solo: g.wavell.burning, wild: g.wavell.rageT >= 0 && g.wavell.alive });
+  if (w) knots.push({ pts: w, x0: Math.min(w[0], w[w.length - 2]), x1: Math.max(w[0], w[w.length - 2]), flash: 0, solo: g.wavell.burning || g.wavell.state === 'ride', wild: g.wavell.rageT >= 0 && g.wavell.alive });
   // A Sinepede's shoulders share out the room on each side of it, so they never run into what is next to them.
   const skirts = new Map<Sinepede, Skirts>();
   const others = [...knots.map((k): [number, number] => [k.x0, k.x1]), ...g.sinepedes.map((s): [number, number] => [s.x, s.back])];

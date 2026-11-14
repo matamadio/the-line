@@ -193,7 +193,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 
 ## Sparkles and power-ups
 
-Sparkles are the bait: chasing them gives ground to the line. The Rage knot is the one power-up so far.
+Sparkles are the bait: chasing them gives ground to the line. The power-ups are the Rage knot and the Killerwave, an enemy you can ride.
 
 - Every enemy killed leaves 2 sparkles, one on each side of the line.
 - More appear on their own about every 3 s, at most 6 at a time, as many below the line as above, often behind Wavell.
@@ -214,7 +214,16 @@ A small scribble of loops tangled into the line (24 u long, up to 15 u off it on
 - **The line:** the waves going left carry the end of the line back off the screen, and it then stops for 2 s, as after a wiped Backwave. The lead gauge fills.
 - **After it:** no new enemy comes until all the waves are gone.
 
-**Planned:** KILLERWAVE, still to be decided.
+### Killerwave
+
+An orca made of the line (a killer whale: a killer wave). It is an enemy, and a power-up for whoever rides it.
+
+- **When:** from level 5, one every 35 s, never during the boss fight or Rage. It needs Wavell on the line with at least 220 u of line behind him. It comes up as far back as that line allows (its head up to 140 u behind him, its tail at least 15 u clear of the end), and the end of the line waits until it charges.
+- **Coming up:** first only its fin cuts up out of the line, growing from a low bulge to the full fin over 1 s on an otherwise flat line, and comes after him at 1.15× his walking speed (his speed at his size), so he can't outwalk it. Its head never comes closer than 8 u behind him while only the fin shows. Once its head is as far behind him as it goes in a third of its rise (about 50 u), or after 2 s of chasing, the rest of it comes up (1.2 s) and it opens its jaws (0.5 s), keeping its pace all the while: it does not slow down for him, and once it is nearly all out it clears every creature along its body. Then it charges off to the right at 240 u/s, faster than he walks or floats.
+- **On the line, he is hit:** if it reaches him, or he walks into it, while he is on the line (either side), it hits him once (while only the fin is out, only the fin hits), like any enemy: he loses a size, or it is game over at no size.
+- **Up in the bubble, it goes by:** under the bubble it does nothing to him. It clears every creature along its body as it goes, as Rage does (5 points each, and their sparkles), and leaves at the right of the screen.
+- **Ridden:** if his bubble comes down on the back of its fin (touching the fin, no further forward than its tip), he grabs the tip and rides it. He hangs from it by one hand, his body streaming out behind like a flag. He shouts YEE-HAA!, and it races to the right at 340 u/s for 4 s, clearing every creature along its body. Meanwhile the controls do nothing and nothing can hurt him. Then it slows down (0.6 s) and sinks back into the line (1.1 s). As it goes down he hangs straight, and once his feet reach the line he lets go, standing, and the controls are his again.
+- Attacks do nothing to it.
 
 ## Scoring and levels
 
@@ -237,6 +246,7 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 | Boss flattened | 250 |
 | Sparkle | Chain position (1–8), ×5 if gold |
 | Creature cleared by Rage | 5 |
+| Creature cleared by the Killerwave | 5 |
 
 ### Levels
 
@@ -302,7 +312,8 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - **The Flattener:** a low tremble as he rises and as he rears up, a deep bass building up as his wave rears and a crash cymbal, a slap of water and a boom when it crashes, a meow for the cat (a buzzy tone through a vowel-like filter), a whine that spins up for the saw, a low three-rasp croak for the toad, a tone rising away when his wave is sent back at him, and a big falling groan when it hits.
 - **Sinepede:** pure sine tones whatever the style. It announces itself with one note per segment, high for a crest, low for a trough. Each cancelled segment plays its own note. The nearest one also hums: a sine at 220 Hz for one segment and 110 Hz more for each segment after it (330 Hz for 2, 440 Hz for 3), slightly saturated and with a little reverb. The hum starts 2 beats before a Sinepede comes in and gets louder as it closes in.
 - **Disturchin:** a low tremble under the fuzz, then a harsh, clipped sound while its spikes are out.
-- **Wavell:** a bright run of notes when he grows, a falling one when he shrinks, and a recorded shout, YEEEEH!, when he strikes the Rage pose (`yeah.mp3`).
+- **Wavell:** a bright run of notes when he grows, a falling one when he shrinks, and recorded shouts: YEEEEH! when he strikes the Rage pose (`yeah.mp3`) and YEE-HAW! when he mounts the Killerwave (`yeehaa.mp3`).
+- **Killerwave:** an orca's whistle as it starts to come up, a quick rise then a long, shivering fall with a few clicks under it, and the same call higher as it charges.
 - **Samples** from the original 2003 game cover the rest: appearing, vanishing, flipping down and up, hits, kills, being eaten, Reflux, bubble pop, level pass, the Backwave bonus and the Rage knot appearing (the original's bonus sound).
 
 ### Audio menu

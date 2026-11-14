@@ -43,6 +43,7 @@ import { Wavell, type Attack, HEIGHT as WAVELL_HEIGHT } from './actors/wavell';
 import { WORM_W, Worm } from './actors/worm';
 import { Flattener } from './actors/flattener';
 import { KNOT_HALF, RageKnot, rageWaves, wildHue } from './actors/rage';
+import { Orca, orcaLength } from './actors/orca';
 import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, audioButton, nostalgiaButton } from './hud';
 import { drawGame } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
@@ -79,6 +80,8 @@ export interface RageWave { x: number; from: number; dir: 1 | -1; side: 1 | -1; 
 const RAGE_AMP = 50, RAGE_WIDTH = 15;
 /** Past his hands, how far the line he holds takes to come back down to rest (u, at size 0). */
 const GRIP_FALL = 17;
+/** The Killerwave comes up with its head at most this far behind him (u). */
+const ORCA_BACK = 140;
 /** The stretch of line he stands on, held flat while Rage goes on (u, each side, at size 0). */
 const RAGE_HOLD = 12;
 /** How far off the edge of the screen they go before they are done (u). */
@@ -144,6 +147,9 @@ export class Game {
   rageWaves: RageWave[] = [];
   /** Seconds into the level the clock is for (loop * 100 + level), and the level the last knot came in. */
   private rageClock = 0;
+  /** The Killerwave, rising, charging or ridden. */
+  orca: Orca | null = null;
+  private orcaClock = 0;
   private rageLv = -1;
   private rageDropped = -1;
   /** What Rage's waves have already cleared, so each creature goes once. */
@@ -313,6 +319,8 @@ export class Game {
     this.tidals = [];
     this.knot = null;
     this.rageWaves = [];
+    this.orca = null;
+    this.orcaClock = 0;
     this.rageClock = 0;
     this.rageLv = -1;
     this.rageDropped = -1;
@@ -364,6 +372,8 @@ export class Game {
     this.tidals = [];
     this.knot = null;
     this.rageWaves = [];
+    this.orca = null;
+    this.orcaClock = 0;
     this.boss?.sink();
     this.bossHush?.();
     this.winT = 0;
@@ -492,7 +502,7 @@ export class Game {
     const W = this.wavell, L = this.line, n = this.neon;
     this.time += dt;
     // From untying the Rage knot until its waves are gone, he holds still.
-    W.update(dt, this.mode === 'title' ? this.menu.controls(k) : this.raging ? NO_INPUT : k, L, this.endX < W.x - 10, n.viewTop, n.viewBottom, this.viewAhead);
+    W.update(dt, this.mode === 'title' ? this.menu.controls(k) : this.raging || W.state === 'ride' ? NO_INPUT : k, L, this.endX < W.x - 10, n.viewTop, n.viewBottom, this.viewAhead);
     if (W.eyePop) {
       for (let i = 0; i < W.eyePop.length; i += 2) this.fx.burst(W.eyePop[i], W.eyePop[i + 1], 12, 55, COLORS.danger, 40, 0.5);
       sfx.play('pop', 0.6);
@@ -634,6 +644,7 @@ export class Game {
     this.updateTidals(dt);
     this.updateRefluxes(dt);
     this.updateRage(dt);
+    this.updateOrca(dt);
     if (this.hintT > 0) this.hintT -= dt;
     this.handleDeath();
 
@@ -975,7 +986,7 @@ export class Game {
   /** Is anything out there that he has to deal with? */
   private threatsAround() {
     return this.herald !== null || this.sinepedes.some((s) => s.harmful) || this.worms.some((w) => w.harmful) || this.bubbles.some((b) => b.harmful)
-      || this.urchins.some((u) => u.standing) || this.backwaves.length > 0 || this.refluxes.length > 0;
+      || this.urchins.some((u) => u.standing) || this.backwaves.length > 0 || this.refluxes.length > 0 || (this.orca?.harmful ?? false);
   }
 
   /**
@@ -1553,7 +1564,8 @@ export class Game {
       }
     }
     this.rageWaves = this.rageWaves.filter((r) => r.delay > 0 || (r.dir > 0 ? r.x < right : r.x > left));
-    if (!this.raging) { W.shielded = false; W.endRage(); }
+    if (!this.raging && W.state !== 'ride') W.shielded = false;
+    if (!this.raging) W.endRage();
   }
 
   /**
@@ -1572,6 +1584,76 @@ export class Game {
       if (ad <= a) return -h * smooth((ad - inner) / Math.max(1e-6, a - inner));
       return -h * (1 - smooth(Math.min(1, (ad - a) / fall)));
     });
+  }
+
+  /**
+   * The Killerwave: now and then, with room enough behind him, it comes up out of the line
+   * there, fin first, opens its jaws and charges off to the right. It hits him on the line;
+   * it goes by under his bubble, clearing everything in its way; and if the bubble comes
+   * down on the back of its fin, he rides it: dragged along at full speed for a while,
+   * clearing everything, until it slows down and sinks and he is set down on the line.
+   */
+  private updateOrca(dt: number) {
+    const W = this.wavell, L = this.line, n = this.neon;
+    if (!this.orca) {
+      if (W.alive && W.state !== 'appear' && !this.bossTime) this.orcaClock += dt;
+      if (!this.quiet && !this.bossTime && !this.raging && W.alive && W.onLine && W.state !== 'appear' && this.level >= DIFF.orcaLevel
+        && this.orcaClock >= DIFF.orcaEvery && W.x - this.endX >= DIFF.orcaRoom) this.dropOrca();
+      return;
+    }
+    const o = this.orca;
+    const was = o.state;
+    // Its fin comes after him a little faster than he walks.
+    o.update(dt, W.x, TUNE.walkSpeed * W.speedMul * DIFF.orcaChase);
+    // The end of the line waits while it comes.
+    if (o.coming) this.endGrace = Math.max(this.endGrace, 0.3);
+    if (o.state === 'charge' && was !== 'charge') sfx.orcaCall(1.35);
+    // Caught on the line, he is hit, once.
+    if (!o.hit && W.alive && W.onLine && o.reaches(W.x)) {
+      o.hit = true;
+      W.hurt(W.side > 0 ? 'zap' : 'flatten');
+      n.shake = Math.max(n.shake, 1);
+    }
+    // Come down on the back of its fin: he rides it.
+    if (this.mode === 'play' && W.alive && W.flying && o.catches(L, W.x, W.by, W.bubbleR)) {
+      const [tx, ty] = o.finTip(L);
+      o.mount();
+      W.mount(tx, ty);
+      W.shielded = true;
+      this.fx.burst(tx, ty, 24, 70, COLORS.wavell, 0, 0.5);
+      n.shake = Math.max(n.shake, 0.8);
+      sfx.play('yeehaa', 1);
+      this.teach('orca', 'KILLERWAVE: ride it! Float, then come down behind its fin', 'KILLERWAVE: ride it! Float, then come down behind its fin');
+    }
+    // Charging or ridden, it clears everything along its body, and throws up a wake of spray behind its tail.
+    if (o.surfaced || o.state === 'charge' || o.state === 'ride' || o.state === 'slow') {
+      this.rageClear(o.x, o.head, DIFF.orcaPoints);
+      if (Math.random() < 0.8) this.fx.spark(o.x, L.sample(o.x), -rand(10, 60), -rand(20, 70), 0.4, '#bfe9ff', 80);
+    }
+    if (o.ridden && W.state === 'ride') {
+      const [tx, ty] = o.finTip(L);
+      // Sinking, it sets him down once his feet reach the line.
+      if (o.state === 'sink' && L.sample(tx) - ty <= W.hangReach) { W.dismount(); W.shielded = this.raging; }
+      else W.ride(tx, ty, o.rush);
+    }
+    if (o.state === 'charge' && o.x > n.camX + n.viewW + 20) o.leave();
+    if (o.done) {
+      if (W.state === 'ride') { W.dismount(); W.shielded = this.raging; }
+      this.orca = null;
+    }
+  }
+
+  /** The Killerwave, now, coming up behind him. The difficulty editor calls it up on demand, making room if it must. */
+  dropOrca() {
+    const W = this.wavell;
+    if (this.mode !== 'play' || this.orca || this.raging || this.bossTime || !W.alive) return;
+    this.orcaClock = 0;
+    // As far back as the line lets it, so its fin has a way to come.
+    const len = orcaLength(), x = Math.max(Math.min(W.x - 30 * W.scale - len, this.endX + 15), W.x - len - ORCA_BACK);
+    this.endX = Math.min(this.endX, x - 15);
+    this.orca = new Orca(x);
+    sfx.orcaCall(1);
+    this.teach('orca', 'KILLERWAVE behind you! Float, then come down behind its fin to ride it', 'KILLERWAVE behind you! Float, then come down behind its fin to ride it');
   }
 
   /** From untying the Rage knot until the last of its waves is gone. */
@@ -1602,15 +1684,15 @@ export class Game {
     sfx.play('yeah', 1);
   }
 
-  /** Every creature between where the waves started and `to` (either way) is gone, its sparkles left behind. */
-  private rageClear(from: number, to: number) {
+  /** Every creature between `from` and `to` (either way) is gone, its sparkles left behind. */
+  private rageClear(from: number, to: number, points = DIFF.ragePoints) {
     const L = this.line;
     const within = (x: number) => (to > from ? x >= from && x <= to : x <= from && x >= to);
     const end = (e: object, x: number, go: () => void) => {
       if (this.raged.has(e) || !within(x)) return;
       this.raged.add(e);
       go();
-      this.addScore(DIFF.ragePoints, x, L.sample(x) - 14);
+      this.addScore(points, x, L.sample(x) - 14);
       this.dropSparkles(x);
       this.fx.burst(x, L.sample(x), 14, 50, '#ffd0e0', 0, 0.4);
     };

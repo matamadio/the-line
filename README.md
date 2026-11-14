@@ -104,12 +104,13 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | Backwave, Reflux | Chance per roll, how often it rolls, when it first appears |
 | Fighting | Knockback, the most sizes a creature can grow |
 | Rage | From which level a knot comes (one a level), how far into the level, how long it stays, its waves' speed and the points for each creature it clears |
+| Killerwave | From which level it comes, how often, how much line it needs behind Wavell, how fast and how long its fin chases him, how long its body takes to come up, its speed charging and ridden, how long a ride lasts, and the points for each creature it clears |
 | Sparkles | How many an enemy leaves, how often one comes on its own and how many at once, how many are gold, the chain window |
 | Growing | How many sparkles make a size, how long he glows, how many times he can grow, and what each size adds to his scale, walking speed and bubble |
 | Progress | Lives, points per level, extra lives, the starting level |
 | Beat | Whether the beat is on, the tempo ramp, and from which level enemies come on more beats. See [docs/DESIGN.md](docs/DESIGN.md#the-beat) |
 
-**The bar under the game** has restart, pause, level up and down, a button that drops a Rage knot ahead of Wavell, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
+**The bar under the game** has restart, pause, level up and down, buttons that drop a Rage knot ahead of Wavell and bring up the Killerwave behind him, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
 
 **The buttons:**
 
@@ -124,7 +125,7 @@ Rows that differ from the saved file turn orange, and double-clicking a row puts
 
 ![The animation lab](docs/images/lab.png)
 
-The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave, Rage and the burn.
+The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave, Rage, riding the Killerwave or floating over it, and the burn.
 
 **Playback**
 
@@ -150,6 +151,7 @@ The bar also has a timeline to scrub, speeds from 0.05× to 1×, zoom and a loop
 **Edit keyframes**, at the top of the lab, switches to the keyframe editor. Choose what to edit from the list:
 
 - **Wavell:** walk cycle, wipe, pull, Rage (after untying the knot), idle pose
+- **Killerwave (orca):** outline, eye and teeth (an upper and a lower zigzag, each moving with its jaw as the mouth shuts), all as one target. Drag any point; hover one to see what it is (the fin tip is where Wavell holds on, the last four points are the jaws, drawn open: the game shuts them by moving the upper tip and the corner of the mouth).
 - **Snawave** (no longer in the game): outline, rise, bite, sink
 - **Worm:** rise, bite, sink
 
