@@ -8,7 +8,7 @@ import { BubbleBurst } from '../src/game/actors/bubble';
 import { Urchin } from '../src/game/actors/urchin';
 import { Worm } from '../src/game/actors/worm';
 import { RageKnot, UNTIE, rageWaves } from '../src/game/actors/rage';
-import { STALK_LEAD } from '../src/game/actors/orca';
+import { Orca, STALK_LEAD } from '../src/game/actors/orca';
 import { backwave, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
@@ -1719,6 +1719,20 @@ describe('the Killerwave', () => {
     expect(urchin.standing).toBe(false);
     expect(g.score).toBeGreaterThan(score);
     expect(n.camX + n.viewW).toBeGreaterThan(W.x);
+  });
+
+  it('caught while only its fin is out, it comes the rest of the way up with him on it', () => {
+    const o = new Orca(0);
+    while (o.state !== 'stalk') o.update(1 / 120, 1000, 100);
+    o.mount();
+    const L = { sample: () => 0 } as unknown as Parameters<Orca['outline']>[0];
+    const top = () => Math.max(...o.outline(L).filter((_, i) => i % 2 === 1).map((y) => -y));
+    const h0 = top();
+    o.update(1 / 120, 1000, 100);
+    expect(top()).toBeLessThan(h0 + 2);
+    for (let i = 0; i < 3 * 120; i++) o.update(1 / 120, 1000, 100);
+    expect(o.state).toBe('ride');
+    expect(top()).toBeGreaterThan(h0 + 10);
   });
 
   it('is ridden when the bubble comes down behind its fin: fast, untouchable, deaf to the controls, then he is set down', () => {

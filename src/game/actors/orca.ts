@@ -63,6 +63,9 @@ export class Orca {
   hit = false;
   /** Shown still, for the animation lab. */
   private still = false;
+  /** Mounted while still coming up: how far out it was then (fin, body, jaws), and how long it takes to come all the way up (s). */
+  private from = [1, 1, 1];
+  private surface = 0;
 
   /** x is its tail root, at the left. */
   constructor(public x: number) {}
@@ -80,7 +83,13 @@ export class Orca {
   get rush() { return this.ridden ? clamp(this.speed / DIFF.orcaRideSpeed, 0, 1) : 0; }
 
   /** He came down on its back: off it goes, as fast as it can. */
-  mount() { this.state = 'ride'; this.t = 0; this.open = 1; this.up = 1; this.fin = 1; }
+  mount() {
+    this.state = 'ride';
+    this.t = 0;
+    // Caught on the way up, it carries on coming up, with him on it, at its own pace.
+    this.from = [this.fin, this.up, this.open];
+    this.surface = Math.max(FIN_RISE * (1 - this.fin), DIFF.orcaRise * (1 - this.up), OPEN * (1 - this.open));
+  }
   /** Gone off the screen at the right. */
   leave() { this.state = 'done'; }
   /** Fully up, jaws this open, and still: how the animation lab shows it. */
@@ -129,10 +138,15 @@ export class Orca {
       case 'charge':
         this.speed = Math.max(chase, DIFF.orcaSpeed * smooth(clamp(t / 0.35, 0, 1)));
         break;
-      case 'ride':
+      case 'ride': {
+        const k = this.surface > 0 ? smooth(clamp(t / this.surface, 0, 1)) : 1, [f, u, o] = this.from;
+        this.fin = f + (1 - f) * k;
+        this.up = u + (1 - u) * k;
+        this.open = o + (1 - o) * k;
         this.speed = DIFF.orcaRideSpeed * smooth(clamp(t / 0.3, 0, 1));
         if (t >= DIFF.orcaRide) { this.state = 'slow'; this.t = 0; }
         break;
+      }
       case 'slow':
         this.speed = DIFF.orcaRideSpeed * (1 - smooth(clamp(t / SLOW, 0, 1)));
         if (t >= SLOW) { this.state = 'sink'; this.t = 0; this.speed = 0; }
