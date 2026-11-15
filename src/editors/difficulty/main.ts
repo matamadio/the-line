@@ -165,6 +165,8 @@ $('restart').addEventListener('click', () => { game.start(); setLevel(game.level
 $('pause').addEventListener('click', () => { paused = !paused; $('pause').textContent = paused ? '▶' : '❚❚'; });
 $('lvdown').addEventListener('click', () => setLevel(game.level - 1));
 $('lvup').addEventListener('click', () => setLevel(game.level + 1));
+$('rage').addEventListener('click', () => { game.dropKnot(); canvas.focus(); });
+$('orca').addEventListener('click', () => { game.dropOrca(); canvas.focus(); });
 document.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
   b.addEventListener('click', () => {
     speed = Number(b.dataset.speed);

@@ -36,26 +36,26 @@ npm start
 
 **To start at a later level**, add `?level=N` to the address, for example `?level=10` to go straight to the boss. It lasts for that page only and saves nothing.
 
-**To check performance on a device**, add `?perf` to the address. The top left corner then shows the frame rate, whether the game draws on every refresh or every other one, and the resolution it settled on.
+**To check performance on a device**, add `?perf` to the address. The top left corner then shows the frame rate, whether the game draws on every refresh or every other one, the resolution it settled on, and whether it went lite. Add `?lite` to start in the lightest mode, to compare.
 
 ## How to play
 
 Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your size counter shows how much lead is left.
 
-On a computer, the keys and the joypad's buttons can be changed from CONTROL in the menu. The defaults:
+On a computer or a TV, the keys, the remote's and the joypad's buttons can be changed from CONTROL in the menu. The defaults:
 
-| Action | Keyboard | Joypad | Touch |
-| --- | --- | --- | --- |
-| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways |
-| Go through the line | Towards it: ↓ or S on top, ↑ or W underneath | Towards it | Left thumb, towards it |
-| Float | Away from it: ↑ or W on top, ↓ or S underneath | Away from it | Left thumb, away from it |
-| Pull | X or Ctrl | X | Right thumb, swipe sideways |
-| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down |
-| Mute | M | | Speaker icon |
-| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) |
-| Nostalgia (low resolution look) | N | | Checkerboard icon |
-| Pause | P | Start | |
-| Back to the start screen | Esc | Back | |
+| Action | Keyboard | Joypad | Touch | LG TV remote |
+| --- | --- | --- | --- | --- |
+| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways | ← → |
+| Go through the line | Towards it: ↓ or S on top, ↑ or W underneath | Towards it | Left thumb, towards it | Towards it (↑ ↓) |
+| Float | Away from it: ↑ or W on top, ↓ or S underneath | Away from it | Left thumb, away from it | Away from it (↑ ↓) |
+| Pull | X or Ctrl | X | Right thumb, swipe sideways | CH ↑ or CH ↓ (or green) |
+| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down | OK (or red) |
+| Mute | M | | Speaker icon | |
+| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) | |
+| Nostalgia (low resolution look) | N | | Checkerboard icon | |
+| Pause | P | Start | | Back (OK carries on), or Play |
+| Back to the start screen | Esc | Back | | Back, while paused |
 
 In the menu, ↑ goes to the line behind and ↓ to the one before, round and round; Enter (or a wipe or a pull, or A) picks the line at the front: Wavell pulls it in, and that opens it. On a phone, swipe up or down and tap.
 
@@ -71,6 +71,16 @@ To install the game as an app, which also lets it play offline:
 
 - **Android and desktop Chrome or Edge:** press **install app** on the start screen. If it isn't there, use the browser's menu.
 - **iPhone and iPad:** press **install app** to see the steps: open the Share menu, then Add to Home Screen.
+
+### On an LG TV
+
+Open the game in the TV's web browser, or install the TV app (below). A Bluetooth joypad plays best; the remote works too, as in the table above. Back pauses instead of leaving the game.
+
+The TV app is in `webos/`: it only opens the hosted game with `?tv`, so it is always the latest version. To put it on the TV:
+
+1. Install **Developer Mode** from the LG Content Store, sign in with an LG developer account, and turn on Dev Mode and the Key Server. It lasts 50 hours and can be extended from the app.
+2. On the computer, add the TV once with `npx -p @webos-tools/cli@3.2.6 ares-setup-device`, naming it `tv`, with the IP and passphrase that Developer Mode shows.
+3. Run `npm run webos`, then `npm run webos:install`. The Line shows up with the TV's apps.
 
 ## The editors
 
@@ -103,12 +113,14 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | Sinepede, Worm, Disturchin, Bubble Burst | Speed, how often they come, when they first appear. Also: the Sinepede's segments and its clock rate while Wavell stands, the Worm's while he is under the line, the Disturchin's warning and how long its spikes stay out, the Bubble's time to burst, its side, and when it starts floating off the line |
 | Backwave, Reflux | Chance per roll, how often it rolls, when it first appears |
 | Fighting | Knockback, the most sizes a creature can grow |
+| Rage | From which level a knot comes (one a level), how far into the level, how long it stays, its waves' speed and the points for each creature it clears |
+| Killerwave | From which level it comes, how often, how much line it needs behind Wavell, how fast and how long its fin chases him, how long its body takes to come up, its speed charging and ridden, how long a ride lasts, and the points for each creature it clears |
 | Sparkles | How many an enemy leaves, how often one comes on its own and how many at once, how many are gold, the chain window |
 | Growing | How many sparkles make a size, how long he glows, how many times he can grow, and what each size adds to his scale, walking speed and bubble |
 | Progress | Lives, points per level, extra lives, the starting level |
 | Beat | Whether the beat is on, the tempo ramp, and from which level enemies come on more beats. See [docs/DESIGN.md](docs/DESIGN.md#the-beat) |
 
-**The bar under the game** has restart, pause, level up and down, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
+**The bar under the game** has restart, pause, level up and down, buttons that drop a Rage knot ahead of Wavell and bring up the Killerwave behind him, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
 
 **The buttons:**
 
@@ -123,7 +135,7 @@ Rows that differ from the saved file turn orange, and double-clicking a row puts
 
 ![The animation lab](docs/images/lab.png)
 
-The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave and the burn.
+The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave, Rage, riding the Killerwave or floating over it, and the burn.
 
 **Playback**
 
@@ -148,7 +160,9 @@ The bar also has a timeline to scrub, speeds from 0.05× to 1×, zoom and a loop
 
 **Edit keyframes**, at the top of the lab, switches to the keyframe editor. Choose what to edit from the list:
 
-- **Wavell:** walk cycle, wipe, pull, idle pose
+- **Wavell:** walk cycle, wipe, pull, Rage (after untying the knot), idle pose
+- **Killerwave (orca):** outline, eye and teeth (an upper and a lower zigzag, each moving with its jaw as the mouth shuts), all as one target. Drag any point; hover one to see what it is (the fin tip is where Wavell holds on, the last four points are the jaws, drawn open: the game shuts them by moving the upper tip and the corner of the mouth).
+- **Killerwave: fin rising:** how its fin grows out of the line before the body comes up, keyed over time. Drag the tip handle up and down for how tall the fin has grown (g, 1 = full), left and right for how far its tip leans back (back: 0 over the middle of its foot, 1 where the outline has it). Four more handles shape it: the two points either side of the tip (b2, b1 before it, f1, f2 after it), each moved by an offset from where the growing fin puts it; the offsets fade out as the body comes up. The last key's time is how long the rise takes.
 - **Snawave** (no longer in the game): outline, rise, bite, sink
 - **Worm:** rise, bite, sink
 
@@ -158,8 +172,8 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 
 - Drag a joint to change the current key. Dragging between keys adds a new one.
 - Each key has a time, an ease (smooth, linear, in, out, spline, hold) and a pose.
-- A pose is either one of the shared poses (idle, reach, lift, haul), which changes every key that uses it, or the key's own.
-- Clips have named marks the game listens for: `grab` and `release` (when the hands hold and let go of the line), `haul`, and the walk's footfalls.
+- A pose is either one of the shared poses (idle, reach, lift, haul, rageLow, rageHigh), which changes every key that uses it, or the key's own.
+- Clips have named marks the game listens for: `grab` and `release` (when the hands hold and let go of the line), `haul`, and the walk's footfalls. In Rage, `grab` is when he takes hold of the line, and each `wave…` mark sends a wave out each way: a crest if his hands are up then, a trough if they are down. The editor moves marks; to change how many waves there are, add or remove `wave` marks in `src/data/anim.json`.
 - In the walk, the knees follow the hips and feet automatically.
 
 **The enemies' motions** are keyed numbers rather than poses: height or depth (`g`), lean and mouth for the Snawave, depth and head lunge for the Worm.
@@ -213,6 +227,7 @@ src/
   editors/         The difficulty editor and the animation lab
 test/              Headless tests: the real simulation, no browser
 tools/             The dev server's save endpoint for the editors, the build's service worker
+webos/             The LG TV app, which opens the hosted game
 public/            Sounds, app icons and the app manifest
 docs/              Game rules reference (RULES.md), design notes and the original game's event list
 ```
@@ -229,6 +244,8 @@ docs/              Game rules reference (RULES.md), design notes and the origina
 | `npm run check` | Type-checks and runs the tests: what CI runs on each pull request |
 | `npm run build` | Type-checks and builds the static site into `dist/` |
 | `npm run preview` | Serves `dist/` to try out the build |
+| `npm run webos` | Packages the LG TV app into `dist-webos/` |
+| `npm run webos:install` | Installs that package on the TV set up as `tv` |
 
 `dist/` can be hosted anywhere, under any path. It needs a web server, because browsers refuse to load it from a `file://` address.
 

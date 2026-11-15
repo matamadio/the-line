@@ -6,6 +6,9 @@ import { BubbleBurst } from '../../game/actors/bubble';
 import { Sinepede } from '../../game/actors/sinepede';
 import { Urchin } from '../../game/actors/urchin';
 import { Worm } from '../../game/actors/worm';
+import { RageKnot } from '../../game/actors/rage';
+import { Orca } from '../../game/actors/orca';
+import { TUNE } from '../../data/tune';
 import { backwave, reflux, type Game } from '../../game/game';
 
 export type Held = 'left' | 'right' | 'up' | 'down';
@@ -41,6 +44,33 @@ export const SCENES: Scene[] = [
   { name: 'Pull', dur: 1.6, keys: [['pullPressed', 0.2]], setup: (g) => ready(g) },
   { name: 'Flip under and back', dur: 2.2, keys: [['downPressed', 0.2], ['upPressed', 1.2]], setup: (g) => ready(g) },
   { name: 'Float and land', dur: 3, keys: [['upPressed', 0.2], ['up', 0.4, 0.9], ['down', 1.6, 2.8]], setup: (g) => ready(g) },
+  {
+    name: 'Rage: untie the knot, clear the line', dur: 4.5, keys: [['right', 0.1, 1.2]],
+    setup: (g) => {
+      ready(g);
+      g.knot = new RageKnot(ahead(g, 50), 12);
+      g.urchins.push(new Urchin(ahead(g, 160), 0.2, 9));
+      const w = new Worm(ahead(g, -90), 0); w.state = 'move'; g.worms.push(w);
+    },
+  },
+  {
+    // Up in the bubble over where it comes up: the fin rises to meet the bubble coming down.
+    name: 'Killerwave: ride it', dur: 9.5, keys: [['down', 0.1, 2.4]],
+    setup: (g) => {
+      ready(g);
+      const W = g.wavell;
+      g.orca = new Orca(ahead(g, -31));
+      g.urchins.push(new Urchin(ahead(g, 700), 0.2, 9));
+      const w = new Worm(ahead(g, 1100), 0); w.state = 'move'; g.worms.push(w);
+      W.state = 'fly';
+      W.t = TUNE.takeoff + 0.01;
+      W.by = g.line.sample(W.x) - 75;
+    },
+  },
+  {
+    name: 'Killerwave: float over it', dur: 6, keys: [['upPressed', 2.3], ['up', 2.5, 3.2]],
+    setup: (g) => { ready(g); g.orca = new Orca(ahead(g, -130)); g.urchins.push(new Urchin(ahead(g, 160), 0.2, 9)); },
+  },
   { name: 'Float and land under the line', dur: 3, keys: [['downPressed', 0.2], ['down', 0.4, 0.9], ['up', 1.6, 2.8]], setup: (g) => ready(g, true) },
   {
     name: 'Sinepede: crest pulled flat', dur: 2, keys: [['pullPressed', 0.35]],

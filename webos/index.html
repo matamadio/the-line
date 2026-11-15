@@ -1,0 +1,20 @@
+<!doctype html>
+<!--
+  The LG TV app is only a way in: it opens the hosted game, so it is always the latest
+  version, and the service worker keeps it for playing offline after the first time.
+  ?tv tells the game it is in the app (no fullscreen button). See README.md, "On an LG TV".
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>The Line</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #05030f; color: #c9a640; font: 32px sans-serif; }
+    p { position: absolute; inset: 0; margin: auto; height: 1.2em; text-align: center; }
+  </style>
+</head>
+<body>
+  <p>Loading The Line&hellip;</p>
+  <script>location.replace('https://matamadio.github.io/the-line/?tv');</script>
+</body>
+</html>

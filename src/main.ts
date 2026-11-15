@@ -20,9 +20,15 @@ const game = new Game(neon, new Input(canvas));
 game.loadNostalgia();
 game.loadControls();
 
-// A slow device draws every other refresh, then at a lower resolution: see pacing.ts.
-const pacing = new Pacing(0.5);
-pacing.onChange = () => { neon.quality = pacing.scale; neon.resize(); };
+// A slow device draws every other refresh, then at a lower resolution, then lite: see pacing.ts.
+const pacing = new Pacing(() => Math.max(0.5, neon.lowestQuality));
+pacing.onChange = () => { neon.quality = pacing.scale; neon.lite = pacing.lite; neon.resize(); };
+// ?lite starts in lite mode at the lowest resolution, for comparing on a slow device.
+if (new URLSearchParams(location.search).has('lite')) {
+  pacing.scale = pacing.floorNow;
+  pacing.lite = true;
+  pacing.onChange();
+}
 document.addEventListener('visibilitychange', () => pacing.pause());
 
 // ?perf shows the frame rate and what pacing chose, for testers to report.
@@ -78,7 +84,7 @@ function loop(now: number) {
   neon.ctx.globalCompositeOperation = 'source-over';
   neon.ctx.textAlign = 'left';
   neon.ctx.textBaseline = 'top';
-  neon.ctx.fillText(`${fps.toFixed(0)} fps  1/${pacing.skip}  dpr ${neon.dpr.toFixed(2)} of ${devicePixelRatio.toFixed(2)}  ${neon.canvas.width}x${neon.canvas.height}`, 4, 4);
+  neon.ctx.fillText(`${fps.toFixed(0)} fps  1/${pacing.skip}  dpr ${neon.dpr.toFixed(2)} of ${devicePixelRatio.toFixed(2)}  ${neon.canvas.width}x${neon.canvas.height}${neon.lite ? '  lite' : ''}`, 4, 4);
 }
 requestAnimationFrame(loop);
 
