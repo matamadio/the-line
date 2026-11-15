@@ -9,7 +9,7 @@
 // A joypad does the same as the keys, and which keys and buttons do what is in `binds`.
 // An LG TV's remote counts as keys too (see controls.ts), and its Back button never leaves the page.
 
-import { ACTIONS, defaultBindings, keyCode, onTV, type Action, type Bindings } from './controls';
+import { ACTIONS, defaultBindings, fromRemote, keyCode, markTV, onTV, type Action, type Bindings } from './controls';
 
 export interface Controls {
   left: boolean; right: boolean; up: boolean; down: boolean;
@@ -105,16 +105,19 @@ export class Input implements Controls {
   uiTap: ((x: number, y: number) => (() => void) | null) | null = null;
   /** Every lifted finger or pressed key, the moments a browser lets a page start sound. */
   onGesture: (() => void) | null = null;
-  /** On an LG TV, whose remote has OK and Back in place of Enter and Esc. */
-  readonly tv = onTV();
+  /** On an LG TV, whose remote has OK and Back in place of Enter and Esc. Set when a remote's button is first seen, if the browser didn't say. */
+  tv = onTV();
+  /** The last key that came in, as its keyCode and name: ?perf shows it, for finding out what a remote sends. */
+  lastKey = '';
 
   constructor(private el: HTMLElement) {
     this.setBindings(this.binds);
-    let backAt = -Infinity;
     window.addEventListener('keydown', (e) => {
       const code = keyCode(e);
+      this.lastKey = `${e.keyCode} ${code || '?'}`;
+      if (!this.tv && fromRemote(e)) this.becomeTV();
       // Back must never take the browser off the game.
-      if (code === 'BrowserBack') { e.preventDefault(); backAt = performance.now(); }
+      if (code === 'BrowserBack') { e.preventDefault(); this.backAt = performance.now(); }
       if (e.repeat) return;
       this.onGesture?.();
       if (this.capture) { e.preventDefault(); this.capture({ key: code }); return; }
@@ -138,15 +141,7 @@ export class Input implements Controls {
     });
     window.addEventListener('mousemove', (e) => { [this.mouseX, this.mouseY] = this.pos(e); });
     window.addEventListener('keyup', (e) => { const k = this.keyMap.get(keyCode(e)); if (k && k !== 'pause') this.keys[k] = false; });
-    // The TV's browser may turn Back into going back a page instead of a key, so there is
-    // always one page of the game's own to go back to. Back seen as a key just before is the same press.
-    if (this.tv && typeof history !== 'undefined') {
-      history.pushState(null, '', location.href);
-      window.addEventListener('popstate', () => {
-        history.pushState(null, '', location.href);
-        if (performance.now() - backAt > 500) this.onKey.get('BrowserBack')?.();
-      });
-    }
+    if (this.tv) this.trapBack();
     window.addEventListener('blur', () => { for (const k of Object.keys(this.keys) as (keyof Held)[]) this.keys[k] = false; });
 
     el.addEventListener('pointerdown', (e) => {
@@ -249,6 +244,36 @@ export class Input implements Controls {
     if (up && !h.up) { this.latch.up = true; this.stickFlash = -1; }
     if (down && !h.down) { this.latch.down = true; this.stickFlash = 1; }
     h.up = up; h.down = down;
+  }
+
+  /** When Back last came in as a key (ms). */
+  private backAt = -Infinity;
+  private backTrapped = false;
+
+  /**
+   * The TV's browser may turn Back into going back a page instead of a key, so there is
+   * always one page of the game's own to go back to. Back seen as a key just before is the same press.
+   */
+  private trapBack() {
+    if (this.backTrapped || typeof history === 'undefined') return;
+    this.backTrapped = true;
+    history.pushState(null, '', location.href);
+    window.addEventListener('popstate', () => {
+      history.pushState(null, '', location.href);
+      if (performance.now() - this.backAt > 500) this.onKey.get('BrowserBack')?.();
+    });
+  }
+
+  /** The browser didn't say it was a TV, but a remote's button just came in. */
+  private becomeTV() {
+    markTV();
+    this.tv = true;
+    this.trapBack();
+    // The hints should name the remote's buttons, unless the player has bound keys of their own.
+    if (JSON.stringify(this.binds.keys) === JSON.stringify(defaultBindings(false).keys)) {
+      this.binds.keys = defaultBindings(true).keys;
+      this.setBindings(this.binds);
+    }
   }
 
   /** These keys and buttons from now on. */

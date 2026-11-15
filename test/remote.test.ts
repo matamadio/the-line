@@ -43,13 +43,55 @@ describe('remote buttons get names', () => {
     expect(keyName('PageUp', false)).toBe('PAGE UP');
   });
 
-  it('puts the remote first on the TV, so the hints name it, and leaves computers alone', () => {
+  it('binds the remote everywhere, as not every TV browser says it is one, but first only on a TV', () => {
     const tv = defaultBindings(true), pc = defaultBindings(false);
     expect(tv.keys.drag[0]).toBe('Enter');
     expect(tv.keys.pull[0]).toBe('PageUp');
     expect(tv.keys.drag).toContain('KeyZ');
-    expect(pc.keys.drag).not.toContain('Enter');
-    expect(pc.keys.pull).not.toContain('PageUp');
+    // On a computer the hints still name its own keys.
+    expect(pc.keys.drag[0]).toBe('KeyZ');
+    expect(pc.keys.pull[0]).toBe('KeyX');
+    expect(pc.keys.drag).toContain('Enter');
+    expect(pc.keys.pull).toContain('PageUp');
+  });
+});
+
+describe('a TV browser that says it is a computer', () => {
+  function disguised() {
+    vi.stubGlobal('navigator', { userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36' });
+    vi.stubGlobal('window', Object.assign(new EventTarget(), { innerWidth: 1920, innerHeight: 1080 }));
+    const history = { pushState: vi.fn() };
+    vi.stubGlobal('history', history);
+    vi.stubGlobal('location', { href: 'https://example.test/the-line/' });
+    const el = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1920, height: 1080 }) }) as unknown as HTMLElement;
+    const input = new Input(el);
+    const press = (keyCode: number, code = '') => window.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { code, keyCode, repeat: false }));
+    return { input, press, history };
+  }
+
+  it('still wipes with OK and pulls with the channel rocker', () => {
+    const { input, press } = disguised();
+    expect(input.tv).toBe(false);
+    press(13, 'Enter');
+    press(33, 'PageUp');
+    input.poll();
+    expect(input.dragPressed).toBe(true);
+    expect(input.pullPressed).toBe(true);
+  });
+
+  it('turns into a TV at the first button only a remote has, and keeps Back from then on', () => {
+    const { input, press, history } = disguised();
+    press(461);
+    expect(input.tv).toBe(true);
+    expect(history.pushState).toHaveBeenCalled();
+    // The hints now name the remote's buttons.
+    expect(input.binds.keys.drag[0]).toBe('Enter');
+  });
+
+  it('shows the last key in ?perf', () => {
+    const { input, press } = disguised();
+    press(33);
+    expect(input.lastKey).toBe('33 PageUp');
   });
 });
 

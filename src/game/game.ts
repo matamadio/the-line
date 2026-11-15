@@ -58,6 +58,8 @@ export interface Reflux { sx: number; y: number; side: 1 | -1; dist: number; dir
 export interface Pulse { x: number; dir: number; side: number; kind: Attack; spent: boolean }
 /** A big wave rolling in from behind. Wavell floats over it, or bounces it back by holding the line as it hits. */
 export interface Backwave { x: number; dir: 1 | -1; warn: number; done: boolean; amp: number; gone?: boolean }
+/** The longest frame the game catches up on in full (s): it keeps real time down to 10 fps, as on a slow TV. */
+const MAX_FRAME = 0.1;
 /** One about to roll in from x, after warn seconds. */
 const BACKWAVE_WIDTH = 11;
 /** It starts this far along from the end of the line, all of it on the line (u). */
@@ -450,7 +452,8 @@ export class Game {
   draw(dt: number) { drawGame(this, dt); }
 
   frame(dt: number) {
-    dt = clamp(dt, 0, 0.05);
+    // A longer frame is a hitch, and catching up all of it would jump. Below 10 fps the game slows down.
+    dt = clamp(dt, 0, MAX_FRAME);
     this.input.poll();
     const ready = this.mode === 'over' && this.overT > 0.8;
     // Back on the TV remote: a game pauses first, and goes to the menu only from the pause.

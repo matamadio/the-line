@@ -69,6 +69,26 @@ describe('pacing', () => {
     expect(changes).toBe(3);
   });
 
+  it('a TV slow from its first frame goes straight to the lightest setting, within seconds', () => {
+    // 4 fps from the start: every gap is a quarter of a second, so the refresh rate looks like 4 Hz.
+    const p = new Pacing(() => 2 / 3);
+    let changes = 0, at = -1;
+    p.onChange = () => { changes++; if (at < 0) at = t; };
+    let t = 0;
+    for (let i = 0; i < 40; i++) { p.tick(t); t += 250; }
+    expect(p.lite).toBe(true);
+    expect(p.scale).toBeCloseTo(2 / 3);
+    expect(changes).toBe(1);
+    expect(at).toBeLessThan(3000);
+  });
+
+  it('a steady 11 fps goes lightest too', () => {
+    const p = new Pacing(0.5);
+    let t = 0;
+    for (let i = 0; i < 60; i++) { p.tick(t); t += 90; }
+    expect(p.lite).toBe(true);
+  });
+
   it('a device that keeps up never goes lite', () => {
     const p = new Pacing(0.5);
     run(p, 60, 3000);
