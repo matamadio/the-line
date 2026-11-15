@@ -1,4 +1,4 @@
-// The boss editor of the animation lab: THE FLATTENER's shapes and powers (src/data/boss.json).
+// The boss editor of the animation lab: THE SILENCER's shapes and powers (src/data/boss.json).
 //
 // Shapes: his outline is drawn as the real stroke on the line, with a handle on every
 // point, eye, nose, the shot's way out and the extra strokes (legs, a fang). Drag them,

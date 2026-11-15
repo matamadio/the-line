@@ -135,7 +135,7 @@ Rows that differ from the saved file turn orange, and double-clicking a row puts
 
 ![The animation lab](docs/images/lab.png)
 
-The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave, Rage, riding the Killerwave or floating over it, and the burn.
+The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave, Rage, riding the Killerwave or floating over it, the burn, and THE SILENCER climbing out with his wave (Tide-Al) in each of its outcomes.
 
 **Playback**
 
@@ -163,7 +163,6 @@ The bar also has a timeline to scrub, speeds from 0.05× to 1×, zoom and a loop
 - **Wavell:** walk cycle, wipe, pull, Rage (after untying the knot), idle pose
 - **Killerwave (orca):** outline, eye and teeth (an upper and a lower zigzag, each moving with its jaw as the mouth shuts), all as one target. Drag any point; hover one to see what it is (the fin tip is where Wavell holds on, the last four points are the jaws, drawn open: the game shuts them by moving the upper tip and the corner of the mouth).
 - **Killerwave: fin rising:** how its fin grows out of the line before the body comes up, keyed over time. Drag the tip handle up and down for how tall the fin has grown (g, 1 = full), left and right for how far its tip leans back (back: 0 over the middle of its foot, 1 where the outline has it). Four more handles shape it: the two points either side of the tip (b2, b1 before it, f1, f2 after it), each moved by an offset from where the growing fin puts it; the offsets fade out as the body comes up. The last key's time is how long the rise takes.
-- **Snawave** (no longer in the game): outline, rise, bite, sink
 - **Worm:** rise, bite, sink
 
 The real stroke is drawn over a grid, with the keys either side shown faintly (onion skin).
@@ -176,10 +175,10 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 - Clips have named marks the game listens for: `grab` and `release` (when the hands hold and let go of the line), `haul`, and the walk's footfalls. In Rage, `grab` is when he takes hold of the line, and each `wave…` mark sends a wave out each way: a crest if his hands are up then, a trough if they are down. The editor moves marks; to change how many waves there are, add or remove `wave` marks in `src/data/anim.json`.
 - In the walk, the knees follow the hips and feet automatically.
 
-**The enemies' motions** are keyed numbers rather than poses: height or depth (`g`), lean and mouth for the Snawave, depth and head lunge for the Worm.
+**The enemies' motions** are keyed numbers rather than poses: depth and head lunge for the Worm, growth and lean for the Killerwave's fin.
 
-- Drag the handle on the crest (height and lean), or on the Worm's belly (depth) and head (lunge), or use the sliders.
-- Each number can have its own ease, and the Snawave's last bite key can make the mouth chatter.
+- Drag the handles on the Worm's belly (depth) and head (lunge), or on the Killerwave's fin, or use the sliders.
+- Each number can have its own ease.
 - In the bite motions, Wavell is drawn where the jaws close, and the `hit` mark is when they close on him.
 - The melt after a kill is not keyed. Tune it with the lab's number sliders.
 
@@ -187,7 +186,7 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 
 ### Boss editor
 
-**Edit boss**, at the top of the lab (or `/lab.html#boss`), edits THE FLATTENER: his shapes and his powers, saved to [`src/data/boss.json`](src/data/boss.json). Choose a shape or a power from the list.
+**Edit boss**, at the top of the lab (or `/lab.html#boss`), edits THE SILENCER: his shapes and his powers, saved to [`src/data/boss.json`](src/data/boss.json). Choose a shape or a power from the list.
 
 **Shapes** are drawn as the real stroke on the line, at his full size, with Wavell standing by for scale:
 
@@ -222,7 +221,7 @@ src/
     line.ts        The line itself: a wave-equation string
     crumble.ts     A creature coming apart at the end of the line
     fx.ts          Sparks, score popups
-    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, the Flattener (the boss), and the retired Snawave
+    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, the Silencer (the boss)
   data/            The tunable numbers and the files the editors save
   editors/         The difficulty editor and the animation lab
 test/              Headless tests: the real simulation, no browser

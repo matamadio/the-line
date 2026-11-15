@@ -1,4 +1,4 @@
-// THE FLATTENER, the level 10 boss, played through the real game with scripted keys.
+// THE SILENCER, the level 10 boss, played through the real game with scripted keys.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DIFF, levelStart } from '../src/data/difficulty';
@@ -17,7 +17,7 @@ DIFF.beatOn = 0;
 const STEPS_PER_SECOND = 120;
 const WIPE = { ...IDLE, dragPressed: true };
 type G = ReturnType<typeof headlessGame>;
-/** The Flattener with his insides open, for tests of his moves. */
+/** The Silencer with his insides open, for tests of his moves. */
 type Open = { pts: Float32Array; state: string; shapeName: string; buildTime: number; begin(p: string, r: () => number): void; update(dt: number, onBeat: boolean, active: boolean): void };
 
 /** Score enough for the last level: the boss climbs out of the line. */
@@ -54,7 +54,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('the Flattener', () => {
+describe('the Silencer', () => {
   it('boss.json: every step uses a shape that exists, and every outline starts and ends on the line', () => {
     for (const [name, p] of Object.entries(BOSS.powers)) {
       expect(p.steps.length, name).toBeGreaterThan(0);
@@ -268,7 +268,7 @@ describe('the Flattener', () => {
   it('climbs out with the screen shaking, and no title', () => {
     const g = atBoss();
     expect(g.boss).not.toBeNull();
-    expect(g.bannerText).not.toBe('THE FLATTENER');
+    expect(g.bannerText).not.toBe('THE SILENCER');
   });
 
   it('the cat rolls over to under the line and back without ever going flat', () => {

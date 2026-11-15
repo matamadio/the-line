@@ -1,4 +1,4 @@
-// THE FLATTENER, the boss of the last level. He is a stretch of the line that can take
+// THE SILENCER, the boss of the last level. He is a stretch of the line that can take
 // any shape, and each shape is one of his powers. He stands ahead of Wavell, on top of
 // the line, and walks on to the right as Wavell runs after him, while the end of the
 // line keeps crumbling in behind.

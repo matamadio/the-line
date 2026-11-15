@@ -34,7 +34,7 @@ Up to level 3, threats come one at a time, with a second of clear line between t
 
 ## Levels
 
-There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. The end of the line crumbles faster each level. Level 10 is the last: the boss fight against THE FLATTENER (see [The boss](#the-boss)). Beating him starts the levels over from level 1, on a harder loop in a random time signature, with the music still in full: the line continues.
+There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. The end of the line crumbles faster each level. Level 10 is the last: the boss fight against THE SILENCER (see [The boss](#the-boss)). Beating him starts the levels over from level 1, on a harder loop in a random time signature, with the music still in full: the line continues.
 
 ## The threats
 
@@ -49,7 +49,7 @@ There are 10 levels, each costing 50 points more than the one before (level 10 s
 
 The rule for opposite sides doesn't apply to the Disturchin, which sticks out on both sides of the line: a pull always kills it and a wipe always feeds it. Each wipe bounces it back a little, as the wrong attack does to the other enemies, starts its time over and adds half a second to it, makes it bigger and takes one more pull to undo, with dots showing how many are left. Each size is worth 3 more points.
 
-The Sinepede is the basic enemy, and the Snawave's replacement. Each segment is half a wave. They alternate, so one that starts on a crest is a sine and one that starts on a trough is a cosine. It is one segment at level 1 and gets longer with the level, up to three before the boss. The right attack cancels the segment facing you and sets the rest back a little: one attack takes longer than a segment takes to crawl its own length, so without that a long one could not be worn down in time. The wrong one throws it back and adds a segment at the far end.
+The Sinepede is the basic enemy. Each segment is half a wave. They alternate, so one that starts on a crest is a sine and one that starts on a trough is a cosine. It is one segment at level 1 and gets longer with the level, up to three before the boss. The right attack cancels the segment facing you and sets the rest back a little: one attack takes longer than a segment takes to crawl its own length, so without that a long one could not be worn down in time. The wrong one throws it back and adds a segment at the far end.
 
 Running into it, you both bounce back, away from each other, and you lose that ground to the end of the line. On your side of the line it gains a segment, at no other cost. On the other side the two waves cancel: it loses one and is thrown back, or if that was its last it flattens where it is, and you lose a size, or the game with no size left. A bubble always pops on it.
 
@@ -59,7 +59,7 @@ From level 6, half of them let go of the line partway and float off, the way his
 
 ## The boss
 
-THE FLATTENER (`flattener.ts`) is the original game's boss brought back, but not on a fixed screen: Wavell keeps running along the line, the end of the line keeps crumbling in behind him (at a steady 60 u/s, slower than level 10 would be), and the boss walks on ahead, always facing him from the right side of the screen.
+THE SILENCER (`flattener.ts`) is the original game's boss brought back, but not on a fixed screen: Wavell keeps running along the line, the end of the line keeps crumbling in behind him (at a steady 60 u/s, slower than level 10 would be), and the boss walks on ahead, always facing him from the right side of the screen.
 
 He is made of the line, so he can take any shape, and **each shape is one power**. His outline flows from one shape into the next. Idle, he is a wobbly blob that never holds its shape, with eyes floating in it, staring at Wavell.
 

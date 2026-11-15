@@ -18,7 +18,7 @@
 // level, so every stop costs ground. Sparkles are the bait: they drift about on both
 // sides of the line, often behind him, and catching them means giving ground.
 //
-// Level 10 is the boss fight: THE FLATTENER (actors/flattener.ts) walks on ahead,
+// Level 10 is the boss fight: THE SILENCER (actors/flattener.ts) walks on ahead,
 // changing shape for each power, and can only be hurt by his own wave sent back at him. Beating him starts the levels
 // over on a harder loop: the line continues.
 
@@ -86,7 +86,7 @@ const ORCA_BACK = 140;
 const RAGE_HOLD = 12;
 /** How far off the edge of the screen they go before they are done (u). */
 const RAGE_OFF = 60;
-/** The Flattener's front wave: it rolls at Wavell (dir -1), or back at him once wiped (dir 1). Its crest stands on top of the line. */
+/** The Silencer's front wave: it rolls at Wavell (dir -1), or back at him once wiped (dir 1). Its crest stands on top of the line. */
 export interface Tidal { x: number; dir: 1 | -1; amp: number; done: boolean; gone: boolean }
 const TIDAL_WIDTH = 13;
 /** Half the boss's width in his widest shape (u): the room kept for him in view. */
@@ -699,7 +699,7 @@ export class Game {
 
   // ---------------------------------------------------------------- the boss
 
-  /** The line clears, and THE FLATTENER climbs out of it ahead of Wavell. */
+  /** The line clears, and THE SILENCER climbs out of it ahead of Wavell. */
   private startBoss() {
     const W = this.wavell;
     for (const s of this.sinepedes) s.sink();
@@ -713,7 +713,7 @@ export class Game {
     this.tremor = 2.5;
     this.neon.shake = 2.2;
     this.bossHush = sfx.rumble(this.heard(2.2));
-    this.teach('boss', 'THE FLATTENER: nothing you do hurts him. Only his own wave sent back can!', 'THE FLATTENER: nothing you do hurts him. Only his own wave sent back can!');
+    this.teach('boss', 'THE SILENCER: nothing you do hurts him. Only his own wave sent back can!', 'THE SILENCER: nothing you do hurts him. Only his own wave sent back can!');
   }
 
   /** How far ahead of Wavell the boss can be and still be all in view, in his widest shape. */
@@ -1923,7 +1923,7 @@ export class Game {
     grow();
     this.fx.burst(x, y, 12, 30, color, 0, 0.4);
     this.neon.shake = Math.max(this.neon.shake, 0.3);
-    sfx.play('snawave', 0.5);
+    sfx.play('grow', 0.5);
     this.teach('grow', hint[0], hint[1]);
   }
 

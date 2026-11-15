@@ -276,7 +276,7 @@ function drawLead(g: Game, x: number, y: number, s: number) {
 /** The boss's name, and a circle for each size he has left. */
 function drawBoss(g: Game, cx: number, y: number, s: number) {
   const n = g.neon, B = g.boss!;
-  n.text('THE FLATTENER', cx - s * 0.4, y, s * 0.55, COLORS.danger, 'right');
+  n.text('THE SILENCER', cx - s * 0.4, y, s * 0.55, COLORS.danger, 'right');
   n.world();
   const wx = n.camX + (cx + s * 0.4) / n.unit + 3, wy = n.viewTop + y / n.unit;
   for (let i = 0; i < DIFF.bossHits; i++) {

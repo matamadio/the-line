@@ -1,4 +1,4 @@
-// THE FLATTENER's shapes and powers, as data. The numbers live in boss.json, which the
+// THE SILENCER's shapes and powers, as data. The numbers live in boss.json, which the
 // animation lab (lab.html, "Edit boss") edits and saves; the game reads them live from BOSS.
 //
 // A shape is an outline from root to root on the line, in [across, up] from his centre

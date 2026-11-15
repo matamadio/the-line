@@ -1,5 +1,5 @@
 // The keyframe editor of the animation lab: Wavell's clips (walk cycle, wipe, pull),
-// his idle pose, the Snawave's outline and the enemies' motions (rise, bite, sink),
+// his idle pose, the Killerwave's outline and the enemies' motions (rise, bite, sink),
 // drawn as the real stroke with draggable joints or handles. Edits change ANIM in place, so the game uses them straight away; Save
 // writes them into src/data/anim.json through the dev server.
 
@@ -9,14 +9,13 @@ import {
 } from '../../data/anim';
 import { SpringLine } from '../../game/line';
 import { COLORS, Neon, smoothPath } from '../../core/neon';
-import { Snawave } from '../../game/actors/snawave';
 import { FIN_POINTS, Orca } from '../../game/actors/orca';
 import { Wavell } from '../../game/actors/wavell';
 import { Worm } from '../../game/actors/worm';
 
 const STEP = 1 / 120;
-type Target = 'idle' | 'appear' | 'sink' | 'inflate' | 'deflate' | 'walk' | 'walkStrut' | 'wipe' | 'pull' | 'rage' | 'orca' | 'snawave'
-  | 'orca.fin' | 'snawave.rise' | 'snawave.bite' | 'snawave.sink' | 'worm.rise' | 'worm.bite' | 'worm.sink';
+type Target = 'idle' | 'appear' | 'sink' | 'inflate' | 'deflate' | 'walk' | 'walkStrut' | 'wipe' | 'pull' | 'rage' | 'orca'
+  | 'orca.fin' | 'worm.rise' | 'worm.bite' | 'worm.sink';
 const TARGETS: [Target, string][] = [
   ['appear', 'Wavell: climbing out'],
   ['sink', 'Wavell: sinking (killed)'],
@@ -30,19 +29,13 @@ const TARGETS: [Target, string][] = [
   ['idle', 'Wavell: idle pose'],
   ['orca', 'Killerwave (orca): outline, eye and teeth'],
   ['orca.fin', 'Killerwave: fin rising'],
-  ['snawave', 'Snawave: outline'],
-  ['snawave.rise', 'Snawave: rise'],
-  ['snawave.bite', 'Snawave: bite'],
-  ['snawave.sink', 'Snawave: sink'],
   ['worm.rise', 'Worm: rise'],
   ['worm.bite', 'Worm: bite'],
   ['worm.sink', 'Worm: sink'],
 ];
-/** Motion channels: slider range and step. g is the height (Snawave) or depth (Worm) factor. */
+/** Motion channels: slider range and step. g is the depth (Worm) or growth (fin) factor. */
 const CHANNELS: Record<string, [string, number, number, number]> = {
   g: ['Height / depth (1 = normal)', 0, 2, 0.01],
-  lean: ['Lean (units)', -30, 30, 0.5],
-  mouth: ['Mouth open (0..1)', 0, 1, 0.01],
   lunge: ['Head lunge (units)', -12, 15, 0.25],
   back: ['Fin tip leaned back (0 = over the middle, 1 = in place)', -0.5, 1.5, 0.01],
   b2u: ['Fin, 2nd point before the tip: along (u)', -25, 25, 0.1],
@@ -56,7 +49,7 @@ const CHANNELS: Record<string, [string, number, number, number]> = {
 };
 /** Any key: a pose key (Wavell) or a motion key (enemies). */
 type AnyKey = Partial<Key> & Partial<MotionKey> & { t: number };
-const SNA_H = 33, WORM_D = 6.5;
+const WORM_D = 6.5;
 /** What each of the orca's handles is. */
 function orcaLabel(i: number, nOut: number) {
   const up = (ANIM.shapes.orcaTeethUp ?? []).length / 2, t = i - nOut - 1;
@@ -85,9 +78,6 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
   line.cover(-200, 200);
   const fig = new Wavell();
   fig.state = 'ground';
-  const sna = new Snawave(-15);
-  Object.assign(sna as unknown as { g: number }, { g: 1 });
-  sna.state = 'sink';
   const orca = new Orca(-50);
   orca.show(1);
   const wrm = new Worm(-13);
@@ -116,7 +106,6 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
   const isMotion = () => target.includes('.');
   /** An outline edited point by point, no timeline. */
   const isOrca = () => target === 'orca';
-  const isShape = () => target === 'snawave' || isOrca();
   /** The orca's arrays, edited together: the outline, the eye, the upper and the lower teeth. */
   const orcaArrays = () => {
     const S = ANIM.shapes;
@@ -129,7 +118,6 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
   const owner = () => (isMotion() ? ANIM.motions[target] : clip());
   const keys = (): AnyKey[] => (isClip() ? clip().keys : isMotion() ? ANIM.motions[target].keys : []) as AnyKey[];
   const len = () => (isClip() ? clipLength(clip()) : isMotion() ? motionLength(target) : 0);
-  const creature = () => (target.startsWith('worm.') ? wrm : sna);
   const motionAt = (tt = t) => motion(target, tt);
   /** The key at the playhead, if there is one. */
   const keyAt = () => keys().findIndex((k) => Math.abs(k.t - t) < 1e-4);
@@ -194,7 +182,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
     return [(sx - r.left - neon.ox) / neon.unit + neon.camX, (sy - r.top - neon.oy - neon.lineY) / neon.unit];
   };
 
-  /** Handle positions in world space: joints of the pose, or the Snawave's outline points. */
+  /** Handle positions in world space: joints of the pose, or the Killerwave's outline points. */
   function handles(): number[] {
     if (isMotion()) {
       const v = motionAt();
@@ -208,13 +196,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
         });
         return out;
       }
-      if (target.startsWith('snawave.')) return [sna.x + 15 + (v.lean ?? 0), -SNA_H * (v.g ?? 1)];
       return [wrm.x + 13 - (v.lunge ?? 0) * 0.5, WORM_D * (v.g ?? 1), wrm.x - (v.lunge ?? 0), 0];
-    }
-    if (target === 'snawave') {
-      const s = ANIM.shapes.snawave, out: number[] = [];
-      for (let i = 0; i < s.length; i += 2) out.push(sna.x + s[i], -s[i + 1]);
-      return out;
     }
     if (isOrca()) {
       const s = orcaPts(), out: number[] = [];
@@ -231,7 +213,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
     const h = handles(), r = neon.canvas.getBoundingClientRect();
     let best: number | null = null, bd = PICK;
     for (let i = 0; i < h.length / 2; i++) {
-      if (!isShape() && !isMotion() && lockedJoint(JOINTS[i])) continue;
+      if (!isOrca() && !isMotion() && lockedJoint(JOINTS[i])) continue;
       const [x, y] = neon.toScreen(h[i * 2], h[i * 2 + 1]);
       const d = Math.hypot(x + neon.ox + r.left - sx, y + neon.oy + r.top - sy);
       if (d < bd) { bd = d; best = i; }
@@ -246,7 +228,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
     if (!active) return;
     const i = pick(e.clientX, e.clientY);
     if (i === null) return;
-    if (!isShape() && isClip()) {
+    if (isClip()) {
       const ki = keyAt();
       if (ki >= 0 && keys()[ki].pose === '@from') { status('This key is "the pose before the move": pick a pose for it first.'); return; }
     }
@@ -286,17 +268,8 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
         if (Math.abs(G.tipU - G.mid) > 0.5) d.back = r(Math.max(-0.5, Math.min(1.5, (wx - orca.x - G.mid) / (G.tipU - G.mid))));
         return;
       }
-      if (target.startsWith('snawave.')) {
-        d.g = Math.round(Math.max(0, Math.min(2, -wy / SNA_H)) * 100) / 100;
-        if ('lean' in d) d.lean = snap(wx - (sna.x + 15));
-      } else if (drag === 0) d.g = Math.round(Math.max(0, Math.min(3, wy / WORM_D)) * 100) / 100;
+      if (drag === 0) d.g = Math.round(Math.max(0, Math.min(3, wy / WORM_D)) * 100) / 100;
       else if ('lunge' in d) d.lunge = snap(wrm.x - wx);
-      return;
-    }
-    if (target === 'snawave') {
-      const s = ANIM.shapes.snawave;
-      s[drag * 2] = snap(wx - sna.x);
-      s[drag * 2 + 1] = snap(Math.max(0, -wy));
       return;
     }
     if (isOrca()) {
@@ -353,7 +326,7 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
       orca.showFin(motionAt());
       n.glow(smoothPath([L, 0, ...orca.outline(line), R, 0]), COLORS.line, 0.9);
     } else if (isMotion()) {
-      const cr = creature();
+      const cr = wrm;
       wrm.state = target === 'worm.bite' ? 'bite' : 'sink';
       if (onion) {
         const ks = keys();
@@ -366,23 +339,18 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
       }
       cr.show(motionAt());
       const o = cr.outline(line);
-      // In a bite, Wavell stands where the jaws close: on top for a Snawave, under the line for a Worm.
+      // In a bite, Wavell stands where the jaws close: under the line.
       let w: number[] = [];
-      if (target.endsWith('.bite')) {
-        const under = target === 'worm.bite';
-        victim.x = under ? wrm.x - 10 : sna.x - 16;
-        victim.side = under ? -1 : 1;
-        victim.flip = under ? 1 : 0;
+      if (target === 'worm.bite') {
+        victim.x = wrm.x - 10;
+        victim.side = -1;
+        victim.flip = 1;
         victim.showPose(idle);
         w = victim.stroke(line) ?? [];
       }
       n.glow(smoothPath([L, 0, ...w, ...o, R, 0]), COLORS.line, 0.9);
       cr.drawFeatures(n, line);
       if (w.length) victim.drawFeatures(n, line);
-    } else if (target === 'snawave') {
-      const o = sna.outline(line);
-      n.glow(smoothPath([L, 0, ...o, R, 0]), COLORS.line, 0.9);
-      sna.drawFeatures(n, line);
     } else if (isOrca()) {
       orca.show(1);
       const o = orca.outline(line);
@@ -406,11 +374,11 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
 
     // Handles, in screen space.
     n.screen();
-    const h = handles(), onKey = target === 'idle' || isShape() || keyAt() >= 0;
-    const motionLabels = target === 'orca.fin' ? ['fin tip: height · lean back', '2nd point before the tip', 'point before the tip', 'point after the tip', '2nd point after the tip'] : target.startsWith('snawave.') ? ['height · lean'] : ['depth', 'lunge'];
+    const h = handles(), onKey = target === 'idle' || isOrca() || keyAt() >= 0;
+    const motionLabels = target === 'orca.fin' ? ['fin tip: height · lean back', '2nd point before the tip', 'point before the tip', 'point after the tip', '2nd point after the tip'] : ['depth', 'lunge'];
     for (let i = 0; i < h.length / 2; i++) {
       const [x, y] = n.toScreen(h[i * 2], h[i * 2 + 1]);
-      const j = isShape() || isMotion() ? null : JOINTS[i];
+      const j = isOrca() || isMotion() ? null : JOINTS[i];
       const locked = j ? lockedJoint(j) : false;
       c.beginPath();
       c.arc(x, y, i === drag || i === hover ? 8 : 5.5, 0, Math.PI * 2);
@@ -428,8 +396,8 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
         } else {
           const nOut = ANIM.shapes.orca.length / 2;
           const label = j ? `${j}${locked ? ' (IK)' : ''}` : isOrca() ? orcaLabel(i, nOut) : `point ${i}`;
-          const [px, py] = isShape()
-            ? [(isOrca() ? orcaPts() : ANIM.shapes.snawave)[i * 2], (isOrca() ? orcaPts() : ANIM.shapes.snawave)[i * 2 + 1]]
+          const [px, py] = isOrca()
+            ? [orcaPts()[i * 2], orcaPts()[i * 2 + 1]]
             : [currentPose()[I[j!]], currentPose()[I[j!] + 1]];
           c.fillText(`${label}  ${px.toFixed(1)}, ${py.toFixed(1)}`, x + 9, y - 8);
         }
@@ -466,8 +434,8 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
       <div id="ed-marks"></div>
     </div>
     <div id="ed-tiltrow"></div>
-    <p class="help">Drag the joints (Wavell) or the handles (enemies: height and lean, depth and
-      lunge; the mouth is a slider). Dragging between keys adds a key there. A key can use a shared pose
+    <p class="help">Drag the joints (Wavell) or the handles (enemies: depth and lunge, the fin's
+      height and lean). Dragging between keys adds a key there. A key can use a shared pose
       (editing it changes every key that uses it) or its own. <kbd>[</kbd> <kbd>]</kbd> previous / next key,
       <kbd>Space</kbd> play, <kbd>,</kbd> <kbd>.</kbd> one frame.</p>`;
   const q = <T extends HTMLElement>(id: string) => root.querySelector('#' + id) as T;
@@ -618,7 +586,6 @@ export function createEditor(neon: Neon, root: HTMLElement): Editor {
           cr.append(cs);
           box.append(cr);
         }
-        if ('mouth' in v) numRow(box, 'Mouth chatter on the way in (per s, 0 = off)', k.chatter ?? 0, 1, (x) => { if (x) k.chatter = x; else delete k.chatter; }, 0, 40);
       } else {
       // Pose source.
       const pr = document.createElement('label');

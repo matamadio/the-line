@@ -1,4 +1,4 @@
-// The Worm: a sag of the line that crawls along its underside. Like the Snawave, its
+// The Worm: a sag of the line that crawls along its underside. Its
 // body is spliced into the line's stroke; a ripple runs back along it as it crawls.
 // On his side of the line, under it, it bites: he is left dizzy and it is gone. Walked
 // over from on top, the two opposite waves cancel, and that costs him.

@@ -12,8 +12,7 @@ const dataFile = (name: string) => fileURLToPath(new URL(`../src/data/${name}`, 
 /** Pairs of numbers on one line, so the file stays readable and diffs stay small. */
 function formatAnim(data: unknown) {
   return JSON.stringify(data, null, 2)
-    .replace(/\[\s+(-?[\d.e-]+),\s+(-?[\d.e-]+)\s+\]/g, '[$1, $2]')
-    .replace(/"(snawave)": \[([^\]]*)\]/g, (_m, k: string, v: string) => `"${k}": [${v.split(',').map((x) => x.trim()).join(', ')}]`) + '\n';
+    .replace(/\[\s+(-?[\d.e-]+),\s+(-?[\d.e-]+)\s+\]/g, '[$1, $2]') + '\n';
 }
 
 /** Number lists on one line: a point, an eye, a short outline. */
