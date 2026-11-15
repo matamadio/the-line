@@ -4,8 +4,9 @@
 // pixels and with the number of frames a second. When frames start coming late, the
 // game first draws on every other refresh, if the screen runs at 100 Hz or more (a
 // 120 Hz phone or iPad then runs at an even 60). After that it lowers the resolution
-// step by step, down to one canvas pixel per CSS pixel. It never goes back up while
-// the page is open, so it can't flicker between two settings.
+// step by step (see Neon for how low it goes). Last, it turns on lite mode: no blurred
+// shadows, fewer strokes for lines out of focus. It never goes back up while the page is
+// open, so it can't flicker between two settings.
 
 /** How many drawn frames each check looks at, and how many of them may be late. */
 const WINDOW = 60, LATE_SHARE = 0.15;
@@ -25,13 +26,16 @@ export class Pacing {
   skip = 1;
   /** Resolution, as a share of the full one. Neon reads it. */
   scale = 1;
+  /** The last step: cheaper glows. Neon reads it. */
+  lite = false;
   private lastTick = -1;
   private lastDraw = -1;
   private drawn = 0;
   private late = 0;
   private settle = SETTLE;
 
-  constructor(private readonly floor: number) {}
+  /** floor: the lowest share of the full resolution to go to before lite mode, or what tells it (it can change with the window). */
+  constructor(private readonly floor: number | (() => number)) {}
 
   /** Call on every animation frame with its time (ms). True when this one should be drawn. */
   tick(nowMs: number): boolean {
@@ -64,9 +68,14 @@ export class Pacing {
   /** Called once things have to get lighter: the caller reads skip and scale. */
   onChange: () => void = () => {};
 
+  /** The lowest share of the full resolution it would go to, now. */
+  get floorNow() { return typeof this.floor === 'number' ? this.floor : this.floor(); }
+  private get lowest() { return this.floorNow; }
+
   private degrade() {
     if (this.skip === 1 && this.refresh < 1 / 100) this.skip = 2;
-    else if (this.scale > this.floor) this.scale = Math.max(this.floor, this.scale * STEP_DOWN);
+    else if (this.scale > this.lowest + 1e-6) this.scale = Math.max(this.lowest, this.scale * STEP_DOWN);
+    else if (!this.lite) this.lite = true;
     else return;
     this.settle = SETTLE;
     this.onChange();

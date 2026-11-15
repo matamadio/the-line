@@ -36,26 +36,26 @@ npm start
 
 **To start at a later level**, add `?level=N` to the address, for example `?level=10` to go straight to the boss. It lasts for that page only and saves nothing.
 
-**To check performance on a device**, add `?perf` to the address. The top left corner then shows the frame rate, whether the game draws on every refresh or every other one, and the resolution it settled on.
+**To check performance on a device**, add `?perf` to the address. The top left corner then shows the frame rate, whether the game draws on every refresh or every other one, the resolution it settled on, and whether it went lite. Add `?lite` to start in the lightest mode, to compare.
 
 ## How to play
 
 Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your size counter shows how much lead is left.
 
-On a computer, the keys and the joypad's buttons can be changed from CONTROL in the menu. The defaults:
+On a computer or a TV, the keys, the remote's and the joypad's buttons can be changed from CONTROL in the menu. The defaults:
 
-| Action | Keyboard | Joypad | Touch |
-| --- | --- | --- | --- |
-| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways |
-| Go through the line | Towards it: ↓ or S on top, ↑ or W underneath | Towards it | Left thumb, towards it |
-| Float | Away from it: ↑ or W on top, ↓ or S underneath | Away from it | Left thumb, away from it |
-| Pull | X or Ctrl | X | Right thumb, swipe sideways |
-| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down |
-| Mute | M | | Speaker icon |
-| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) |
-| Nostalgia (low resolution look) | N | | Checkerboard icon |
-| Pause | P | Start | |
-| Back to the start screen | Esc | Back | |
+| Action | Keyboard | Joypad | Touch | LG TV remote |
+| --- | --- | --- | --- | --- |
+| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways | ← → |
+| Go through the line | Towards it: ↓ or S on top, ↑ or W underneath | Towards it | Left thumb, towards it | Towards it (↑ ↓) |
+| Float | Away from it: ↑ or W on top, ↓ or S underneath | Away from it | Left thumb, away from it | Away from it (↑ ↓) |
+| Pull | X or Ctrl | X | Right thumb, swipe sideways | CH ↑ or CH ↓ (or green) |
+| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down | OK (or red) |
+| Mute | M | | Speaker icon | |
+| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) | |
+| Nostalgia (low resolution look) | N | | Checkerboard icon | |
+| Pause | P | Start | | Back (OK carries on), or Play |
+| Back to the start screen | Esc | Back | | Back, while paused |
 
 In the menu, ↑ goes to the line behind and ↓ to the one before, round and round; Enter (or a wipe or a pull, or A) picks the line at the front: Wavell pulls it in, and that opens it. On a phone, swipe up or down and tap.
 
@@ -71,6 +71,16 @@ To install the game as an app, which also lets it play offline:
 
 - **Android and desktop Chrome or Edge:** press **install app** on the start screen. If it isn't there, use the browser's menu.
 - **iPhone and iPad:** press **install app** to see the steps: open the Share menu, then Add to Home Screen.
+
+### On an LG TV
+
+Open the game in the TV's web browser, or install the TV app (below). A Bluetooth joypad plays best; the remote works too, as in the table above. Back pauses instead of leaving the game.
+
+The TV app is in `webos/`: it only opens the hosted game with `?tv`, so it is always the latest version. To put it on the TV:
+
+1. Install **Developer Mode** from the LG Content Store, sign in with an LG developer account, and turn on Dev Mode and the Key Server. It lasts 50 hours and can be extended from the app.
+2. On the computer, add the TV once with `npx -p @webos-tools/cli@3.2.6 ares-setup-device`, naming it `tv`, with the IP and passphrase that Developer Mode shows.
+3. Run `npm run webos`, then `npm run webos:install`. The Line shows up with the TV's apps.
 
 ## The editors
 
@@ -217,6 +227,7 @@ src/
   editors/         The difficulty editor and the animation lab
 test/              Headless tests: the real simulation, no browser
 tools/             The dev server's save endpoint for the editors, the build's service worker
+webos/             The LG TV app, which opens the hosted game
 public/            Sounds, app icons and the app manifest
 docs/              Game rules reference (RULES.md), design notes and the original game's event list
 ```
@@ -233,6 +244,8 @@ docs/              Game rules reference (RULES.md), design notes and the origina
 | `npm run check` | Type-checks and runs the tests: what CI runs on each pull request |
 | `npm run build` | Type-checks and builds the static site into `dist/` |
 | `npm run preview` | Serves `dist/` to try out the build |
+| `npm run webos` | Packages the LG TV app into `dist-webos/` |
+| `npm run webos:install` | Installs that package on the TV set up as `tv` |
 
 `dist/` can be hosted anywhere, under any path. It needs a web server, because browsers refuse to load it from a `file://` address.
 

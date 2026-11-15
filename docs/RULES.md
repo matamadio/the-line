@@ -31,19 +31,20 @@ Wavell walks right along a line while its end crumbles in behind him. He has to 
 
 The player can change keys and joypad buttons under CONTROL in the menu. These are the defaults.
 
-| Action | Keyboard | Joypad | Touch |
-| --- | --- | --- | --- |
-| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways |
-| Go through the line | Towards it: ↓/S on top, ↑/W underneath | Towards it | Left thumb, towards the line |
-| Float in a bubble | Away from it: ↑/W on top, ↓/S underneath | Away from it | Left thumb, away from the line |
-| Pull | X or Ctrl | X | Right thumb, swipe sideways |
-| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down |
-| Mute | M | | Speaker icon |
-| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) |
-| Nostalgia (low-resolution look) | N | | Checkerboard icon |
-| Pause | P | Start | |
-| Back to the start screen | Esc | Back | |
+| Action | Keyboard | Joypad | Touch | LG TV remote |
+| --- | --- | --- | --- | --- |
+| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways | ← → |
+| Go through the line | Towards it: ↓/S on top, ↑/W underneath | Towards it | Left thumb, towards the line | Towards it (↑ ↓) |
+| Float in a bubble | Away from it: ↑/W on top, ↓/S underneath | Away from it | Left thumb, away from the line | Away from it (↑ ↓) |
+| Pull | X or Ctrl | X | Right thumb, swipe sideways | CH ↑ or CH ↓ (or green) |
+| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down | OK (or red) |
+| Mute | M | | Speaker icon | |
+| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) | |
+| Nostalgia (low-resolution look) | N | | Checkerboard icon | |
+| Pause | P | Start | | Back (OK carries on), or Play |
+| Back to the start screen | Esc | Back | | Back, while paused |
 
+- **LG TV.** On webOS the remote's buttons are keys like any other, and can be bound under CONTROL (one the game has no name for shows as REMOTE and its number). Back never leaves the page: in a game it pauses, and pressed again while paused it goes back to the start screen; while paused, OK carries on (that OK is not also a wipe). Anywhere else Back does what Esc does. In the TV app there is no fullscreen icon: it is always fullscreen.
 - **Directions are relative to the line.** "Towards" goes through it and "away" floats off, on whichever side Wavell is.
 - **Menu.** ↑ and ↓ cycle the entries (START, CONTROL, CREDITS). Enter, a wipe, a pull or joypad A picks the front one: Wavell pulls it in to open it. On a phone, swipe up or down and tap.
 - **First-time hints.** Each enemy and each mistake (such as a wrong attack) shows a hint the first time, for 3.5 s, worded for keys or touch depending on the input in use. Once the levels start over after the boss, no hints show again.
@@ -333,7 +334,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 
 Everything is drawn as glowing vector strokes at the screen's native resolution. Nothing is a sprite.
 
-- **Resolution and frame rate.** The canvas uses up to 2 pixels per CSS pixel, and at most about 4.1 million pixels in all (roughly 2560 x 1600). On a big tablet that lowers it, but never below 1 per CSS pixel. When more than 15% of the frames in a 60-frame window come over 1.5 times late, the game makes drawing lighter, one step per window. On a screen of 100 Hz or more it first draws on every other refresh, so 120 Hz runs at an even 60. After that, each step cuts the resolution by 20%, down to half, or to 1 pixel per CSS pixel if that comes first. It never steps back up while the page is open. A steady throttle, such as a battery saver's 30 fps, doesn't count as slow. Add `?perf` to the address to see the frame rate and what was chosen.
+- **Resolution and frame rate.** The canvas uses up to 2 pixels per CSS pixel, and at most about 4.1 million pixels in all (roughly 2560 x 1600). On a big tablet that lowers it, but never below 1 per CSS pixel. When more than 15% of the frames in a 60-frame window come over 1.5 times late, the game makes drawing lighter, one step per window. On a screen of 100 Hz or more it first draws on every other refresh, so 120 Hz runs at an even 60. After that, each step cuts the resolution by 20%, down to half. It goes below 1 pixel per CSS pixel only on a screen tall enough to keep at least 720 canvas pixels (a TV or a big monitor, where the browser's stretching hardly shows), so a phone stops at 1 per CSS pixel. The last step is lite mode: text and the title lose their blurred shadows (text gets a wide faint stroke instead), and lines out of focus behind the menu take 3 strokes instead of 6. It never steps back up while the page is open. A steady throttle, such as a battery saver's 30 fps, doesn't count as slow. Add `?perf` to the address to see the frame rate and what was chosen, and `?lite` to start at the lowest resolution in lite mode.
 
 - **One stroke.** Wavell leaves the line at his back toe, loops through his arms and head, and returns at his front toe. Creatures are spliced into the same stroke. Nothing crosses his face.
 - **Appearing.** He climbs out of the line hands first, then head, then a press-up and his legs. On first load the line stays flat for 0.8 s and he rises slowly over 3 s; after that, appearing takes 1 s.

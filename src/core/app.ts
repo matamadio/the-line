@@ -43,8 +43,11 @@ export async function promptInstall() {
   return true;
 }
 
-/** iPhones have no fullscreen for pages, and an installed game already is. */
-export function canFullscreen() { return typeof document !== 'undefined' && !!document.fullscreenEnabled && !installed(); }
+/** Opened by the LG TV app (webos/index.html), which is always fullscreen. */
+function tvApp() { return new URLSearchParams(location.search).has('tv'); }
+
+/** iPhones have no fullscreen for pages, and an installed game already is, as is the TV app. */
+export function canFullscreen() { return typeof document !== 'undefined' && !!document.fullscreenEnabled && !installed() && !tvApp(); }
 
 export function isFullscreen() { return !!document.fullscreenElement; }
 

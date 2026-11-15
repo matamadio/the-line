@@ -7,8 +7,9 @@
 // that push is the same however long he has been walking.
 // Presses are latched so a gesture shorter than one frame is never lost.
 // A joypad does the same as the keys, and which keys and buttons do what is in `binds`.
+// An LG TV's remote counts as keys too (see controls.ts), and its Back button never leaves the page.
 
-import { ACTIONS, defaultBindings, type Action, type Bindings } from './controls';
+import { ACTIONS, defaultBindings, keyCode, onTV, type Action, type Bindings } from './controls';
 
 export interface Controls {
   left: boolean; right: boolean; up: boolean; down: boolean;
@@ -104,25 +105,31 @@ export class Input implements Controls {
   uiTap: ((x: number, y: number) => (() => void) | null) | null = null;
   /** Every lifted finger or pressed key, the moments a browser lets a page start sound. */
   onGesture: (() => void) | null = null;
+  /** On an LG TV, whose remote has OK and Back in place of Enter and Esc. */
+  readonly tv = onTV();
 
   constructor(private el: HTMLElement) {
     this.setBindings(this.binds);
+    let backAt = -Infinity;
     window.addEventListener('keydown', (e) => {
+      const code = keyCode(e);
+      // Back must never take the browser off the game.
+      if (code === 'BrowserBack') { e.preventDefault(); backAt = performance.now(); }
       if (e.repeat) return;
       this.onGesture?.();
-      if (this.capture) { e.preventDefault(); this.capture({ key: e.code }); return; }
-      const own = this.onKey.get(e.code);
+      if (this.capture) { e.preventDefault(); this.capture({ key: code }); return; }
+      const own = this.onKey.get(code);
       own?.();
-      const k = this.keyMap.get(e.code);
+      const k = this.keyMap.get(code);
       // A key with a job of its own (mute, pause) doesn't count as "press any key".
       if (!own && k !== 'pause') this.latch.any = true;
       // The arrows and Enter always work in menus, so no one can get lost whatever they bind.
       const l = this.latch;
-      if (k === 'up' || e.code === 'ArrowUp') l.menuUp = true;
-      if (k === 'down' || e.code === 'ArrowDown') l.menuDown = true;
-      if (k === 'left' || e.code === 'ArrowLeft') l.menuLeft = true;
-      if (k === 'right' || e.code === 'ArrowRight') l.menuRight = true;
-      if (k === 'drag' || k === 'pull' || e.code === 'Enter' || e.code === 'NumpadEnter') { l.confirm = true; e.preventDefault(); }
+      if (k === 'up' || code === 'ArrowUp') l.menuUp = true;
+      if (k === 'down' || code === 'ArrowDown') l.menuDown = true;
+      if (k === 'left' || code === 'ArrowLeft') l.menuLeft = true;
+      if (k === 'right' || code === 'ArrowRight') l.menuRight = true;
+      if (k === 'drag' || k === 'pull' || code === 'Enter' || code === 'NumpadEnter') { l.confirm = true; e.preventDefault(); }
       if (!k) return;
       e.preventDefault();
       if (k === 'pause') { l.pause = true; return; }
@@ -130,7 +137,16 @@ export class Input implements Controls {
       if (k === 'up' || k === 'down' || k === 'drag' || k === 'pull') l[k] = true;
     });
     window.addEventListener('mousemove', (e) => { [this.mouseX, this.mouseY] = this.pos(e); });
-    window.addEventListener('keyup', (e) => { const k = this.keyMap.get(e.code); if (k && k !== 'pause') this.keys[k] = false; });
+    window.addEventListener('keyup', (e) => { const k = this.keyMap.get(keyCode(e)); if (k && k !== 'pause') this.keys[k] = false; });
+    // The TV's browser may turn Back into going back a page instead of a key, so there is
+    // always one page of the game's own to go back to. Back seen as a key just before is the same press.
+    if (this.tv && typeof history !== 'undefined') {
+      history.pushState(null, '', location.href);
+      window.addEventListener('popstate', () => {
+        history.pushState(null, '', location.href);
+        if (performance.now() - backAt > 500) this.onKey.get('BrowserBack')?.();
+      });
+    }
     window.addEventListener('blur', () => { for (const k of Object.keys(this.keys) as (keyof Held)[]) this.keys[k] = false; });
 
     el.addEventListener('pointerdown', (e) => {

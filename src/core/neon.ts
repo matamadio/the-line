@@ -63,6 +63,14 @@ const RETRO_WORD_STEP = 4.5;
 const BLUR_STROKES = 6, BLUR_GAIN = 1.3;
 /** The most canvas pixels drawn each frame, about 2560 x 1600: a big tablet's full density costs more than it shows. */
 const PIXEL_BUDGET = 4_100_000;
+/**
+ * How few canvas pixels tall a slow device may go. Below one per CSS pixel the browser
+ * stretches the picture, which a TV or a big monitor seen from afar hardly shows. A phone
+ * is already less than this, so it never goes below one per CSS pixel.
+ */
+const MIN_CANVAS_H = 720;
+/** Out of focus, in lite mode: fewer strokes make up a line. */
+const LITE_BLUR_STROKES = 3;
 const RETRO_LUT = Uint8ClampedArray.from({ length: 256 }, (_, v) => {
   const step = 255 / (RETRO_SHADES - 1);
   return Math.round(v / step) * step;
@@ -81,6 +89,10 @@ export class Neon {
   dpr = 1;
   /** Share of the full resolution to draw at, lowered by Pacing on a slow device. Never below one canvas pixel per CSS pixel. Call resize() after changing it. */
   quality = 1;
+  /** The last step on a slow device: no blurred shadows on text and the title, and fewer strokes for lines out of focus. Set by Pacing. */
+  lite = false;
+  /** The lowest quality that still makes a difference on this screen: below it the resolution stays the same. */
+  lowestQuality = 1;
   /** The play area's size and where it sits on the canvas, in CSS pixels. */
   w = 0;
   h = 0;
@@ -114,7 +126,9 @@ export class Neon {
     this.fullH = Math.max(1, this.canvas.clientHeight || window.innerHeight);
     const a = fitArea(this.fullW, this.fullH);
     const full = Math.min(window.devicePixelRatio || 1, 2, Math.max(1, Math.sqrt(PIXEL_BUDGET / (this.fullW * this.fullH))));
-    this.dpr = this.retro ? RETRO_W / a.w : Math.max(Math.min(1, full), full * this.quality);
+    const lowest = Math.min(full, 1, Math.max(MIN_CANVAS_H / this.fullH, 0));
+    this.lowestQuality = lowest / full;
+    this.dpr = this.retro ? RETRO_W / a.w : Math.max(lowest, full * this.quality);
     this.canvas.width = Math.round(this.fullW * this.dpr);
     this.canvas.height = Math.round(this.fullH * this.dpr);
     this.canvas.style.imageRendering = this.retro ? 'pixelated' : '';
@@ -210,9 +224,16 @@ export class Neon {
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
     c.lineJoin = 'round';
-    c.shadowColor = color;
-    c.shadowBlur = size * 0.25;
     c.strokeStyle = color;
+    if (this.lite) {
+      // A wide faint stroke in place of the blurred shadow: much cheaper to draw.
+      c.lineWidth = size * 0.16;
+      c.globalAlpha = 0.12 * this.fade;
+      c.strokeText(s, x, y);
+    } else {
+      c.shadowColor = color;
+      c.shadowBlur = size * 0.25;
+    }
     c.lineWidth = Math.max(1, size * 0.04);
     c.globalAlpha = this.fade;
     c.strokeText(s, x, y);
@@ -304,10 +325,11 @@ export class Neon {
     c.strokeStyle = color;
     if (this.blur > 0) {
       // Out of focus, a line is a wider and fainter one, with soft edges: nested strokes, whatever the browser can filter.
+      const strokes = this.lite ? LITE_BLUR_STROKES : BLUR_STROKES;
       let share = 0;
-      for (let i = 0; i < BLUR_STROKES; i++) share += 1 / (1 + (this.blur * i) / (BLUR_STROKES - 1));
-      for (let i = BLUR_STROKES - 1; i >= 0; i--) {
-        const wide = 1 + (this.blur * i) / (BLUR_STROKES - 1);
+      for (let i = 0; i < strokes; i++) share += 1 / (1 + (this.blur * i) / (strokes - 1));
+      for (let i = strokes - 1; i >= 0; i--) {
+        const wide = 1 + (this.blur * i) / (strokes - 1);
         c.globalAlpha = Math.min(1, ((BLUR_GAIN * intensity) / (wide * share))) * fade;
         c.lineWidth = width * wide;
         c.stroke(path);
@@ -340,10 +362,20 @@ export class Neon {
     c.font = `${size}px Audiowide, "Arial Black", sans-serif`;
     c.textAlign = align;
     c.textBaseline = 'middle';
-    c.shadowColor = color;
-    c.shadowBlur = size * 0.6;
     c.globalAlpha = alpha * this.fade;
     c.fillStyle = color;
+    if (this.lite) {
+      // A wide faint stroke in place of the blurred shadow.
+      c.strokeStyle = color;
+      c.lineJoin = 'round';
+      c.lineWidth = size * 0.3;
+      c.globalAlpha = 0.1 * alpha * this.fade;
+      c.strokeText(s, x, y);
+      c.globalAlpha = alpha * this.fade;
+    } else {
+      c.shadowColor = color;
+      c.shadowBlur = size * 0.6;
+    }
     c.fillText(s, x, y);
     c.shadowBlur = 0;
     c.globalAlpha = 0.6 * alpha * this.fade;
