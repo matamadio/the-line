@@ -39,20 +39,23 @@ describe('remote buttons get names', () => {
 
   it('names OK and the channel rocker as the remote does, on the TV only', () => {
     expect(keyName('Enter', true)).toBe('OK');
-    expect(keyName('PageUp', true)).toBe('CH ↑');
+    expect(keyName('PageUp', true)).toBe('CH +');
+    expect(keyName('PageDown', true)).toBe('CH -');
     expect(keyName('PageUp', false)).toBe('PAGE UP');
   });
 
   it('binds the remote everywhere, as not every TV browser says it is one, but first only on a TV', () => {
     const tv = defaultBindings(true), pc = defaultBindings(false);
-    expect(tv.keys.drag[0]).toBe('Enter');
-    expect(tv.keys.pull[0]).toBe('PageUp');
+    expect(tv.keys.drag[0]).toBe('PageUp');
+    expect(tv.keys.pull[0]).toBe('PageDown');
+    expect(tv.keys.pause[0]).toBe('Enter');
     expect(tv.keys.drag).toContain('KeyZ');
     // On a computer the hints still name its own keys.
     expect(pc.keys.drag[0]).toBe('KeyZ');
     expect(pc.keys.pull[0]).toBe('KeyX');
-    expect(pc.keys.drag).toContain('Enter');
-    expect(pc.keys.pull).toContain('PageUp');
+    expect(pc.keys.pause[0]).toBe('KeyP');
+    expect(pc.keys.drag).toContain('PageUp');
+    expect(pc.keys.pull).toContain('PageDown');
   });
 });
 
@@ -69,14 +72,16 @@ describe('a TV browser that says it is a computer', () => {
     return { input, press, history };
   }
 
-  it('still wipes with OK and pulls with the channel rocker', () => {
+  it('still wipes with CH +, pulls with CH - and pauses with OK', () => {
     const { input, press } = disguised();
     expect(input.tv).toBe(false);
-    press(13, 'Enter');
     press(33, 'PageUp');
+    press(34, 'PageDown');
+    press(13, 'Enter');
     input.poll();
     expect(input.dragPressed).toBe(true);
     expect(input.pullPressed).toBe(true);
+    expect(input.pausePressed).toBe(true);
   });
 
   it('turns into a TV at the first button only a remote has, and keeps Back from then on', () => {
@@ -85,7 +90,7 @@ describe('a TV browser that says it is a computer', () => {
     expect(input.tv).toBe(true);
     expect(history.pushState).toHaveBeenCalled();
     // The hints now name the remote's buttons.
-    expect(input.binds.keys.drag[0]).toBe('Enter');
+    expect(input.binds.keys.drag[0]).toBe('PageUp');
   });
 
   it('shows the last key in ?perf', () => {
@@ -96,15 +101,19 @@ describe('a TV browser that says it is a computer', () => {
 });
 
 describe('the remote plays', () => {
-  it('walks with the arrows, wipes with OK and pulls with the channel rocker', () => {
+  it('walks with the arrows, wipes with CH +, pulls with CH - and pauses with OK', () => {
     const { input, press } = onTV();
     press(39);
-    press(13);
     press(33);
+    press(34);
+    press(13);
     input.poll();
     expect(input.right).toBe(true);
     expect(input.dragPressed).toBe(true);
     expect(input.pullPressed).toBe(true);
+    expect(input.pausePressed).toBe(true);
+    // In menus OK still picks.
+    expect(input.confirm).toBe(true);
     press(39, 'keyup');
     input.poll();
     expect(input.right).toBe(false);

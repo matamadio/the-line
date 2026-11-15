@@ -23,8 +23,11 @@ interface Swipe { id: number; ox: number; oy: number; fired: boolean }
 /** A key or a joypad button, when one is being waited for. */
 export type Captured = { key: string } | { button: number };
 
-/** Is this someone on a phone or a tablet? */
-export const usesTouch = (inp: { touchUsed: boolean }) => inp.touchUsed || matchMedia('(pointer: coarse)').matches;
+/**
+ * Is this someone on a phone or a tablet? Never on a TV: its browser may take the Magic
+ * Remote's pointer for a finger, but the remote has buttons, and the screen is far away.
+ */
+export const usesTouch = (inp: { touchUsed: boolean; tv: boolean }) => !inp.tv && (inp.touchUsed || matchMedia('(pointer: coarse)').matches);
 
 /** How far a joypad's stick has to go to count. */
 const PAD_STICK = 0.5;

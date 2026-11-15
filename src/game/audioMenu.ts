@@ -2,6 +2,7 @@
 // Sound on or off, the music style and the time signature. While it is open the game
 // waits, and the music plays on its own so a choice can be heard straight away.
 
+import { usesTouch } from '../core/input';
 import { audioPrefs, saveAudioPrefs } from '../core/audioPrefs';
 import type { Input } from '../core/input';
 import { METERS, meterById } from '../core/music';
@@ -104,7 +105,7 @@ export class AudioMenu {
   }
 
   draw() {
-    const n = this.g.neon, c = n.ctx, b = this.box(n), s = b.s, inp = this.g.input, touch = inp.touchUsed;
+    const n = this.g.neon, c = n.ctx, b = this.box(n), s = b.s, inp = this.g.input, touch = usesTouch(inp);
     n.screen();
     // The game dims behind the window.
     c.globalCompositeOperation = 'source-over';
