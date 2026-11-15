@@ -111,7 +111,7 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | End of the line | Crumble speed, the most lead Wavell can build up, the pause after a respawn |
 | One at a time | Up to which level threats come one at a time, and the clear line between them |
 | Sinepede, Worm, Disturchin, Bubble Burst | Speed, how often they come, when they first appear. Also: the Sinepede's segments and its clock rate while Wavell stands, the Worm's while he is under the line, the Disturchin's warning and how long its spikes stay out, the Bubble's time to burst, its side, and when it starts floating off the line |
-| Backwave, Reflux | Chance per roll, how often it rolls, when it first appears |
+| Whiplash, Reflux | Chance per roll, how often it rolls, when it first appears |
 | Fighting | Knockback, the most sizes a creature can grow |
 | Rage | From which level a knot comes (one a level), how far into the level, how long it stays, its waves' speed and the points for each creature it clears |
 | Killerwave | From which level it comes, how often, how much line it needs behind Wavell, how fast and how long its fin chases him, how long its body takes to come up, its speed charging and ridden, how long a ride lasts, and the points for each creature it clears |
@@ -135,7 +135,7 @@ Rows that differ from the saved file turn orange, and double-clicking a row puts
 
 ![The animation lab](docs/images/lab.png)
 
-The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave, Rage, riding the Killerwave or floating over it, the burn, and THE SILENCER climbing out with his wave (Tide-Al) in each of its outcomes.
+The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Whiplash, Rage, riding the Killerwave or floating over it, the burn, and THE SILENCER climbing out with his wave (Tide-Al) in each of its outcomes.
 
 **Playback**
 

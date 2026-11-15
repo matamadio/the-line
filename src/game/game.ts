@@ -1,4 +1,4 @@
-// The game's rules and simulation: the line, Wavell, Sinepedes, Worms, Disturchins, Bubble Bursts, Backwaves,
+// The game's rules and simulation: the line, Wavell, Sinepedes, Worms, Disturchins, Bubble Bursts, Whiplashes,
 // line refluxes, sparkles and the end of the line crumbling in from the left. Timings and speeds follow the
 // original's events (see docs/original-events.txt) where there is one. Drawing is in
 // render.ts and hud.ts.
@@ -57,17 +57,17 @@ export interface Reflux { sx: number; y: number; side: 1 | -1; dist: number; dir
 /** A wipe's crest running along the line; spent on the first creature it reaches. */
 export interface Pulse { x: number; dir: number; side: number; kind: Attack; spent: boolean }
 /** A big wave rolling in from behind. Wavell floats over it, or bounces it back by holding the line as it hits. */
-export interface Backwave { x: number; dir: 1 | -1; warn: number; done: boolean; amp: number; gone?: boolean }
+export interface Whiplash { x: number; dir: 1 | -1; warn: number; done: boolean; amp: number; gone?: boolean }
 /** The longest frame the game catches up on in full (s): it keeps real time down to 10 fps, as on a slow TV. */
 const MAX_FRAME = 0.1;
 /** One about to roll in from x, after warn seconds. */
-const BACKWAVE_WIDTH = 11;
+const WHIPLASH_WIDTH = 11;
 /** It starts this far along from the end of the line, all of it on the line (u). */
-const BACKWAVE_MARGIN = BACKWAVE_WIDTH * 2.5;
+const WHIPLASH_MARGIN = WHIPLASH_WIDTH * 2.5;
 /** It needs this much line between where it starts and Wavell, or it doesn't come (u). */
-const BACKWAVE_ROOM = 60;
+const WHIPLASH_ROOM = 60;
 /** How far off the left of the screen a wave sent back goes, taking the end of the line with it (u). */
-const BACKWAVE_OFF = 20;
+const WHIPLASH_OFF = 20;
 /** The clear line kept between two enemies (u). */
 const ENEMY_GAP = 4;
 /** Room a new enemy that stays put needs on each side, leaving it space to grow (u). */
@@ -95,7 +95,7 @@ const TIDAL_WIDTH = 13;
 const BOSS_HALF = 46;
 /** How close in front of Wavell a held wipe catches a tidal wave (u). */
 const CATCH = 80;
-export const backwave = (x: number, warn: number): Backwave => ({ x, dir: 1, warn, done: false, amp: DIFF.backAmp });
+export const whiplash = (x: number, warn: number): Whiplash => ({ x, dir: 1, warn, done: false, amp: DIFF.backAmp });
 export interface Sparkle { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean; p: number }
 /** air: it came from a bubble bursting in the air, and pops his bubble too. */
 export interface Drop { x: number; y: number; vx: number; vy: number; side: number; life: number; air: boolean }
@@ -137,7 +137,7 @@ export class Game {
   herald: { steps: number; beats: number | null; due: boolean; count: number; speed: number; side: Side } | null = null;
   urchins: Urchin[] = [];
   worms: Worm[] = [];
-  backwaves: Backwave[] = [];
+  whiplashes: Whiplash[] = [];
   bubbles: BubbleBurst[] = [];
   drops: Drop[] = [];
   sparkles: Sparkle[] = [];
@@ -192,9 +192,9 @@ export class Game {
   private chainT = 0;
   /** Seconds before the end of the line starts crumbling again after a spawn. */
   endGrace = 0;
-  /** A wiped Backwave has carried the end of the line further back than the lead he can build up. */
+  /** A wiped Whiplash has carried the end of the line further back than the lead he can build up. */
   private endCarried = false;
-  /** Once a wiped Backwave is gone: the end stays off the left of the screen for its pause, even if he walks back. */
+  /** Once a wiped Whiplash is gone: the end stays off the left of the screen for its pause, even if he walks back. */
   private endHeld = false;
   /** The time he has, as the HUD shows it (0..1): full while the end is held off the screen. */
   lead = 1;
@@ -310,7 +310,7 @@ export class Game {
     this.herald = null;
     this.urchins = [];
     this.worms = [];
-    this.backwaves = [];
+    this.whiplashes = [];
     this.wormClock = 0;
     this.backClock = 0;
     this.bubbles = [];
@@ -371,7 +371,7 @@ export class Game {
     this.bubbles = [];
     this.drops = [];
     this.sparkles = [];
-    this.backwaves = [];
+    this.whiplashes = [];
     this.refluxes = [];
     this.pulses = [];
     this.tidals = [];
@@ -607,14 +607,14 @@ export class Game {
     if (this.endGrace > 0) this.endGrace -= dt;
     // It keeps going through a burning creature: the burn is the end of the line.
     else if (W.alive && W.state !== 'appear') this.endX += this.endSpeed * dt;
-    // Carried back by a wiped Backwave: the usual limit on his lead waits until the wave is gone
+    // Carried back by a wiped Whiplash: the usual limit on his lead waits until the wave is gone
     // and the end has crumbled back within it, or it would pull the end straight back in.
-    if (W.x - this.endX <= DIFF.endLead && !this.backwaves.some((b) => b.dir < 0) && !this.rageWaves.some((r) => r.dir < 0)) this.endCarried = false;
-    this.endX = Math.max(this.endX, this.endCarried ? n.camX - BACKWAVE_OFF : W.x - DIFF.endLead);
+    if (W.x - this.endX <= DIFF.endLead && !this.whiplashes.some((b) => b.dir < 0) && !this.rageWaves.some((r) => r.dir < 0)) this.endCarried = false;
+    this.endX = Math.max(this.endX, this.endCarried ? n.camX - WHIPLASH_OFF : W.x - DIFF.endLead);
     // He had to turn left to wipe it, so he is often still walking left: the camera follows him,
     // and the end must not slide into view and meet him before its pause is over.
     if (this.endGrace <= 0) this.endHeld = false;
-    if (this.endHeld) this.endX = Math.min(this.endX, n.camX - BACKWAVE_OFF);
+    if (this.endHeld) this.endX = Math.min(this.endX, n.camX - WHIPLASH_OFF);
     // The HUD bar: the line left behind him, or full while the end is held. It eases, not jumps.
     const lead = this.endHeld ? 1 : clamp((W.x - this.endX) / DIFF.endLead, 0, 1);
     this.lead += (lead - this.lead) * Math.min(1, dt * 8);
@@ -652,7 +652,7 @@ export class Game {
     this.updateUrchins(dt);
     this.updateWorms(dt);
     this.keepApart();
-    this.updateBackwaves(dt);
+    this.updateWhiplashes(dt);
     this.updateBoss(dt);
     this.updateTidals(dt);
     this.updateRefluxes(dt);
@@ -706,7 +706,7 @@ export class Game {
     for (const u of this.urchins) u.sink();
     for (const w of this.worms) w.sink();
     for (const b of this.bubbles) b.pop();
-    this.backwaves = [];
+    this.whiplashes = [];
     this.refluxes = [];
     this.boss = new Flattener(W.x + this.bossAhead);
     // No title: the screen shakes as he climbs out.
@@ -999,7 +999,7 @@ export class Game {
   /** Is anything out there that he has to deal with? */
   private threatsAround() {
     return this.herald !== null || this.sinepedes.some((s) => s.harmful) || this.worms.some((w) => w.harmful) || this.bubbles.some((b) => b.harmful)
-      || this.urchins.some((u) => u.standing) || this.backwaves.length > 0 || this.refluxes.length > 0 || (this.orca?.harmful ?? false);
+      || this.urchins.some((u) => u.standing) || this.whiplashes.length > 0 || this.refluxes.length > 0 || (this.orca?.harmful ?? false);
   }
 
   /**
@@ -1017,12 +1017,12 @@ export class Game {
    */
   private mostOverdue(): EnemyKind | null {
     const W = this.wavell, t = this.playTime, l = this.ramp;
-    const free = this.backwaves.length === 0 && this.refluxes.length === 0;
+    const free = this.whiplashes.length === 0 && this.refluxes.length === 0;
     const late: [EnemyKind, number][] = [['sine', this.sineClock / at('sineEvery', l)]];
     if (t >= DIFF.urchinFrom) late.push(['urchin', this.urchinClock / at('urchinEvery', l)]);
     if (t >= DIFF.wormFrom) late.push(['worm', this.wormClock / at('wormEvery', l)]);
     if (t > DIFF.bubbleFrom) late.push(['bubble', this.bubbleClock / at('bubbleEvery', l)]);
-    if (t > DIFF.backFrom && free && this.backwaveStart < W.x - BACKWAVE_ROOM) late.push(['back', this.backClock / DIFF.backCheck]);
+    if (this.ramp >= DIFF.backLevel && t > DIFF.backFrom && free && this.whiplashStart < W.x - WHIPLASH_ROOM) late.push(['back', this.backClock / DIFF.backCheck]);
     if (t > DIFF.refluxFrom && free) late.push(['reflux', this.refluxClock / DIFF.refluxCheck]);
     const due = late.filter((k) => k[1] >= 1).sort((a, b) => b[1] - a[1]);
     return due.length ? due[0][0] : null;
@@ -1211,39 +1211,39 @@ export class Game {
     this.worms = this.worms.filter((w) => w.state !== 'done' && w.back > n.camX - 90);
   }
 
-  private updateBackwaves(dt: number) {
+  private updateWhiplashes(dt: number) {
     const W = this.wavell, L = this.line, n = this.neon;
     if (this.canSpawn()) this.backClock += dt;
-    if (!this.quiet && this.takes('back') && this.canSpawn() && this.backClock > DIFF.backCheck && this.playTime > DIFF.backFrom && W.alive && W.state !== 'appear' && this.backwaves.length === 0 && this.refluxes.length === 0 && this.backwaveStart < W.x - BACKWAVE_ROOM) {
+    if (!this.quiet && this.takes('back') && this.canSpawn() && this.backClock > DIFF.backCheck && this.ramp >= DIFF.backLevel && this.playTime > DIFF.backFrom && W.alive && W.state !== 'appear' && this.whiplashes.length === 0 && this.refluxes.length === 0 && this.whiplashStart < W.x - WHIPLASH_ROOM) {
       this.backClock = 0;
       if (Math.random() < at('backChance', this.ramp)) {
-        this.backwaves.push(backwave(this.backwaveStart, this.inBeats(1.1)));
+        this.whiplashes.push(whiplash(this.whiplashStart, this.inBeats(1.1)));
         this.cue = false;
-        this.teach('backwave', 'BACKWAVE: float over it, or face it: SWIPE ↕ sends it back, SWIPE ↔ cancels it', 'BACKWAVE: float over it ({up}), or face it ({left}): {drag} sends it back, {pull} cancels it');
+        this.teach('whiplash', 'WHIPLASH: float over it, or face it: SWIPE ↕ sends it back, SWIPE ↔ cancels it', 'WHIPLASH: float over it ({up}), or face it ({left}): {drag} sends it back, {pull} cancels it');
       }
     }
     // Where a wave sent back is gone: just off the screen.
-    const backTo = n.camX - BACKWAVE_OFF;
-    for (const b of this.backwaves) {
+    const backTo = n.camX - WHIPLASH_OFF;
+    for (const b of this.whiplashes) {
       if (b.warn > 0) {
         b.warn = this.countDown(b.warn, dt);
         // The line trembles behind you before it comes.
-        const start = this.backwaveStart;
+        const start = this.whiplashStart;
         if (Math.random() < 0.5) L.impulse(start + 10 + rand(0, 20), rand(-40, 40), 3);
         if (b.warn <= 0) {
           // The end of the line has crumbled in too far meanwhile: there is no line left for it.
-          if (start >= W.x - BACKWAVE_ROOM) { b.gone = true; continue; }
+          if (start >= W.x - WHIPLASH_ROOM) { b.gone = true; continue; }
           b.x = start;
-          L.pulse(b.x, -b.amp, BACKWAVE_WIDTH, 1, DIFF.backSpeed);
+          L.pulse(b.x, -b.amp, WHIPLASH_WIDTH, 1, DIFF.backSpeed);
           sfx.play('reflux');
         }
         continue;
       }
       b.x += b.dir * DIFF.backSpeed * dt;
       if (b.dir < 0) {
-        this.carryBackwave(b);
+        this.carryWhiplash(b);
         // It carries the end of the line back with it, all the way to the left of the screen.
-        this.endX = Math.max(backTo, Math.min(this.endX, b.x - BACKWAVE_MARGIN));
+        this.endX = Math.max(backTo, Math.min(this.endX, b.x - WHIPLASH_MARGIN));
         // He has earned some time: there the end of the line stops for a moment.
         if (b.x < backTo) { this.endGrace = Math.max(this.endGrace, DIFF.backEarn); this.endHeld = this.endGrace > 0; L.calm(b.x, 16); }
         continue;
@@ -1251,7 +1251,7 @@ export class Game {
       // Past him it is on its own: a ripple running out along the line.
       if (b.done) continue;
       b.amp += DIFF.backAmp * DIFF.backGrow * dt;
-      this.carryBackwave(b);
+      this.carryWhiplash(b);
       if (!W.alive || W.state === 'appear') continue;
       // Only a wipe towards it sends it back: he has to face it. Wiping the other way does nothing.
       const thrown = this.pulses.find((p) => p.kind === 'wipe' && p.dir < 0 && p.x <= b.x);
@@ -1261,7 +1261,7 @@ export class Game {
         b.done = true;
         this.endCarried = true;
         L.calm(b.x, 22);
-        L.pulse(b.x, -b.amp, BACKWAVE_WIDTH, -1, DIFF.backSpeed);
+        L.pulse(b.x, -b.amp, WHIPLASH_WIDTH, -1, DIFF.backSpeed);
         this.addScore(10, W.x, L.sample(W.x) - 30 * W.side);
         this.dropSparkles(b.x);
         n.shake = Math.max(n.shake, 0.8);
@@ -1274,18 +1274,18 @@ export class Game {
         else if (W.onLine) W.hurt('zap');
       }
     }
-    this.backwaves = this.backwaves.filter((b) => !b.gone && (b.warn > 0 || (b.dir > 0 ? b.x < n.camX + n.viewW + 40 : b.x >= backTo)));
+    this.whiplashes = this.whiplashes.filter((b) => !b.gone && (b.warn > 0 || (b.dir > 0 ? b.x < n.camX + n.viewW + 40 : b.x >= backTo)));
   }
 
-  /** Where a Backwave starts: just off the screen, or at the end of the line if that is in view. */
-  private get backwaveStart() {
-    return Math.max(this.neon.camX - 10, this.endX + BACKWAVE_MARGIN);
+  /** Where a Whiplash starts: just off the screen, or at the end of the line if that is in view. */
+  private get whiplashStart() {
+    return Math.max(this.neon.camX - 10, this.endX + WHIPLASH_MARGIN);
   }
 
   /** Pulled flat by a pull facing it: it is simply gone, and no time is earned. */
-  private cancelBackwave(b: Backwave) {
+  private cancelWhiplash(b: Whiplash) {
     const L = this.line, W = this.wavell;
-    L.calm(b.x, BACKWAVE_WIDTH * 2);
+    L.calm(b.x, WHIPLASH_WIDTH * 2);
     b.gone = true;
     this.addScore(10, W.x, L.sample(W.x) - 30 * W.side);
     this.dropSparkles(b.x);
@@ -1295,9 +1295,9 @@ export class Game {
   }
 
   /** It stays a wave in the line, kept going at its own speed and up to its height. */
-  private carryBackwave(b: Backwave) {
+  private carryWhiplash(b: Whiplash) {
     const short = Math.max(0, b.amp + this.line.sample(b.x));
-    this.line.carry(b.x, -b.amp, BACKWAVE_WIDTH, b.dir * DIFF.backSpeed, -short * 0.05);
+    this.line.carry(b.x, -b.amp, WHIPLASH_WIDTH, b.dir * DIFF.backSpeed, -short * 0.05);
   }
 
   private updateBubbles(dt: number) {
@@ -1470,7 +1470,7 @@ export class Game {
     if (!this.quiet && this.takes('reflux') && this.canSpawn() && this.refluxClock > DIFF.refluxCheck) {
       this.refluxClock = 0;
       const incoming = this.sinepedes.some((s) => s.x > n.camX + n.viewW * 0.9);
-      if (W.alive && W.state !== 'appear' && this.playTime > DIFF.refluxFrom && this.refluxes.length === 0 && this.backwaves.length === 0 && !incoming &&
+      if (W.alive && W.state !== 'appear' && this.playTime > DIFF.refluxFrom && this.refluxes.length === 0 && this.whiplashes.length === 0 && !incoming &&
           Math.random() < at('refluxChance', this.ramp)) {
         const dir = Math.random() < 0.5 ? 1 : -1;
         this.refluxes.push(reflux(dir > 0 ? -12 : n.viewW + 12, dir, Math.random() < 0.5 ? 1 : -1, W, this.inBeats(0.9)));
@@ -1508,7 +1508,7 @@ export class Game {
    * side or in the bubble, he unties it, holding still and safe; then he shouts and three
    * huge waves run out each way. They clear every creature they pass, and anything past the
    * edges of the screen once they get there, and the ones going left carry the end of the
-   * line back off the screen, as a wiped Backwave does.
+   * line back off the screen, as a wiped Whiplash does.
    */
   private updateRage(dt: number) {
     const W = this.wavell, L = this.line, n = this.neon;
@@ -1572,8 +1572,8 @@ export class Game {
       this.rageClear(r.from, reach);
       if (r.dir < 0) {
         this.endCarried = true;
-        this.endX = Math.max(n.camX - BACKWAVE_OFF, Math.min(this.endX, r.x - BACKWAVE_MARGIN));
-        if (r.x < n.camX - BACKWAVE_OFF) { this.endGrace = Math.max(this.endGrace, DIFF.backEarn); this.endHeld = this.endGrace > 0; L.calm(r.x, 16); }
+        this.endX = Math.max(n.camX - WHIPLASH_OFF, Math.min(this.endX, r.x - WHIPLASH_MARGIN));
+        if (r.x < n.camX - WHIPLASH_OFF) { this.endGrace = Math.max(this.endGrace, DIFF.backEarn); this.endHeld = this.endGrace > 0; L.calm(r.x, 16); }
       }
     }
     this.rageWaves = this.rageWaves.filter((r) => r.delay > 0 || (r.dir > 0 ? r.x < right : r.x > left));
@@ -1713,14 +1713,14 @@ export class Game {
     for (const w of this.worms) if (!w.dead) end(w, w.centre, () => w.kill(Math.sign(w.centre - from) || 1));
     for (const u of this.urchins) if (u.standing) end(u, u.x, () => u.sink());
     for (const b of this.bubbles) if (b.harmful) end(b, b.x, () => b.pop());
-    for (const b of this.backwaves) if (!b.gone && b.warn <= 0 && b.dir > 0) end(b, b.x, () => { b.gone = true; L.calm(b.x, BACKWAVE_WIDTH * 2); });
-    for (const b of this.backwaves) if (b.warn > 0) b.gone = true;
+    for (const b of this.whiplashes) if (!b.gone && b.warn <= 0 && b.dir > 0) end(b, b.x, () => { b.gone = true; L.calm(b.x, WHIPLASH_WIDTH * 2); });
+    for (const b of this.whiplashes) if (b.warn > 0) b.gone = true;
     for (const r of this.refluxes) {
       const x = this.neon.camX + r.sx;
       if (within(x) && !this.raged.has(r)) { this.raged.add(r); r.passed = true; this.fx.burst(x, r.y, 10, 40, '#ffd0e0', 0, 0.3); }
     }
     this.refluxes = this.refluxes.filter((r) => !this.raged.has(r));
-    this.backwaves = this.backwaves.filter((b) => !b.gone);
+    this.whiplashes = this.whiplashes.filter((b) => !b.gone);
     for (const d of this.drops) if (within(d.x)) d.life = 0;
   }
 
@@ -1759,7 +1759,7 @@ export class Game {
         for (const b of this.bubbles) b.pop();
         this.crumbles = [];
         this.drops = [];
-        this.backwaves = [];
+        this.whiplashes = [];
         this.refluxes = [];
         this.pulses = [];
         this.tidals = [];
@@ -1808,10 +1808,10 @@ export class Game {
     const ahead = (t: { x0: number; x1: number }) => (f > 0 ? t.x0 - W.x : W.x - t.x1);
     const t = this.targets().filter((t) => ahead(t) > -6 && ahead(t) < reach).sort((a, b) => ahead(a) - ahead(b))[0];
     this.lineStreams();
-    // Facing a Backwave on its way, the pull takes that, if nothing is nearer.
-    const wave = f < 0 ? this.backwaves.find((b) => b.warn <= 0 && b.dir > 0 && !b.done && !b.gone && W.x - b.x > -6 && W.x - b.x < reach) : undefined;
+    // Facing a Whiplash on its way, the pull takes that, if nothing is nearer.
+    const wave = f < 0 ? this.whiplashes.find((b) => b.warn <= 0 && b.dir > 0 && !b.done && !b.gone && W.x - b.x > -6 && W.x - b.x < reach) : undefined;
     const tidal = f > 0 ? this.tidals.find((w) => w.dir < 0 && !w.done && !w.gone && w.x - W.x > -6 && w.x - W.x < reach) : undefined;
-    if (wave && (!t || W.x - wave.x < ahead(t))) this.cancelBackwave(wave);
+    if (wave && (!t || W.x - wave.x < ahead(t))) this.cancelWhiplash(wave);
     else if (tidal && (!t || tidal.x - W.x < ahead(t))) this.cancelTidal(tidal);
     else if (t) this.hit(t.e, t.side, 'pull', W.side, -f);
   }

@@ -496,7 +496,7 @@ describe('the title coming apart', () => {
 describe('nostalgia mode', () => {
   it('has a pixel font for every character the game writes', () => {
     const texts = [...TITLE_HINTS, '← → walk   ↓ through the line   ↑ float / back up', 'left thumb: walk  ·  down: through the line', 'SWIPE ↔ to pull  ·  swipe ↕ to wipe',
-      'WRONG ATTACK, IT GREW! BACKWAVE: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM', VERSION_TEXT, '×4  FINAL LEVEL 10', 'BIGGER IS RICHER: every point now counts ×2', ...ENTRIES, ...CREDIT_NAMES, ...ACTIONS.map((a) => a.label),
+      'WRONG ATTACK, IT GREW! WHIPLASH: float over it (UP)', 'Share menu, then Add to Home Screen', '000123  LEVEL 12  ·  75 BPM', VERSION_TEXT, '×4  FINAL LEVEL 10', 'BIGGER IS RICHER: every point now counts ×2', ...ENTRIES, ...CREDIT_NAMES, ...ACTIONS.map((a) => a.label),
       'Enter to go back', 'PRESS A KEY...', 'PRESS A BUTTON...', '< KEYBOARD >', '< JOYPAD >', 'RESTORE DEFAULTS',
       'NO JOYPAD FOUND: CONNECT ONE AND PRESS A BUTTON', 'THE LEFT STICK WALKS AS WELL   ·   BACK: MENU', 'Esc: leave it as it is', 'TOWARDS THE LINE: THROUGH IT', 'SWIPE SIDEWAYS: PULL', 'SWIPE UP OR DOWN: WIPE',
       'AUDIO', 'SOUND', 'MUSIC', 'TIME', '> CLOSE <', '< ON >', '< OFF >', 'MUSIC BITCRUSHED', ...STYLES.map((st) => `< ${st.name} >`), ...METERS.map((m) => `< ${m.id} >`),

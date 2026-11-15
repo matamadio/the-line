@@ -42,7 +42,7 @@ There are 10 levels, each costing 50 points more than the one before (level 10 s
 | --- | --- | --- |
 | **Sinepede** (`sinepede.ts`) | Crawls along the line, as crests above it and troughs below it | The right attack for the segment facing you, one at a time |
 | **Worm** (`worm.ts`) | Crawls underneath, sagging the line so you see it coming | Pull it, from either side. A wipe makes it grow and pushes it back. If it reaches you underneath it bites and leaves you dizzy. Walked over from on top, it hurts |
-| **Backwave** | Rolls in from behind | Float over it, or face it and answer it (attacking the other way does nothing). A pull cancels it (+10). A wiped one rolls back off the left of the screen (+10), carrying the end of the line back with it, and the end of the line then stops for 2 seconds |
+| **Whiplash** | Rolls in from behind | Float over it, or face it and answer it (attacking the other way does nothing). A pull cancels it (+10). A wiped one rolls back off the left of the screen (+10), carrying the end of the line back with it, and the end of the line then stops for 2 seconds |
 | **Line reflux** | Runs parallel to the line, on one side of it, half Wavell's height away | Be on the other side |
 | **Disturchin** (`urchin.ts`) | Stays still, on both sides of the line. It starts as a fuzz on the line, then bursts out in spikes for a second | Pull it, or wait it out |
 | **Bubble Burst** (`bubble.ts`) | Blisters out of either side of the line, swells and bursts. From level 6, some float off and burst in the air | Pop it early with the right attack, or keep clear |
@@ -65,7 +65,7 @@ He is made of the line, so he can take any shape, and **each shape is one power*
 
 | Power | His shape | What it does | Answer |
 | --- | --- | --- | --- |
-| **Front wave: Tide-Al** | A breaking wave with a face: angry eyes, a toothy mouth under a lip dripping foam | Flows from his blob into its full curl, spraying, as a deep sound rises; leans over and crashes down on the line with a roar, bursting into a splash of water jets and drops, and sending a wave rolling at Wavell, like a Backwave from the front. Its timing follows a reference animation, kept out of the repo | Wipe it facing it: it rolls back and hits him. The only way to hurt him |
+| **Front wave: Tide-Al** | A breaking wave with a face: angry eyes, a toothy mouth under a lip dripping foam | Flows from his blob into its full curl, spraying, as a deep sound rises; leans over and crashes down on the line with a roar, bursting into a splash of water jets and drops, and sending a wave rolling at Wavell, like a Whiplash from the front. Its timing follows a reference animation, kept out of the repo | Wipe it facing it: it rolls back and hits him. The only way to hurt him |
 | **Cat** | A chunky cat, its rear at Wavell | Charges with sparks drawn into its rear, and shoots three line refluxes from it, in a random order: crouched, at Wavell's height along the top of the line; risen, over his head (it only reaches him at full size, or floating); rolled on its back over to under the line (turning over round it like a barrel, never going flat), along the bottom | Be on the other side of the line from each low shot; stay on the line under the high one |
 | **Saw** | A sawblade through the line, cutting it | Spins up for a second, then rolls at Wavell and flattens out before the end of the line | Float over it |
 | **Toad** | A toad that sinks into the line until only its bulging eyes show | Bubbles blister up along the line, float off and burst | Keep clear, or get under the line |
@@ -105,7 +105,7 @@ An orca of line comes up behind Wavell, fin first, and charges. It is an enemy a
 
 Every enemy killed leaves two sparkles behind, one on each side of the line. A few more pop up on their own, as many below the line as above it, often behind Wavell. They drift about at random and blink out after a few seconds. Each one counts towards his next size. Catching them in a quick chain is worth more and more, and gold ones, far off the line on either side, where it takes his bubble to reach them, are worth five times as much. Chasing them means giving ground to the line.
 
-Enemies on the line never overlap. Those that crawl queue up behind whatever is ahead of them, a Disturchin or Bubble Burst only appears where there is room, and an enemy thrown back stops at the next one or shoves it along. The Backwave and the Reflux are waves in the line, so they pass through the others, and a bubble in the air is off the line.
+Enemies on the line never overlap. Those that crawl queue up behind whatever is ahead of them, a Disturchin or Bubble Burst only appears where there is room, and an enemy thrown back stops at the next one or shoves it along. The Whiplash and the Reflux are waves in the line, so they pass through the others, and a bubble in the air is off the line.
 
 ## The beat
 
@@ -115,7 +115,7 @@ A music-timing core for the game ([issue #3](https://github.com/matamadio/the-li
 - The line lights up on each beat, so the beat can be seen with the sound off.
 - The whole world runs at `BPM / 75`, and the tempo rises by 2 BPM per level, changing only at the start of a bar.
 - Enemies come in on the beat, one to a beat and never more than two to a bar: on beat 4 only up to level 5, and on beats 2 and 4 from level 6. The kinds take turns, the one furthest past its time going next, so the commonest doesn't take every beat.
-- What they do with a sound also waits for the beat: a Disturchin's spikes, a Backwave or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses are whole beats.
+- What they do with a sound also waits for the beat: a Disturchin's spikes, a Whiplash or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses are whole beats.
 - The time signature (2/4, 3/4, 4/4, 5/4, 6/8 or 7/8, from the audio menu) sets how many beats make a bar. In any of them, enemies come in on the last beat of the bar, and later also on the one half a bar before it. A new time signature, like a new tempo, waits for the next bar.
 
 ## Music

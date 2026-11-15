@@ -79,7 +79,7 @@ describe('the Silencer', () => {
     expect(g.level).toBe(DIFF.lastLevel);
     expect(g.boss).not.toBeNull();
     run(g, 6, { ...IDLE, right: true });
-    expect(g.sinepedes.length + g.worms.length + g.urchins.length + g.backwaves.length).toBe(0);
+    expect(g.sinepedes.length + g.worms.length + g.urchins.length + g.whiplashes.length).toBe(0);
   });
 
   it('the end of the line crumbles at the fight speed', () => {
