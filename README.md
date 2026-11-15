@@ -52,7 +52,7 @@ On a computer, the keys and the joypad's buttons can be changed from CONTROL in 
 | Pull | X or Ctrl | X | Right thumb, swipe sideways | CH − (or green) |
 | Wipe | Z, Shift or Space | A | Right thumb, swipe up or down | CH + (or red) |
 | Mute | M | | Speaker icon | |
-| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) | |
+| Fullscreen | F (also in the installed app on a computer) | | Corners icon, under the audio icon (not in the installed app on a phone, which is fullscreen already) | |
 | Nostalgia (low resolution look) | N | | Checkerboard icon | |
 | Pause | P | Start | | OK or Play, or Back |
 | Back to the start screen | Esc | Back | | Back, while paused |
@@ -65,7 +65,7 @@ Every screen shows the same play area, 16:9 and 356x200 world units, so nobody s
 
 ### On a phone
 
-Hold the phone sideways. The corners icon goes fullscreen, except on iPhones, which don't allow it for web pages.
+Hold the phone sideways for the biggest view; held upright, the view grows taller around the same play area, with the thumb controls below. The corners icon goes fullscreen, except on iPhones, which don't allow it for web pages.
 
 To install the game as an app, which also lets it play offline:
 

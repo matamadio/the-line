@@ -10,7 +10,7 @@ import type { Game } from './game';
 import { drawHud } from './hud';
 import { END_WORD, END_WORD_SCALE, endWordX } from './endWord';
 import { strokeWord } from './lettering';
-import { BACK_LINES, backWave, depthScale } from './menu';
+import { BACK_LINES, TALL_LINES, backWave, depthScale } from './menu';
 
 
 /** THE LINE CONTINUES on screen, as flat points riding a line: base(x) is the line's y at x px. */
@@ -80,10 +80,21 @@ function drawBackdrop(g: Game) {
   for (const s of g.stars) {
     const x = (((s.x * n.w - n.camX * n.unit * s.z) % n.w) + n.w) % n.w;
     c.globalAlpha = (0.25 + 0.25 * Math.sin(g.time * 2 + s.p)) * s.z * 3;
-    c.fillRect(x, s.y * n.lineY * 0.95, s.s, s.s);
+    // Upright, the sky goes on above and below the play area, and so do the stars.
+    const y = n.above + n.below > 0 ? s.y * (n.h + n.above + n.below) - n.above : s.y * n.lineY * 0.95;
+    c.fillRect(x, y, s.s, s.s);
   }
   c.globalAlpha = 1;
   // Two faint lines far away, scrolling slower: depth without clutter. The menu has lines of its own.
+  // Upright, two more, further still, in the sky above and below the play area.
+  if (n.above > 0 || n.below > 0) for (const line of TALL_LINES) {
+    const u = n.unit, p = new Path2D();
+    for (let x = -10; x <= n.w + 10; x += 6) {
+      const y = n.lineY - line.off * u + backWave(line, x / u + n.camX, n.camX, g.time) * u;
+      if (x === -10) p.moveTo(x, y); else p.lineTo(x, y);
+    }
+    n.glow(p, COLORS.line, u * 0.45, line.alpha);
+  }
   n.fade = g.quiet || g.menu.backdropShows ? 1 : 0;
   BACK_LINES.forEach((line, i) => {
     const u = n.unit, base = (x: number) => n.lineY - line.off * u + backWave(line, x / u + n.camX, n.camX, g.time) * u;

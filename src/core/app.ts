@@ -46,8 +46,20 @@ export async function promptInstall() {
 /** Opened by the LG TV app (webos/index.html), which is always fullscreen. */
 function tvApp() { return new URLSearchParams(location.search).has('tv'); }
 
-/** iPhones have no fullscreen for pages, and an installed game already is, as is the TV app. */
-export function canFullscreen() { return typeof document !== 'undefined' && !!document.fullscreenEnabled && !installed() && !tvApp(); }
+/**
+ * iPhones have no fullscreen for pages, and the TV app always is. An installed game is
+ * fullscreen already on a phone, but on a computer it opens in a window, which can go fullscreen.
+ */
+export function canFullscreen() {
+  if (typeof document === 'undefined' || !document.fullscreenEnabled || tvApp()) return false;
+  return !!document.fullscreenElement || !appFullscreen();
+}
+
+/** Opened fullscreen as an app, not made so by the button: an installed game on a phone. */
+function appFullscreen() {
+  return (navigator as unknown as { standalone?: boolean }).standalone === true
+    || (matchMedia('(display-mode: fullscreen)').matches && !document.fullscreenElement);
+}
 
 export function isFullscreen() { return !!document.fullscreenElement; }
 
@@ -55,8 +67,7 @@ export async function toggleFullscreen() {
   try {
     if (document.fullscreenElement) { await document.exitFullscreen(); return; }
     if (!document.fullscreenEnabled) return;
+    // Not locked sideways: held upright, the view grows taller instead (see Neon.above).
     await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
-    // Phones only allow locking the rotation while fullscreen. Lock is not in the DOM types yet.
-    await (screen.orientation as unknown as { lock?: (o: string) => Promise<void> }).lock?.('landscape');
   } catch { /* refused, or the browser can't lock: the game still plays */ }
 }

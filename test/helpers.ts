@@ -20,7 +20,7 @@ export function seeded(a: number) {
 
 /** What the simulation reads of the view: the play area at one pixel per world unit. */
 function fakeNeon() {
-  return { w: VIEW_W, h: VIEW_H, ox: 0, oy: 0, unit: 1, zoom: 1, camX: 0, lineY: 124, shake: 0, viewW: VIEW_W, focus: 0.42, viewTop: -124, viewBottom: 76 } as unknown as Neon;
+  return { w: VIEW_W, h: VIEW_H, ox: 0, oy: 0, above: 0, below: 0, unit: 1, zoom: 1, camX: 0, lineY: 124, shake: 0, viewW: VIEW_W, focus: 0.42, viewTop: -124, viewBottom: 76 } as unknown as Neon;
 }
 
 function fakeInput() {

@@ -69,6 +69,8 @@ const PIXEL_BUDGET = 4_100_000;
  * is already less than this, so it never goes below one per CSS pixel.
  */
 const MIN_CANVAS_H = 720;
+/** On a phone held upright, how far down the screen the line runs. */
+const TALL_LINE = 0.55;
 /** Out of focus, in lite mode: fewer strokes make up a line. */
 const LITE_BLUR_STROKES = 3;
 const RETRO_LUT = Uint8ClampedArray.from({ length: 256 }, (_, v) => {
@@ -98,6 +100,12 @@ export class Neon {
   h = 0;
   ox = 0;
   oy = 0;
+  /**
+   * A phone held upright: how much of the world shows above and below the play area (CSS
+   * px). The play area is the same as ever, and so is the game; the sky goes on around it.
+   */
+  above = 0;
+  below = 0;
   /** The whole canvas, in CSS pixels. */
   fullW = 0;
   fullH = 0;
@@ -141,6 +149,13 @@ export class Neon {
     this.w = a.w; this.h = a.h; this.ox = a.x; this.oy = a.y;
     this.unit = (this.h / VIEW_H) * this.zoom;
     this.lineY = this.h * 0.62;
+    this.above = this.below = 0;
+    if (this.fullH > this.fullW) {
+      // Upright: the line a little above the middle, leaving the thumbs room below.
+      this.oy = Math.round(Math.min(this.fullH - this.h, Math.max(0, this.fullH * TALL_LINE - this.lineY)));
+      this.above = this.oy;
+      this.below = this.fullH - this.oy - this.h;
+    }
   }
 
   get viewW() { return this.w / this.unit; }
@@ -171,27 +186,30 @@ export class Neon {
     this.clipped = true;
     this.screen();
     c.beginPath();
-    c.rect(0, 0, this.w, this.h);
+    c.rect(0, -this.above, this.w, this.h + this.above + this.below);
     c.clip();
     // The shake moves the world, not the sky.
     c.setTransform(1, 0, 0, 1, 0, 0);
-    c.drawImage(this.backdropImage(), Math.round(this.ox * this.dpr), Math.round(this.oy * this.dpr));
+    c.drawImage(this.backdropImage(), Math.round(this.ox * this.dpr), Math.round((this.oy - this.above) * this.dpr));
     this.screen();
   }
 
   /** The sky and the haze along the line, in canvas pixels, the size of the play area. */
   private backdropImage() {
     if (this.backdrop) return this.backdrop;
-    const w = Math.max(1, Math.round(this.w * this.dpr)), h = Math.max(1, Math.round(this.h * this.dpr));
+    // Upright, it reaches over the sky above and below the play area too.
+    const tall = this.h + this.above + this.below, line = this.lineY + this.above;
+    const w = Math.max(1, Math.round(this.w * this.dpr)), h = Math.max(1, Math.round(tall * this.dpr));
     const img = typeof document !== 'undefined' ? Object.assign(document.createElement('canvas'), { width: w, height: h }) : new OffscreenCanvas(w, h);
     const c = img.getContext('2d') as CanvasRenderingContext2D;
     c.scale(this.dpr, this.dpr);
-    const g = c.createLinearGradient(0, 0, 0, this.h);
+    const g = c.createLinearGradient(0, 0, 0, tall);
     g.addColorStop(0, '#05030f');
-    g.addColorStop(this.lineY / this.h, '#0b0920');
+    g.addColorStop(line / tall, '#0b0920');
     g.addColorStop(1, '#020107');
     c.fillStyle = g;
-    c.fillRect(0, 0, this.w, this.h);
+    c.fillRect(0, 0, this.w, tall);
+    c.translate(0, this.above);
     // A soft haze along the line.
     const hz = c.createLinearGradient(0, this.lineY - 40 * this.unit, 0, this.lineY + 25 * this.unit);
     hz.addColorStop(0, 'rgba(255,190,40,0)');
