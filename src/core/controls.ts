@@ -32,8 +32,9 @@ const DEFAULT_KEYS: Record<Action, string[]> = {
 
 /**
  * On an LG TV the remote is the keyboard: OK wipes, the channel rocker pulls, and the red
- * and green buttons do the same where the remote has them. They come first, so the hints
- * name them. The arrows are the arrows, and Back pauses (see game.ts).
+ * and green buttons do the same where the remote has them. They are bound everywhere, as
+ * not every TV browser says it is one; on a TV they come first, so the hints name them.
+ * The arrows are the arrows, and Back pauses (see game.ts).
  */
 const TV_KEYS: Partial<Record<Action, string[]>> = {
   drag: ['Enter', 'ColorRed'], pull: ['PageUp', 'PageDown', 'ColorGreen'], pause: ['MediaPlayPause', 'MediaPlay', 'Pause'],
@@ -45,8 +46,16 @@ const DEFAULT_PAD: Record<Action, number[]> = { left: [14], right: [15], up: [12
 /** Keys with a job of their own, which can't be given another. */
 export const RESERVED_KEYS: ReadonlySet<string> = new Set(['Escape', 'Enter', 'NumpadEnter', 'KeyM', 'KeyF', 'KeyN', 'BrowserBack']);
 
+let tvSeen = false;
+/** A remote-only button came in: this is a TV, whatever the browser says it is. */
+export function markTV() { tvSeen = true; }
 /** Running on an LG TV (webOS), in its browser or as the app? */
-export const onTV = () => typeof navigator !== 'undefined' && /Web0S|webOS/i.test(navigator.userAgent ?? '');
+export const onTV = () => tvSeen || (typeof navigator !== 'undefined' && /Web0S|webOS|SmartTV|NetCast/i.test(navigator.userAgent ?? ''));
+
+/** Buttons only a TV remote has. A key with no name at all, only a keyCode, is one too. */
+const REMOTE_ONLY = new Set([461, 403, 404, 405, 406, 415, 413, 412, 417]);
+export const fromRemote = (e: { code?: string; keyCode?: number }) =>
+  REMOTE_ONLY.has(e.keyCode ?? 0) || ((!e.code || e.code === 'Unidentified') && !!e.keyCode);
 
 /**
  * What an LG remote's buttons send. Its browser often leaves a key's `code` empty and
@@ -71,7 +80,10 @@ const STORE = 'the-line-controls';
 export function defaultBindings(tv = onTV()): Bindings {
   const copy = <T>(table: Record<Action, T[]>) => Object.fromEntries(Object.entries(table).map(([a, v]) => [a, [...v]])) as Record<Action, T[]>;
   const keys = copy(DEFAULT_KEYS);
-  if (tv) for (const { action } of ACTIONS) keys[action] = [...(TV_KEYS[action] ?? []), ...keys[action]];
+  for (const { action } of ACTIONS) {
+    const remote = TV_KEYS[action] ?? [];
+    keys[action] = tv ? [...remote, ...keys[action]] : [...keys[action], ...remote];
+  }
   return { device: 'keyboard', keys, pad: copy(DEFAULT_PAD) };
 }
 

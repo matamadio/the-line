@@ -114,9 +114,13 @@ export class Neon {
   private sx = 0;
   private sy = 0;
   private clipped = false;
+  /** The backdrop (sky gradient and the haze along the line), drawn once per size: gradients are slow to fill without a GPU. */
+  private backdrop: HTMLCanvasElement | OffscreenCanvas | null = null;
 
   constructor(readonly canvas: HTMLCanvasElement) {
-    this.ctx = canvas.getContext('2d', { alpha: false })!;
+    // ?cpu draws without the GPU, as a TV's browser may: for finding what costs the most.
+    const cpu = typeof location !== 'undefined' && new URLSearchParams(location.search).has('cpu');
+    this.ctx = canvas.getContext('2d', { alpha: false, willReadFrequently: cpu })!;
     this.resize();
   }
 
@@ -133,6 +137,7 @@ export class Neon {
     this.canvas.height = Math.round(this.fullH * this.dpr);
     this.canvas.style.imageRendering = this.retro ? 'pixelated' : '';
     this.clipped = false; // Resizing a canvas resets its state.
+    this.backdrop = null;
     this.w = a.w; this.h = a.h; this.ox = a.x; this.oy = a.y;
     this.unit = (this.h / VIEW_H) * this.zoom;
     this.lineY = this.h * 0.62;
@@ -168,6 +173,19 @@ export class Neon {
     c.beginPath();
     c.rect(0, 0, this.w, this.h);
     c.clip();
+    // The shake moves the world, not the sky.
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.drawImage(this.backdropImage(), Math.round(this.ox * this.dpr), Math.round(this.oy * this.dpr));
+    this.screen();
+  }
+
+  /** The sky and the haze along the line, in canvas pixels, the size of the play area. */
+  private backdropImage() {
+    if (this.backdrop) return this.backdrop;
+    const w = Math.max(1, Math.round(this.w * this.dpr)), h = Math.max(1, Math.round(this.h * this.dpr));
+    const img = typeof document !== 'undefined' ? Object.assign(document.createElement('canvas'), { width: w, height: h }) : new OffscreenCanvas(w, h);
+    const c = img.getContext('2d') as CanvasRenderingContext2D;
+    c.scale(this.dpr, this.dpr);
     const g = c.createLinearGradient(0, 0, 0, this.h);
     g.addColorStop(0, '#05030f');
     g.addColorStop(this.lineY / this.h, '#0b0920');
@@ -181,6 +199,8 @@ export class Neon {
     hz.addColorStop(1, 'rgba(255,190,40,0)');
     c.fillStyle = hz;
     c.fillRect(0, this.lineY - 40 * this.unit, this.w, 65 * this.unit);
+    this.backdrop = img;
+    return img;
   }
 
   world() {
@@ -319,6 +339,8 @@ export class Neon {
   /** Stroke a path as a glowing tube: wide faint halo, tight glow, solid core, hot centre. */
   glow(path: Path2D, color: string, width = 0.8, intensity = 1) {
     const c = this.ctx, fade = this.fade;
+    // Faded right out: nothing to see, and stroking it still costs.
+    if (fade <= 0 || intensity <= 0) return;
     c.globalCompositeOperation = 'lighter';
     c.lineCap = 'round';
     c.lineJoin = 'round';
@@ -337,9 +359,12 @@ export class Neon {
       c.globalAlpha = 1;
       return;
     }
-    c.globalAlpha = 0.06 * intensity * fade;
-    c.lineWidth = width * 8;
-    c.stroke(path);
+    // The widest, faintest halo is the costliest pass for the least light: lite mode leaves it out.
+    if (!this.lite) {
+      c.globalAlpha = 0.06 * intensity * fade;
+      c.lineWidth = width * 8;
+      c.stroke(path);
+    }
     c.globalAlpha = 0.18 * intensity * fade;
     c.lineWidth = width * 3;
     c.stroke(path);

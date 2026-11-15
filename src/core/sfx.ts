@@ -16,10 +16,15 @@ const SAMPLES = {
 } as const;
 export type Sample = keyof typeof SAMPLES;
 
-/** Beats are scheduled this far ahead (s), so a late frame can't make the click stumble. */
-const BEAT_AHEAD = 0.03;
-/** Further than this (s) from where the next beat was due, the click gives up and catches up. */
+/**
+ * Beats are scheduled this far ahead (s), so a late frame can't make the click stumble.
+ * On a slow device it is longer, a little more than its frames take, up to BEAT_AHEAD_MAX.
+ */
+const BEAT_AHEAD = 0.03, BEAT_AHEAD_MAX = 0.25;
+/** Further than this (s) past how far ahead beats go, the click gives up and catches up. */
 const BEAT_SLACK = 0.06;
+/** How fast the frame time it allows for comes back down after slow frames, each frame. */
+const FRAME_DECAY = 0.98;
 
 /** A Sinepede's notes (Hz): a crest is the higher one, a trough a fourth below. */
 const sinePitch = (side: number) => (side > 0 ? 440 : 330);
@@ -86,6 +91,8 @@ class Sfx {
   private humGain: GainNode | null = null;
   private buffers = new Map<Sample, AudioBuffer>();
   private nextBeat = 0;
+  /** The longest frame lately (s), slowly forgotten. */
+  private frameGap = 0;
   /** When the latest beat sounds. It is placed just ahead, and what starts with it starts together. */
   private lastBeat = 0;
   muted = audioPrefs.muted;
@@ -571,12 +578,19 @@ class Sfx {
   beat(seconds: number, beat: number, meter: Meter, layers: number) {
     const ctx = this.ctx;
     if (!ctx) return;
-    const soon = ctx.currentTime + BEAT_AHEAD;
-    const at = Math.abs(this.nextBeat - soon) < BEAT_SLACK ? this.nextBeat : soon;
+    const ahead = Math.min(BEAT_AHEAD_MAX, Math.max(BEAT_AHEAD, this.frameGap * 1.2));
+    const soon = ctx.currentTime + ahead;
+    const at = Math.abs(this.nextBeat - soon) < ahead - BEAT_AHEAD + BEAT_SLACK ? this.nextBeat : soon;
     this.nextBeat = at + seconds;
     this.lastBeat = at;
     if (beat === 0) this.applyTint(seconds);
     if (!this.muted) this.music.beat(at, seconds, beat, meter, layers);
+  }
+
+  /** How long the last frame took (s): beats go further ahead on a slow device. */
+  frameTook(seconds: number) {
+    if (seconds > 1) return; // a pause, not a frame
+    this.frameGap = Math.max(seconds, this.frameGap * FRAME_DECAY);
   }
 
   /** A game starts its music from the first bar. */

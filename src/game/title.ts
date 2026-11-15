@@ -200,6 +200,8 @@ function wordPoints(n: Neon, w: Word, time: number): number[] {
 
 /** The haze behind a word. */
 function drawHaze(n: Neon, w: Word, tint: Tint, alpha: number) {
+  // A big gradient, slow to fill without a GPU: lite mode does without it.
+  if (n.lite) return;
   const { k, oy } = place(n, w), c = n.ctx, rgb = tint.haze.map(Math.round).join(',');
   const rx = ((w.right - w.left) * k) / 2 + 60 * k;
   c.globalCompositeOperation = 'lighter';

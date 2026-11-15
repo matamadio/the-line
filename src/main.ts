@@ -72,6 +72,7 @@ function loop(now: number) {
   requestAnimationFrame(loop);
   if (booting) { last = now; return; }
   if (!pacing.tick(now)) return;
+  sfx.frameTook((now - last) / 1000);
   game.frame((now - last) / 1000);
   last = now;
   if (!perf) return;
@@ -84,7 +85,7 @@ function loop(now: number) {
   neon.ctx.globalCompositeOperation = 'source-over';
   neon.ctx.textAlign = 'left';
   neon.ctx.textBaseline = 'top';
-  neon.ctx.fillText(`${fps.toFixed(0)} fps  1/${pacing.skip}  dpr ${neon.dpr.toFixed(2)} of ${devicePixelRatio.toFixed(2)}  ${neon.canvas.width}x${neon.canvas.height}${neon.lite ? '  lite' : ''}`, 4, 4);
+  neon.ctx.fillText(`${fps.toFixed(0)} fps  1/${pacing.skip}  dpr ${neon.dpr.toFixed(2)} of ${devicePixelRatio.toFixed(2)}  ${neon.canvas.width}x${neon.canvas.height}${neon.lite ? '  lite' : ''}${game.input.tv ? '  tv' : ''}  key ${game.input.lastKey || '-'}`, 4, 4);
 }
 requestAnimationFrame(loop);
 
