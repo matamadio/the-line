@@ -386,7 +386,7 @@ export class Menu {
   captured(e: Captured) {
     const inp = this.g.input, action = this.capturing, b = inp.binds;
     if (!action) return;
-    if ('key' in e && e.key === 'Escape') { this.endCapture(); return; }
+    if ('key' in e && (e.key === 'Escape' || e.key === 'BrowserBack')) { this.endCapture(); return; }
     if (b.device === 'keyboard') {
       if (!('key' in e)) return;
       if (RESERVED_KEYS.has(e.key)) { this.note = `${keyLabel(e.key)} HAS A JOB OF ITS OWN`; return; }
@@ -563,10 +563,11 @@ export class Menu {
         n.text(text, right, y, size, waiting ? '#ffffff' : color, 'left', waiting ? 0.55 + 0.45 * Math.sin(this.g.time * 8) : alpha);
       } else n.text(row.kind === 'reset' ? 'RESTORE DEFAULTS' : 'BACK', n.w / 2, y, size, color, 'center', alpha);
     });
-    const foot = this.note || (this.capturing ? 'Esc: leave it as it is'
+    const foot = this.note || (this.capturing ? (inp.tv ? 'BACK: leave it as it is' : 'Esc: leave it as it is')
       : pad && !inp.padFound ? 'NO JOYPAD FOUND: CONNECT ONE AND PRESS A BUTTON'
         : pad ? 'THE LEFT STICK WALKS AS WELL   ·   BACK: MENU'
-          : 'Esc menu   M mute   F fullscreen   N nostalgia');
+          : inp.tv ? 'BACK pause / menu   ·   ANY REMOTE BUTTON CAN BE BOUND'
+            : 'Esc menu   M mute   F fullscreen   N nostalgia');
     n.text(foot, n.w / 2, rowY(n, ROWS.length) + s * 0.3, s * 0.55, this.note ? COLORS.danger : GOLD);
     n.fade = 1;
   }

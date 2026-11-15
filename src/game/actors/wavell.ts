@@ -15,6 +15,7 @@ import { COLORS, Neon, clamp, lerp, polyPath, smooth } from '../../core/neon';
 import { DIFF } from '../../data/difficulty';
 import { TUNE } from '../../data/tune';
 import { ANIM, I, TILT, clipLength, mark, mix, namedPose, pose, type Joint, type Pose } from '../../data/anim';
+import { UNTIE } from './rage';
 
 
 
@@ -32,7 +33,7 @@ const WALK = 'walkStrut';
  */
 export type Attack = 'wipe' | 'pull';
 
-export type State = 'appear' | 'ground' | 'drag' | 'flip' | 'fly' | 'land' | 'dead';
+export type State = 'appear' | 'ground' | 'drag' | 'flip' | 'fly' | 'land' | 'ride' | 'dead';
 /**
  * zap: hit by an enemy on his side, or the player quit. flatten: met an enemy from the
  * other side of the line, and the two opposite waves cancelled out. He sinks into the
@@ -59,6 +60,8 @@ const unravel = (d: Death) => ({ fall: TUNE.burnTime, zap: TUNE.sinkTime, flatte
 
 /** How tall he stands at his smallest (u). */
 export const HEIGHT = 28;
+/** Scratch pose for riding. */
+const RIDE_WORK = namedPose('idle');
 
 export class Wavell {
   x = 0;
@@ -108,6 +111,15 @@ export class Wavell {
   scale = 1;
   /** Seconds in which enemies can't hurt him, after losing a size. */
   safe = 0;
+  /** Untying the Rage knot: nothing can hurt him meanwhile. */
+  shielded = false;
+  /** Seconds since he grabbed the Rage knot, or -1: untying it, then the power pose until the waves are gone. */
+  rageT = -1;
+  /** Riding the Killerwave: where he holds its fin, and how fast it goes (0..1). */
+  private rideTip: [number, number] = [0, 0];
+  private rush = 0;
+  /** Just out of Rage: easing back into his own poses (s left). */
+  private settle = 0;
   /** A press that came while busy, replayed as soon as he is free. */
   private buffered: 'drag' | 'pull' | 'down' | 'up' | null = null;
   /** Which attack the current 'drag' state is. */
@@ -173,7 +185,7 @@ export class Wavell {
    * line doesn't come through here: it takes him whatever his size.)
    */
   hurt(kind: Death) {
-    if (!this.alive || this.safe > 0) return;
+    if (!this.alive || this.safe > 0 || this.shielded) return;
     if (this.size > 0 && !this.flying) {
       this.size--;
       this.safe = DIFF.growSafe;
@@ -183,6 +195,8 @@ export class Wavell {
 
   spawn(x: number) {
     this.size = 0;
+    this.shielded = false;
+    this.rageT = -1;
     this.sparks = 0;
     this.glowing = 0;
     this.scale = 1;
@@ -260,6 +274,8 @@ export class Wavell {
     this.dizzy = Math.max(0, this.dizzy - dt);
     this.safe = Math.max(0, this.safe - dt);
     this.glowing = Math.max(0, this.glowing - dt);
+    if (this.rageT >= 0) this.rageT += dt;
+    this.settle = Math.max(0, this.settle - dt);
     this.scale += (1 + DIFF.growScale * this.size - this.scale) * Math.min(1, dt * 8);
     const ground = line.sample(this.x);
     // Presses during an animation are kept for a moment, so a quick player never loses one.
@@ -364,9 +380,15 @@ export class Wavell {
             line.impulse(this.x, s * 60, 5);
           }
         }
+        // Untying the Rage knot in the bubble, its time stands still.
+        if (this.shielded) this.t = Math.min(this.t, this.flyTime - 0.05);
         if (this.state === 'fly' && this.t >= this.flyTime) this.kill('pop');
         break;
       }
+      case 'ride':
+        this.vel = 0;
+        this.x = this.rideTip[0];
+        break;
       case 'dead':
         this.vel = 0;
         if (this.burning) this.burn(line);
@@ -440,19 +462,34 @@ export class Wavell {
     }
   }
 
+  /** Walking, or standing and breathing. */
+  private groundPose(target: Pose) {
+    if (this.vel) pose(WALK, this.phase * (ANIM.clips[WALK].length ?? 0.4), target);
+    else {
+      namedPose('idle', target);
+      const b = Math.sin(this.time * 3) * 0.35;
+      for (const j of ['neck', 'elbowB', 'handB', 'elbowF', 'handF', 'head'] as const) target[I[j] + 1] += b;
+      target[I.hip + 1] += b * 0.5;
+      target[I.handF] += Math.sin(this.time * 1.7) * 0.4;
+    }
+  }
+
   private solvePose() {
     const target = this.work;
     const blendIn = (p: Pose, time: number) => mix(this.from, p, smooth(this.t / time), this.cur);
     switch (this.state) {
       case 'ground':
-        if (this.vel) pose(WALK, this.phase * (ANIM.clips[WALK].length ?? 0.4), target);
-        else {
-          namedPose('idle', target);
-          const b = Math.sin(this.time * 3) * 0.35;
-          for (const j of ['neck', 'elbowB', 'handB', 'elbowF', 'handF', 'head'] as const) target[I[j] + 1] += b;
-          target[I.hip + 1] += b * 0.5;
-          target[I.handF] += Math.sin(this.time * 1.7) * 0.4;
+        if (this.rageT >= 0) {
+          this.ragePose(target);
+          mix(this.cur, target, 0.4, this.cur);
+          break;
         }
+        if (this.settle > 0) {
+          this.groundPose(target);
+          mix(this.cur, target, 0.25, this.cur);
+          break;
+        }
+        this.groundPose(target);
         blendIn(target, 0.12);
         break;
       case 'drag': {
@@ -470,6 +507,11 @@ export class Wavell {
       case 'fly':
         if (this.puffing) pose('inflate', (this.t / TUNE.takeoff) * clipLength(ANIM.clips.inflate), this.cur, this.from);
         else blendIn(namedPose('idle', target), 0.12);
+        break;
+      case 'ride':
+        // Streaming out behind the fin as fast as it goes, hanging down as it slows.
+        mix(namedPose('hang', target), namedPose('ride', RIDE_WORK), this.rush, target);
+        mix(this.cur, target, 0.35, this.cur);
         break;
       case 'dead':
         if (this.sinking) {
@@ -507,11 +549,87 @@ export class Wavell {
     this.burnt = next;
   }
 
-  /** Sinking: how far his eyes have turned up, towards the hand he has raised. */
-  private get lookUp() { return this.sinking ? smooth(this.t / this.linger / 0.3) * LOOK_UP : 0; }
+  /** Sinking: how far his eyes have turned up, towards the hand he has raised. In the power pose, all the way. */
+  private get lookUp() { return this.powered ? LOOK_UP : this.sinking ? smooth(this.t / this.linger / 0.3) * LOOK_UP : 0; }
+
+  /** The knot untied, eyes red: the waves go out of his hands. */
+  get powered() { return this.rageT >= UNTIE && this.alive; }
+
+  /** Rage: tugging the knot apart, shaking with it; then the line in both hands, beating it up and down. */
+  private ragePose(target: Pose) {
+    if (this.rageT < UNTIE) {
+      namedPose('haul', target);
+      const s = Math.sin(this.rageT * 70) * 0.8, c = Math.cos(this.rageT * 55) * 0.8;
+      target[I.handF] += s; target[I.handB] -= s; target[I.handF + 1] += c; target[I.handB + 1] -= c;
+      target[I.head] += s * 0.3;
+    } else pose('rage', this.rageT - UNTIE, target);
+  }
+
+  /** Came down on the Killerwave's fin: he grabs its tip and is off. */
+  mount(x: number, y: number) {
+    this.go('ride');
+    this.facing = 1;
+    this.side = 1;
+    this.flip = 0;
+    this.vel = 0;
+    this.rideTip = [x, y];
+    this.rush = 0;
+  }
+
+  /** Riding: the fin's tip is here now, going this fast (0..1). */
+  ride(x: number, y: number, rush: number) {
+    this.rideTip = [x, y];
+    this.rush = rush;
+    this.x = x;
+    this.by = y + 14 * this.scale;
+  }
+
+  /** How high the fin's tip is when his feet, hanging from it, touch the line. */
+  get hangReach() { return ANIM.poses.hang.handF[1] * this.scale; }
+
+  /** The ride is over: he lets go and stands on the line. */
+  dismount() {
+    if (this.state !== 'ride') return;
+    this.go('ground');
+  }
+
+  /** Riding: pose space hung from his front hand at the fin's tip, and flapping like a flag. */
+  private rideTransform() {
+    const [ax, ay] = this.rideTip, sc = this.scale, hx = this.cur[I.handF], hy = this.cur[I.handF + 1];
+    const t = this.time, rush = this.rush;
+    return (px: number, py: number): [number, number] => {
+      const dx = px - hx, dy = py - hy, d = Math.hypot(dx, dy);
+      const flap = (0.3 + 1.5 * rush) * Math.sin(t * (8 + 16 * rush) - d * 0.35) * clamp(d / 18, 0, 1);
+      // Hanging still, he swings a little.
+      const swing = (1 - rush) * Math.sin(t * 3) * 0.05 * -dy;
+      return [ax + (dx + swing) * sc, ay - dy * sc + flap * sc];
+    };
+  }
+
+  /** Holding the line in both hands, so it follows them. */
+  get gripping() { return this.rageT - UNTIE >= mark('rage', 'grab') && this.state === 'ground' && this.alive; }
+
+  /** Where his hands hold the line, from his feet: back hand across and up, front hand across and up (world units; up is down under the line). */
+  grips(): [number, number, number, number] {
+    const f = this.facing * this.scale, up = this.scale * Math.cos(this.flip * Math.PI), p = this.cur;
+    return [f * p[I.handB], up * p[I.handB + 1], f * p[I.handF], up * p[I.handF + 1]];
+  }
+
+  /** Rage is over: back to his own poses, smoothly. */
+  endRage() {
+    if (this.rageT >= 0) this.settle = 0.3;
+    this.rageT = -1;
+  }
+
+  /** Where his hands are, in the world: back hand x, y, then front hand x, y. */
+  hands(line: SpringLine): number[] {
+    const tf = this.transform(line);
+    return [...tf(this.cur[I.handB], this.cur[I.handB + 1]), ...tf(this.cur[I.handF], this.cur[I.handF + 1])];
+  }
 
   /** Pose space to world: squashes for flipping, and follows the line. */
   private transform(line: SpringLine) {
+    if (this.state === 'ride') return this.rideTransform();
     const ground = line.sample(this.x);
     // Flipping turns him inside out through the line; under it he stays mirrored.
     let sy = Math.cos(this.flip * Math.PI), sx = 1 + 0.45 * Math.sin(this.flip * Math.PI), jit = 0;
@@ -755,7 +873,7 @@ export class Wavell {
       eyes.moveTo(dx + 0.45, dy);
       eyes.ellipse(dx, dy, 0.45, 0.45 * open, 0, 0, Math.PI * 2);
     }
-    neon.glow(eyes, this.sinking ? COLORS.danger : COLORS.white, 0.5);
+    neon.glow(eyes, this.powered ? COLORS.eye : this.sinking ? COLORS.danger : COLORS.white, this.powered ? 0.6 : 0.5, this.powered ? 1.6 : 1);
 
     if (this.dizzy > 0 && this.alive) {
       // Three little stars circling his head.

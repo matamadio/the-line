@@ -30,17 +30,49 @@ const DEFAULT_KEYS: Record<Action, string[]> = {
   pause: ['KeyP'],
 };
 
+/**
+ * On an LG TV the remote is the keyboard: OK wipes, the channel rocker pulls, and the red
+ * and green buttons do the same where the remote has them. They come first, so the hints
+ * name them. The arrows are the arrows, and Back pauses (see game.ts).
+ */
+const TV_KEYS: Partial<Record<Action, string[]>> = {
+  drag: ['Enter', 'ColorRed'], pull: ['PageUp', 'PageDown', 'ColorGreen'], pause: ['MediaPlayPause', 'MediaPlay', 'Pause'],
+};
+
 /** Buttons in the browser's standard joypad layout. */
 const DEFAULT_PAD: Record<Action, number[]> = { left: [14], right: [15], up: [12], down: [13], drag: [0], pull: [2], pause: [9] };
 
 /** Keys with a job of their own, which can't be given another. */
-export const RESERVED_KEYS: ReadonlySet<string> = new Set(['Escape', 'Enter', 'NumpadEnter', 'KeyM', 'KeyF', 'KeyN']);
+export const RESERVED_KEYS: ReadonlySet<string> = new Set(['Escape', 'Enter', 'NumpadEnter', 'KeyM', 'KeyF', 'KeyN', 'BrowserBack']);
+
+/** Running on an LG TV (webOS), in its browser or as the app? */
+export const onTV = () => typeof navigator !== 'undefined' && /Web0S|webOS/i.test(navigator.userAgent ?? '');
+
+/**
+ * What an LG remote's buttons send. Its browser often leaves a key's `code` empty and
+ * gives only the old `keyCode`, so this names them as a keyboard would.
+ */
+const REMOTE_CODES: Record<number, string> = {
+  13: 'Enter', 37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 33: 'PageUp', 34: 'PageDown',
+  461: 'BrowserBack', 403: 'ColorRed', 404: 'ColorGreen', 405: 'ColorYellow', 406: 'ColorBlue',
+  415: 'MediaPlay', 19: 'Pause', 413: 'MediaStop', 412: 'MediaRewind', 417: 'MediaFastForward',
+  ...Object.fromEntries(Array.from({ length: 10 }, (_, i) => [48 + i, `Digit${i}`])),
+};
+
+/** A key's name, as in KeyboardEvent.code, for a remote's buttons too. Any other button is RemoteN, so it can still be bound. */
+export function keyCode(e: { code?: string; keyCode?: number }) {
+  if (e.code && e.code !== 'Unidentified') return e.code;
+  const n = e.keyCode ?? 0;
+  return REMOTE_CODES[n] ?? (n ? `Remote${n}` : '');
+}
 
 const STORE = 'the-line-controls';
 
-export function defaultBindings(): Bindings {
+export function defaultBindings(tv = onTV()): Bindings {
   const copy = <T>(table: Record<Action, T[]>) => Object.fromEntries(Object.entries(table).map(([a, v]) => [a, [...v]])) as Record<Action, T[]>;
-  return { device: 'keyboard', keys: copy(DEFAULT_KEYS), pad: copy(DEFAULT_PAD) };
+  const keys = copy(DEFAULT_KEYS);
+  if (tv) for (const { action } of ACTIONS) keys[action] = [...(TV_KEYS[action] ?? []), ...keys[action]];
+  return { device: 'keyboard', keys, pad: copy(DEFAULT_PAD) };
 }
 
 /** What was saved last time, with the defaults for anything missing or broken. */
@@ -88,8 +120,15 @@ export function bindPad(b: Bindings, action: Action, button: number) { rebind(b.
 const KEY_NAMES: Record<string, string> = {
   ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: 'SPACE', Tab: 'TAB', Backspace: 'BACKSPACE',
   ShiftLeft: 'LEFT SHIFT', ShiftRight: 'RIGHT SHIFT', ControlLeft: 'LEFT CTRL', ControlRight: 'RIGHT CTRL', AltLeft: 'LEFT ALT', AltRight: 'RIGHT ALT',
+  PageUp: 'PAGE UP', PageDown: 'PAGE DOWN', BrowserBack: 'BACK', MediaPlayPause: 'PLAY/PAUSE', MediaPlay: 'PLAY',
+  ColorRed: 'RED', ColorGreen: 'GREEN', ColorYellow: 'YELLOW', ColorBlue: 'BLUE',
 };
-export const keyLabel = (code: string) => KEY_NAMES[code] ?? code.replace(/^(Key|Digit)/, '').toUpperCase();
+/** The same buttons, as the remote names them. */
+const TV_NAMES: Record<string, string> = { Enter: 'OK', PageUp: 'CH ↑', PageDown: 'CH ↓' };
+/** A key's name for the player, on a TV or not. */
+export const keyName = (code: string, tv: boolean) =>
+  (tv ? TV_NAMES[code] : undefined) ?? KEY_NAMES[code] ?? code.replace(/^(Key|Digit)/, '').replace(/^Remote/, 'REMOTE ').toUpperCase();
+export const keyLabel = (code: string) => keyName(code, onTV());
 
 /** The standard layout's names, with the buttons of the d-pad as arrows. */
 const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'BACK', 'START', 'L3', 'R3', 'PAD ↑', 'PAD ↓', 'PAD ←', 'PAD →', 'HOME'];

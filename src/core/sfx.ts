@@ -12,6 +12,7 @@ const SAMPLES = {
   appear: 'compare', vanish: 'sparisce', drag: 'colpisce', kill: 'snawave_sparisce',
   flipDown: 'rovescia_in_giu', flipUp: 'rovescia_in_su', offline: 'offline', eaten: 'eated',
   grow: 'snawave', level: 'levelpass', reflux: 'reflux', pop: 'bollapop', bonus: 'linesaver',
+  powerup: 'bonus', yeah: 'yeah.mp3', yeehaa: 'yeehaa.mp3',
 } as const;
 export type Sample = keyof typeof SAMPLES;
 
@@ -141,7 +142,7 @@ class Sfx {
     this.music.setCrush(this.crushed);
     this.applyTint(60 / 75);
     for (const [key, file] of Object.entries(SAMPLES) as [Sample, string][]) {
-      fetch(`assets/sounds/${file}.wav`)
+      fetch(`assets/sounds/${file.includes('.') ? file : file + '.wav'}`)
         .then((r) => r.arrayBuffer())
         .then((b) => this.ctx!.decodeAudioData(b))
         .then((buf) => this.buffers.set(key, buf))
@@ -158,6 +159,38 @@ class Sfx {
     g.gain.value = volume;
     src.connect(g).connect(this.out!);
     src.start(this.now(ctx));
+  }
+
+  /** Has this sample loaded? (One may be missing, waiting for its recording.) */
+  has(name: Sample) { return this.buffers.has(name); }
+
+  /**
+   * The Killerwave: an orca's whistle, a quick rise and a long falling squeal with a
+   * shiver in it, and a few clicks under it. pitch raises it (it calls higher as it charges).
+   */
+  orcaCall(pitch = 1) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const at = this.now(ctx), len = 0.75;
+    const osc = ctx.createOscillator(), vib = ctx.createOscillator(), depth = ctx.createGain(), g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(900 * pitch, at);
+    osc.frequency.exponentialRampToValueAtTime(2100 * pitch, at + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(1500 * pitch, at + 0.3);
+    osc.frequency.exponentialRampToValueAtTime(700 * pitch, at + len);
+    vib.frequency.value = 11;
+    depth.gain.value = 40 * pitch;
+    vib.connect(depth).connect(osc.frequency);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.22, at + 0.04);
+    g.gain.setValueAtTime(0.22, at + len * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    osc.connect(g).connect(this.out!);
+    osc.start(at);
+    vib.start(at);
+    osc.stop(at + len + 0.05);
+    vib.stop(at + len + 0.05);
+    for (let i = 0; i < 5; i++) this.tone(2600 * pitch, 0.015, 0.12, 1800 * pitch, 0.05 + i * 0.045);
   }
 
   private now(ctx: AudioContext) { return Math.max(ctx.currentTime, this.lastBeat); }

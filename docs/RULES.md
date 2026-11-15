@@ -31,19 +31,20 @@ Wavell walks right along a line while its end crumbles in behind him. He has to 
 
 The player can change keys and joypad buttons under CONTROL in the menu. These are the defaults.
 
-| Action | Keyboard | Joypad | Touch |
-| --- | --- | --- | --- |
-| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways |
-| Go through the line | Towards it: ↓/S on top, ↑/W underneath | Towards it | Left thumb, towards the line |
-| Float in a bubble | Away from it: ↑/W on top, ↓/S underneath | Away from it | Left thumb, away from the line |
-| Pull | X or Ctrl | X | Right thumb, swipe sideways |
-| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down |
-| Mute | M | | Speaker icon |
-| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) |
-| Nostalgia (low-resolution look) | N | | Checkerboard icon |
-| Pause | P | Start | |
-| Back to the start screen | Esc | Back | |
+| Action | Keyboard | Joypad | Touch | LG TV remote |
+| --- | --- | --- | --- | --- |
+| Walk | ← → or A D | D-pad or left stick | Left thumb, sideways | ← → |
+| Go through the line | Towards it: ↓/S on top, ↑/W underneath | Towards it | Left thumb, towards the line | Towards it (↑ ↓) |
+| Float in a bubble | Away from it: ↑/W on top, ↓/S underneath | Away from it | Left thumb, away from the line | Away from it (↑ ↓) |
+| Pull | X or Ctrl | X | Right thumb, swipe sideways | CH ↑ or CH ↓ (or green) |
+| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down | OK (or red) |
+| Mute | M | | Speaker icon | |
+| Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) | |
+| Nostalgia (low-resolution look) | N | | Checkerboard icon | |
+| Pause | P | Start | | Back (OK carries on), or Play |
+| Back to the start screen | Esc | Back | | Back, while paused |
 
+- **LG TV.** On webOS the remote's buttons are keys like any other, and can be bound under CONTROL (one the game has no name for shows as REMOTE and its number). Back never leaves the page: in a game it pauses, and pressed again while paused it goes back to the start screen; while paused, OK carries on (that OK is not also a wipe). Anywhere else Back does what Esc does. In the TV app there is no fullscreen icon: it is always fullscreen.
 - **Directions are relative to the line.** "Towards" goes through it and "away" floats off, on whichever side Wavell is.
 - **Menu.** ↑ and ↓ cycle the entries (START, CONTROL, CREDITS). Enter, a wipe, a pull or joypad A picks the front one: Wavell pulls it in to open it. On a phone, swipe up or down and tap.
 - **First-time hints.** Each enemy and each mistake (such as a wrong attack) shows a hint the first time, for 3.5 s, worded for keys or touch depending on the input in use. Once the levels start over after the boss, no hints show again.
@@ -193,7 +194,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 
 ## Sparkles and power-ups
 
-Sparkles are the only pickup in the game today. They are the bait: chasing them gives ground to the line.
+Sparkles are the bait: chasing them gives ground to the line. The power-ups are the Rage knot and the Killerwave, an enemy you can ride.
 
 - Every enemy killed leaves 2 sparkles, one on each side of the line.
 - More appear on their own about every 3 s, at most 6 at a time, as many below the line as above, often behind Wavell.
@@ -202,7 +203,28 @@ Sparkles are the only pickup in the game today. They are the bait: chasing them 
 - Each sparkle counts towards his next size (10 per size).
 - Catching them in a chain within 2.2 s of each other scores 1, 2, 3… up to 8 points each (see [Scoring](#scoring-and-levels)).
 
-**Planned power-ups (not built yet):** RAGE and KILLERWAVE, collected and then used once. Their look and behaviour are still to be decided.
+### Rage
+
+A small scribble of loops tangled into the line (24 u long, up to 15 u off it on each side). It throbs fast and keeps changing shape and colour. It is the original game's Nuke, used the moment it is picked.
+
+- **When:** at most one a level, from level 4 on, 10 s into the level; never during the boss fight. A level passed in under 10 s has none. It sits 100–160 u ahead of Wavell and stays 12 s, blinking for the last 2 s. The end of the line eats it if it gets there first.
+- **Picking it:** walk into it from either side of the line, or touch it with the bubble.
+- **Untying it:** sparks of every colour burst out of it, and his outline takes on its changing colours until the last wave is gone. For 0.55 s he tugs the loops apart, shaking, as they pull out into his hands. From then until the last wave is gone, Wavell holds still on a flat stretch of line, nothing can hurt him, and his bubble's time stands still if he picked it in the air. The end of the line stops while he unties it.
+- **Making the waves:** he shouts YEEEEH! and the screen shakes; no word comes up. His eyes go red and look up. He crouches and grabs the line with both hands, 13 u out on each side (0.2 s), and heaves it up over his head (to 0.45 s). The line in his hands follows them, down to rest 17 u further out, while the stretch under his feet stays flat. Then he beats it down and up, one stroke every 0.36 s. A huge wave (50 u tall) goes out each way at the end of each stroke: a crest with his arms up, a trough with them down, a crest again: three each way, at 130 u/s. Then he lowers the line back to rest over 0.6 s.
+- **Clearing:** the waves end every creature they pass, and once they reach the edge of the screen, everything beyond it on that side. That covers Sinepedes, Worms, Disturchins, Bubble Bursts (in the air too), Backwaves, Line refluxes and spray. Each creature cleared scores 5 and leaves its 2 sparkles. A Sinepede still on its way in is called off.
+- **The line:** the waves going left carry the end of the line back off the screen, and it then stops for 2 s, as after a wiped Backwave. The lead gauge fills.
+- **After it:** no new enemy comes until all the waves are gone.
+
+### Killerwave
+
+An orca made of the line (a killer whale: a killer wave). It is an enemy, and a power-up for whoever rides it.
+
+- **When:** from level 5, one every 35 s, never during the boss fight or Rage. It needs Wavell on the line with at least 220 u of line behind him. It comes up as far back as that line allows (its head up to 140 u behind him, its tail at least 15 u clear of the end), and the end of the line waits until it charges.
+- **Coming up:** first only its fin cuts up out of the line, growing from a low bulge to the full fin over 1 s on an otherwise flat line, and comes after him at 1.15× his walking speed (his speed at his size), so he can't outwalk it. Its head never comes closer than 8 u behind him while only the fin shows. Once its head is as far behind him as it goes in a third of its rise (about 50 u), or after 2 s of chasing, the rest of it comes up (1.2 s) and it opens its jaws (0.5 s), keeping its pace all the while: it does not slow down for him, and once it is nearly all out it clears every creature along its body. Then it charges off to the right at 240 u/s, faster than he walks or floats.
+- **On the line, he is hit:** if it reaches him, or he walks into it, while he is on the line (either side), it hits him once (while only the fin is out, only the fin hits), like any enemy: he loses a size, or it is game over at no size.
+- **Up in the bubble, it goes by:** under the bubble it does nothing to him. It clears every creature along its body as it goes, as Rage does (5 points each, and their sparkles), and leaves at the right of the screen.
+- **Ridden:** if his bubble comes down on the back of its fin (touching the fin, no further forward than its tip), he grabs the tip and rides it. If it was still coming up, it carries on coming up at its own pace with him on it. He hangs from it by one hand, his body streaming out behind like a flag. He shouts YEE-HAA!, and it races to the right at 340 u/s for 4 s, clearing every creature along its body. Meanwhile the controls do nothing and nothing can hurt him. Then it slows down (0.6 s) and sinks back into the line (1.1 s). As it goes down he hangs straight, and once his feet reach the line he lets go, standing, and the controls are his again.
+- Attacks do nothing to it.
 
 ## Scoring and levels
 
@@ -224,6 +246,8 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 | Boss hit | 50 |
 | Boss flattened | 250 |
 | Sparkle | Chain position (1–8), ×5 if gold |
+| Creature cleared by Rage | 5 |
+| Creature cleared by the Killerwave | 5 |
 
 ### Levels
 
@@ -289,8 +313,9 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - **The Silencer:** a low tremble as he rises and as he rears up, a deep bass building up as his wave rears and a crash cymbal, a slap of water and a boom when it crashes, a meow for the cat (a buzzy tone through a vowel-like filter), a whine that spins up for the saw, a low three-rasp croak for the toad, a tone rising away when his wave is sent back at him, and a big falling groan when it hits.
 - **Sinepede:** pure sine tones whatever the style. It announces itself with one note per segment, high for a crest, low for a trough. Each cancelled segment plays its own note. The nearest one also hums: a sine at 220 Hz for one segment and 110 Hz more for each segment after it (330 Hz for 2, 440 Hz for 3), slightly saturated and with a little reverb. The hum starts 2 beats before a Sinepede comes in and gets louder as it closes in.
 - **Disturchin:** a low tremble under the fuzz, then a harsh, clipped sound while its spikes are out.
-- **Wavell:** a bright run of notes when he grows, a falling one when he shrinks.
-- **Samples** from the original 2003 game cover the rest: appearing, vanishing, flipping down and up, hits, kills, being eaten, Reflux, bubble pop, level pass and the Backwave bonus.
+- **Wavell:** a bright run of notes when he grows, a falling one when he shrinks, and recorded shouts: YEEEEH! when he strikes the Rage pose (`yeah.mp3`) and YEE-HAW! when he mounts the Killerwave (`yeehaa.mp3`).
+- **Killerwave:** an orca's whistle as it starts to come up, a quick rise then a long, shivering fall with a few clicks under it, and the same call higher as it charges.
+- **Samples** from the original 2003 game cover the rest: appearing, vanishing, flipping down and up, hits, kills, being eaten, Reflux, bubble pop, level pass, the Backwave bonus and the Rage knot appearing (the original's bonus sound).
 
 ### Audio menu
 
@@ -309,7 +334,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 
 Everything is drawn as glowing vector strokes at the screen's native resolution. Nothing is a sprite.
 
-- **Resolution and frame rate.** The canvas uses up to 2 pixels per CSS pixel, and at most about 4.1 million pixels in all (roughly 2560 x 1600). On a big tablet that lowers it, but never below 1 per CSS pixel. When more than 15% of the frames in a 60-frame window come over 1.5 times late, the game makes drawing lighter, one step per window. On a screen of 100 Hz or more it first draws on every other refresh, so 120 Hz runs at an even 60. After that, each step cuts the resolution by 20%, down to half, or to 1 pixel per CSS pixel if that comes first. It never steps back up while the page is open. A steady throttle, such as a battery saver's 30 fps, doesn't count as slow. Add `?perf` to the address to see the frame rate and what was chosen.
+- **Resolution and frame rate.** The canvas uses up to 2 pixels per CSS pixel, and at most about 4.1 million pixels in all (roughly 2560 x 1600). On a big tablet that lowers it, but never below 1 per CSS pixel. When more than 15% of the frames in a 60-frame window come over 1.5 times late, the game makes drawing lighter, one step per window. On a screen of 100 Hz or more it first draws on every other refresh, so 120 Hz runs at an even 60. After that, each step cuts the resolution by 20%, down to half. It goes below 1 pixel per CSS pixel only on a screen tall enough to keep at least 720 canvas pixels (a TV or a big monitor, where the browser's stretching hardly shows), so a phone stops at 1 per CSS pixel. The last step is lite mode: text and the title lose their blurred shadows (text gets a wide faint stroke instead), and lines out of focus behind the menu take 3 strokes instead of 6. It never steps back up while the page is open. A steady throttle, such as a battery saver's 30 fps, doesn't count as slow. Add `?perf` to the address to see the frame rate and what was chosen, and `?lite` to start at the lowest resolution in lite mode.
 
 - **One stroke.** Wavell leaves the line at his back toe, loops through his arms and head, and returns at his front toe. Creatures are spliced into the same stroke. Nothing crosses his face.
 - **Appearing.** He climbs out of the line hands first, then head, then a press-up and his legs. On first load the line stays flat for 0.8 s and he rises slowly over 3 s; after that, appearing takes 1 s.
