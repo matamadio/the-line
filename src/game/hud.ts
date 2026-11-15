@@ -12,6 +12,9 @@ import { MORPH_TIME, drawFlatlined, drawMorph, drawTitle } from './title';
 
 /** The HUD's base size: a share of the play area, so it lays out the same on every screen. */
 export const hudSize = (n: Neon) => n.h * 0.045;
+/** The top and bottom of the screen, in the play area's coordinates: on a phone held upright, past the play area. */
+const screenTop = (n: Neon) => -n.above;
+const screenBottom = (n: Neon) => n.h + n.below;
 
 /**
  * In HUD sizes: how far down the buttons sit, how far apart they are, and how far from the
@@ -68,7 +71,7 @@ const DEV_LINKS = [
 /** The dev menu's box on screen, and the height of its heading and of each link. */
 function devBox(n: Neon) {
   const s = hudSize(n), row = s, w = s * 5, h = row * (DEV_LINKS.length + 1) + s * 0.3, pad = s * 0.8;
-  return { s, row, x: pad, y: n.h - pad - h, w, h };
+  return { s, row, x: pad, y: screenBottom(n) - pad - h, w, h };
 }
 
 /** Is this point in the dev menu's box? */
@@ -103,19 +106,19 @@ function drawDevMenu(g: Game) {
  */
 export function audioButton(n: Neon): [number, number, number] {
   const s = hudSize(n);
-  return [n.w - s * 1.4, BUTTON_Y * s, s * 0.9];
+  return [n.w - s * 1.4, screenTop(n) + BUTTON_Y * s, s * 0.9];
 }
 
 /** The fullscreen button on screen, under the audio button. */
 export function fullscreenButton(n: Neon): [number, number, number] {
   const s = hudSize(n);
-  return [n.w - s * 1.4, (BUTTON_Y + BUTTON_GAP) * s, s * 0.9];
+  return [n.w - s * 1.4, screenTop(n) + (BUTTON_Y + BUTTON_GAP) * s, s * 0.9];
 }
 
 /** The nostalgia button on screen, beside the audio button. */
 export function nostalgiaButton(n: Neon): [number, number, number] {
   const s = hudSize(n);
-  return [n.w - s * (1.4 + BUTTON_GAP), BUTTON_Y * s, s * 0.9];
+  return [n.w - s * (1.4 + BUTTON_GAP), screenTop(n) + BUTTON_Y * s, s * 0.9];
 }
 
 /** A checkerboard of big pixels: lit up when nostalgia mode is on. */
@@ -145,14 +148,14 @@ export const VERSION_TEXT = `v${__VERSION__} · ${__BUILD_DATE__}${import.meta.e
 
 function drawVersion(n: Neon) {
   const s = hudSize(n);
-  n.text(VERSION_TEXT, n.w - s * 0.8, n.h - s * 0.45, s * 0.4, '#c9a640', 'right', 0.6);
+  n.text(VERSION_TEXT, n.w - s * 0.8, screenBottom(n) - s * 0.45, s * 0.4, '#c9a640', 'right', 0.6);
 }
 
 /** The install button's box on screen, down to the right of the start screen. */
 function installBox(n: Neon) {
   const s = hudSize(n), w = s * 5.6, h = s * 1.3, pad = s * 0.8;
   // It sits up a little, to leave the version room under it.
-  return { s, x: n.w - pad - w, y: n.h - s * 1.3 - h, w, h };
+  return { s, x: n.w - pad - w, y: screenBottom(n) - s * 1.3 - h, w, h };
 }
 
 export function inInstallButton(n: Neon, x: number, y: number) {
@@ -217,6 +220,8 @@ function drawTouch(g: Game) {
 function drawSurround(g: Game) {
   const n = g.neon;
   n.overlay();
+  // Upright, the world goes on around the play area: no edge, and nothing to turn.
+  if (n.above > 0 || n.below > 0) return;
   if ((n.ox > 0 || n.oy > 0) && n.retro) n.pixelFrame(0, 0, n.w, n.h, '#5a4a20', 0.8);
   else if (n.ox > 0 || n.oy > 0) {
     const p = new Path2D();
@@ -322,7 +327,7 @@ function drawSizes(g: Game, x: number, y: number) {
 
 export function drawHud(g: Game) {
   const n = g.neon, c = n.ctx, inp = g.input;
-  const s = hudSize(n), pad = s * 0.9;
+  const s = hudSize(n), pad = screenTop(n) + s * 0.9;
   const cx = n.w / 2, hudFade = g.titleDust?.hudFade ?? 1;
   if (g.mode === 'title' && g.morphT < MORPH_TIME) drawMorph(n, g.morphT, g.time);
   else if (g.mode === 'title') {

@@ -53,11 +53,17 @@ export const BACK_LINES = [
   { off: 42, par: 0.5, amp: 4, alpha: 0.22 },
   { off: 70, par: 0.25, amp: 7, alpha: 0.16 },
 ] as const;
+/** Further still, only on a phone held upright: one high in the sky, one below the line. */
+export const TALL_LINES = [
+  { off: 190, par: 0.12, amp: 9, alpha: 0.1 },
+  { off: -120, par: 0.35, amp: 6, alpha: 0.12 },
+] as const;
+type FarLine = { off: number; par: number; amp: number; alpha: number };
 /** How thick those lines are, and the real line (u). */
 const BACK_WIDTH = 0.5, LINE_WIDTH = 0.9;
 
 /** How far one of them is from straight at this world x (u). */
-export function backWave(line: (typeof BACK_LINES)[number], x: number, camX: number, time: number) {
+export function backWave(line: FarLine, x: number, camX: number, time: number) {
   const wx = x - camX + camX * line.par;
   return Math.sin(wx / 37 + time * 0.7) * line.amp * Math.sin(wx / 113 + time * 0.3);
 }
