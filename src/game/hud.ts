@@ -3,6 +3,7 @@
 
 import { canFullscreen, canInstall, isFullscreen } from '../core/app';
 import { keyLabel } from '../core/controls';
+import { usesTouch } from '../core/input';
 import { COLORS, Neon, clamp } from '../core/neon';
 import { sfx } from '../core/sfx';
 import { DIFF } from '../data/difficulty';
@@ -362,7 +363,7 @@ export function drawHud(g: Game) {
     if (g.mode === 'over') {
       drawFlatlined(n, g.time);
       n.text(`score ${g.score}    best ${g.best}`, cx, n.lineY - n.unit * 50, s);
-      if (g.overT > 0.8) n.text(inp.touchUsed ? 'tap to continue' : 'press any key', cx, n.lineY + s * 3, s * 0.8, COLORS.hud, 'center', 0.55 + 0.45 * Math.sin(g.time * 4));
+      if (g.overT > 0.8) n.text(usesTouch(inp) ? 'tap to continue' : inp.tv ? 'press OK' : 'press any key', cx, n.lineY + s * 3, s * 0.8, COLORS.hud, 'center', 0.55 + 0.45 * Math.sin(g.time * 4));
     }
   }
   n.fade = 1;
@@ -381,7 +382,7 @@ export function drawHud(g: Game) {
   drawNostalgia(n);
   drawSurround(g);
   n.fade = hudFade;
-  if (g.mode === 'play' && !g.audio.open && (inp.touchUsed || matchMedia('(pointer: coarse)').matches)) drawTouch(g);
+  if (g.mode === 'play' && !g.audio.open && usesTouch(inp)) drawTouch(g);
   n.fade = 1;
   if (g.audio.open) g.audio.draw();
   c.globalCompositeOperation = 'source-over';

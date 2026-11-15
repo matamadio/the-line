@@ -457,19 +457,18 @@ export class Game {
     this.input.poll();
     const ready = this.mode === 'over' && this.overT > 0.8;
     // Back on the TV remote: a game pauses first, and goes to the menu only from the pause.
-    // Anywhere else it is Esc. While paused there, OK carries on.
-    let resumed = false;
+    // Anywhere else it is Esc. OK is the remote's pause, so it carries on too.
     if (this.backAsked && this.mode === 'play' && !this.audio.open) {
       if (this.paused) this.menuAsked = true; else this.setPaused(true);
     } else if (this.backAsked) this.menuAsked = true;
-    else if (this.input.tv && this.paused && this.input.confirm && this.mode === 'play' && !this.audio.open) { this.setPaused(false); resumed = true; }
     this.backAsked = false;
     if (this.audio.open) {
       if (this.menuAsked || this.input.backPressed) this.closeAudio();
       else this.audio.handle(this.input);
     } else if (this.menuAsked && this.mode === 'play') this.backToTitle(false);
     else if (this.input.pausePressed && this.mode === 'play') this.setPaused(!this.paused);
-    else if (ready && (this.menuAsked || this.input.anyPressed)) this.backToTitle(true);
+    // OK pauses, so it isn't "any key" in a game; here it carries on all the same.
+    else if (ready && (this.menuAsked || this.input.anyPressed || this.input.confirm)) this.backToTitle(true);
     else if (this.mode === 'title' && this.morphT >= MORPH_TIME) {
       if (this.menuAsked || this.input.backPressed) this.menu.back();
       else this.menu.handle(this.input);
@@ -479,8 +478,6 @@ export class Game {
     this.titleDust?.update(dt, this.neon, this.time);
     if (this.titleDust?.done) this.titleDust = null;
     let controls: Controls = this.mode === 'play' ? { ...this.input } : NO_INPUT;
-    // The OK that carried on isn't also a wipe.
-    if (resumed) controls = { ...controls, upPressed: false, downPressed: false, dragPressed: false, pullPressed: false };
     // The world keeps the beat's tempo, on the start screen too once its music plays.
     this.acc += dt * (DIFF.beatOn && (this.mode !== 'title' || this.titleMusic) ? this.beat.speed : 1);
     while (this.acc >= STEP) {

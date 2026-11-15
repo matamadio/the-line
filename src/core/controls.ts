@@ -31,13 +31,13 @@ const DEFAULT_KEYS: Record<Action, string[]> = {
 };
 
 /**
- * On an LG TV the remote is the keyboard: OK wipes, the channel rocker pulls, and the red
- * and green buttons do the same where the remote has them. They are bound everywhere, as
- * not every TV browser says it is one; on a TV they come first, so the hints name them.
- * The arrows are the arrows, and Back pauses (see game.ts).
+ * On an LG TV the remote is the keyboard: CH + wipes and CH - pulls (red and green do the
+ * same where the remote has them), and OK pauses (in menus it still picks). They are bound
+ * everywhere, as not every TV browser says it is one; on a TV they come first, so the hints
+ * name them. The arrows are the arrows, and Back pauses too, then goes back (see game.ts).
  */
 const TV_KEYS: Partial<Record<Action, string[]>> = {
-  drag: ['Enter', 'ColorRed'], pull: ['PageUp', 'PageDown', 'ColorGreen'], pause: ['MediaPlayPause', 'MediaPlay', 'Pause'],
+  drag: ['PageUp', 'ColorRed'], pull: ['PageDown', 'ColorGreen'], pause: ['Enter', 'MediaPlayPause', 'MediaPlay', 'Pause'],
 };
 
 /** Buttons in the browser's standard joypad layout. */
@@ -136,7 +136,7 @@ const KEY_NAMES: Record<string, string> = {
   ColorRed: 'RED', ColorGreen: 'GREEN', ColorYellow: 'YELLOW', ColorBlue: 'BLUE',
 };
 /** The same buttons, as the remote names them. */
-const TV_NAMES: Record<string, string> = { Enter: 'OK', PageUp: 'CH ↑', PageDown: 'CH ↓' };
+const TV_NAMES: Record<string, string> = { Enter: 'OK', PageUp: 'CH +', PageDown: 'CH -' };
 /** A key's name for the player, on a TV or not. */
 export const keyName = (code: string, tv: boolean) =>
   (tv ? TV_NAMES[code] : undefined) ?? KEY_NAMES[code] ?? code.replace(/^(Key|Digit)/, '').replace(/^Remote/, 'REMOTE ').toUpperCase();

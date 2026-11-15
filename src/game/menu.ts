@@ -313,7 +313,17 @@ export class Menu {
   handle(inp: Input) {
     if (this.page === 'main') this.handleMain(inp);
     else if (this.page === 'credits' || usesTouch(inp)) { if (inp.confirm || inp.tap) this.back(); }
-    else this.handleControl(inp);
+    else if (this.remoteGuide) {
+      // Nothing to change on the remote: ← → switches to the joypad, which can be rebound.
+      if (inp.menuLeft || inp.menuRight) this.toggleDevice();
+      else if (inp.confirm || inp.tap) this.back();
+    } else this.handleControl(inp);
+  }
+
+  /** On a TV, the CONTROL page shows the remote rather than a list of keys. */
+  private get remoteGuide() {
+    const inp = this.g.input;
+    return inp.tv && inp.binds.device === 'keyboard';
   }
 
   private handleMain(inp: Input) {
@@ -512,9 +522,67 @@ export class Menu {
     const n = this.g.neon, s = hudSize(n), inp = this.g.input, touch = usesTouch(inp);
     if (this.page === 'credits') {
       this.drawCredits();
-      n.text(touch ? 'tap to go back' : 'Enter to go back', n.w / 2, n.h - s * 1.4, s * 0.55, '#c9a640');
+      n.text(touch ? 'tap to go back' : inp.tv ? 'OK to go back' : 'Enter to go back', n.w / 2, n.h - s * 1.4, s * 0.55, '#c9a640');
     } else if (touch) this.drawTouchGuide();
+    else if (this.remoteGuide) this.drawRemoteGuide();
     else this.drawControl();
+  }
+
+  /**
+   * The CONTROL page on a TV: the remote, and what each of its buttons does. The INPUT row
+   * above it switches to the joypad with ← →.
+   */
+  private drawRemoteGuide() {
+    const n = this.g.neon, s = hudSize(n), GOLD = '#c9a640', cx = n.w / 2;
+    n.fade = smooth(this.gone);
+    n.screen();
+    const top = rowY(n, 0);
+    n.text('>', cx - s * 3.4, top, s * 0.72, COLORS.hud, 'left');
+    n.text('INPUT', cx - s * 0.8, top, s * 0.72, COLORS.hud, 'right');
+    n.text('< REMOTE >', cx + s * 0.8, top, s * 0.72, COLORS.hud, 'left');
+    // The remote, upright: the ring with OK in it, then Back on the left and the channel rocker on the right.
+    const bw = n.h * 0.2, y0 = n.h * 0.36, y1 = n.h * 0.86, r = bw * 0.34, ry = y0 + bw * 0.5;
+    const body = new Path2D();
+    body.roundRect(cx - bw / 2, y0, bw, y1 - y0, bw * 0.3);
+    if (n.retro) n.pixelFrame(cx - bw / 2, y0, bw, y1 - y0, GOLD, 0.6);
+    else n.glow(body, GOLD, 1, 0.45);
+    drawRing(n, cx, ry, r, COLORS.hud, 0.9);
+    drawRing(n, cx, ry, r * 0.42, COLORS.hud, 0.9);
+    n.text('OK', cx, ry, r * 0.3, COLORS.hud);
+    const a = r * 0.72, size = r * 0.13;
+    for (const d of [-1, 1]) {
+      drawArrow(n, cx + d * a, ry, d, 0, size, GOLD);
+      drawArrow(n, cx, ry + d * a, 0, d, size, GOLD);
+    }
+    const by = ry + r * 1.75, bx = cx - bw * 0.22;
+    drawRing(n, bx, by, bw * 0.1, COLORS.hud, 0.9);
+    drawArrow(n, bx, by, -1, 0, bw * 0.035, COLORS.hud);
+    const chx = cx + bw * 0.22, chTop = by - bw * 0.1, chH = bw * 0.62, chW = bw * 0.2;
+    const rocker = new Path2D();
+    rocker.roundRect(chx - chW / 2, chTop, chW, chH, chW / 2);
+    if (n.retro) n.pixelFrame(chx - chW / 2, chTop, chW, chH, COLORS.hud, 0.9);
+    else n.glow(rocker, COLORS.hud, 1.2, 0.9);
+    n.text('+', chx, chTop + chH * 0.2, chW * 0.6, COLORS.hud);
+    n.text('CH', chx, chTop + chH * 0.5, chW * 0.32, GOLD);
+    n.text('-', chx, chTop + chH * 0.8, chW * 0.6, COLORS.hud);
+    // What each does, on the side where it sits.
+    const size2 = s * 0.6, lx = cx - bw * 0.62, rx = cx + bw * 0.62;
+    const left = (y: number, key: string, what: string) => {
+      n.text(key, lx, y, size2, COLORS.hud, 'right');
+      n.text(what, lx - s * 2.6, y, size2, GOLD, 'right');
+    };
+    const right = (y: number, key: string, what: string) => {
+      n.text(key, rx, y, size2, COLORS.hud, 'left');
+      n.text(what, rx + s * 2.6, y, size2, GOLD, 'left');
+    };
+    left(ry - r * 0.35, '← →', 'WALK');
+    left(ry + r * 0.35, '↑ ↓', 'THROUGH THE LINE, OR FLOAT');
+    left(by, 'BACK', 'PAUSE, THEN MENU');
+    right(ry, 'OK', 'PAUSE');
+    right(chTop + chH * 0.2, 'CH +', 'WIPE');
+    right(chTop + chH * 0.8, 'CH -', 'PULL');
+    n.text('← → joypad   ·   OK or BACK to go back', cx, n.h - s * 1.2, s * 0.55, GOLD);
+    n.fade = 1;
   }
 
   /** The names, running across the line and riding its waves. */
@@ -555,7 +623,7 @@ export class Menu {
       if (on) n.text('>', left - s * (row.kind === 'bind' ? 6.2 : row.kind === 'device' ? 2.6 : 5.6), y, size, COLORS.hud, 'left');
       if (row.kind === 'device') {
         n.text('INPUT', left, y, size, color, 'right', alpha);
-        n.text(pad ? '< JOYPAD >' : '< KEYBOARD >', right, y, size, color, 'left', alpha);
+        n.text(pad ? '< JOYPAD >' : inp.tv ? '< REMOTE >' : '< KEYBOARD >', right, y, size, color, 'left', alpha);
       } else if (row.kind === 'bind') {
         n.text(row.label, left, y, size, color, 'right', alpha);
         const waiting = this.capturing === row.action, keys = pad ? b.pad[row.action].slice(0, 2).map(padLabel) : b.keys[row.action].slice(0, 2).map(keyLabel);

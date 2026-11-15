@@ -42,19 +42,19 @@ npm start
 
 Keep walking right. The end of the line crumbles in behind you, faster every level, so every stop costs ground. The gauge under your size counter shows how much lead is left.
 
-On a computer or a TV, the keys, the remote's and the joypad's buttons can be changed from CONTROL in the menu. The defaults:
+On a computer, the keys and the joypad's buttons can be changed from CONTROL in the menu; on a TV, CONTROL shows what the remote's buttons do, and ← → switches to the joypad to change its buttons. The defaults:
 
 | Action | Keyboard | Joypad | Touch | LG TV remote |
 | --- | --- | --- | --- | --- |
 | Walk | ← → or A D | D-pad or left stick | Left thumb, sideways | ← → |
 | Go through the line | Towards it: ↓ or S on top, ↑ or W underneath | Towards it | Left thumb, towards it | Towards it (↑ ↓) |
 | Float | Away from it: ↑ or W on top, ↓ or S underneath | Away from it | Left thumb, away from it | Away from it (↑ ↓) |
-| Pull | X or Ctrl | X | Right thumb, swipe sideways | CH ↑ or CH ↓ (or green) |
-| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down | OK (or red) |
+| Pull | X or Ctrl | X | Right thumb, swipe sideways | CH − (or green) |
+| Wipe | Z, Shift or Space | A | Right thumb, swipe up or down | CH + (or red) |
 | Mute | M | | Speaker icon | |
 | Fullscreen | F | | Corners icon, under the audio icon (not in the installed app) | |
 | Nostalgia (low resolution look) | N | | Checkerboard icon | |
-| Pause | P | Start | | Back (OK carries on), or Play |
+| Pause | P | Start | | OK or Play, or Back |
 | Back to the start screen | Esc | Back | | Back, while paused |
 
 In the menu, ↑ goes to the line behind and ↓ to the one before, round and round; Enter (or a wipe or a pull, or A) picks the line at the front: Wavell pulls it in, and that opens it. On a phone, swipe up or down and tap.
