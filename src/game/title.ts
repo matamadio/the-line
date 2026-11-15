@@ -218,6 +218,8 @@ function drawHaze(n: Neon, w: Word, tint: Tint, alpha: number) {
 /** The stroke itself, with a soft bloom that follows it. */
 function drawStroke(n: Neon, path: Path2D, tint: Tint, width: number) {
   const c = n.ctx, color = css(tint.stroke);
+  // On a slow device the glow alone does: the bloom is a blurred shadow, the costliest thing drawn.
+  if (n.lite) { n.glow(path, color, width); return; }
   c.globalCompositeOperation = 'lighter';
   c.shadowColor = color;
   c.shadowBlur = width * BLOOM * n.dpr;

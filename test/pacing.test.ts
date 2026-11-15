@@ -44,11 +44,35 @@ describe('pacing', () => {
     expect(p.scale).toBe(1);
   });
 
-  it('a slow 60 Hz screen lowers the resolution down to its floor, and no further', () => {
+  it('a slow 60 Hz screen lowers the resolution down to its floor, then goes lite, and no further', () => {
     const p = new Pacing(0.5);
+    let changes = 0;
+    p.onChange = () => changes++;
     run(p, 60, 5000, (i) => (i % 2 ? 20 : 10));
     expect(p.skip).toBe(1);
     expect(p.scale).toBe(0.5);
+    expect(p.lite).toBe(true);
+    const after = changes;
+    run(p, 60, 3000, (i) => (i % 2 ? 20 : 10), 200000);
+    expect(changes).toBe(after);
+  });
+
+  it('a slow TV that can only go a little lower gets there, then goes lite, without wasted steps', () => {
+    // A 1080p TV at one canvas pixel per CSS pixel can go down to 720 tall: 2/3.
+    const p = new Pacing(() => 2 / 3);
+    let changes = 0;
+    p.onChange = () => changes++;
+    run(p, 60, 5000, (i) => (i % 2 ? 20 : 10));
+    expect(p.scale).toBeCloseTo(2 / 3);
+    expect(p.lite).toBe(true);
+    // 1, 0.8, 2/3, then lite.
+    expect(changes).toBe(3);
+  });
+
+  it('a device that keeps up never goes lite', () => {
+    const p = new Pacing(0.5);
+    run(p, 60, 3000);
+    expect(p.lite).toBe(false);
   });
 
   it('pauses and the odd hitch are not slowness', () => {

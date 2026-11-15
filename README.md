@@ -36,7 +36,7 @@ npm start
 
 **To start at a later level**, add `?level=N` to the address, for example `?level=10` to go straight to the boss. It lasts for that page only and saves nothing.
 
-**To check performance on a device**, add `?perf` to the address. The top left corner then shows the frame rate, whether the game draws on every refresh or every other one, and the resolution it settled on.
+**To check performance on a device**, add `?perf` to the address. The top left corner then shows the frame rate, whether the game draws on every refresh or every other one, the resolution it settled on, and whether it went lite. Add `?lite` to start in the lightest mode, to compare.
 
 ## How to play
 
