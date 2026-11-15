@@ -34,7 +34,7 @@ Up to level 3, threats come one at a time, with a second of clear line between t
 
 ## Levels
 
-There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. The end of the line crumbles faster each level. Level 10 is the last: the boss fight against THE FLATTENER (see [The boss](#the-boss)). Beating him starts the levels over from level 1, on a harder loop in a random time signature, with the music still in full: the line continues.
+There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. The end of the line crumbles faster each level. Level 10 is the last: the boss fight against THE SILENCER (see [The boss](#the-boss)). Beating him starts the levels over from level 1, on a harder loop in a random time signature, with the music still in full: the line continues.
 
 ## The threats
 
@@ -59,7 +59,7 @@ From level 6, half of them let go of the line partway and float off, the way his
 
 ## The boss
 
-THE FLATTENER (`flattener.ts`) is the original game's boss brought back, but not on a fixed screen: Wavell keeps running along the line, the end of the line keeps crumbling in behind him (at a steady 60 u/s, slower than level 10 would be), and the boss walks on ahead, always facing him from the right side of the screen.
+THE SILENCER (`flattener.ts`) is the original game's boss brought back, but not on a fixed screen: Wavell keeps running along the line, the end of the line keeps crumbling in behind him (at a steady 60 u/s, slower than level 10 would be), and the boss walks on ahead, always facing him from the right side of the screen.
 
 He is made of the line, so he can take any shape, and **each shape is one power**. His outline flows from one shape into the next. Idle, he is a wobbly blob that never holds its shape, with eyes floating in it, staring at Wavell.
 

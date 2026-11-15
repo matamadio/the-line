@@ -31,6 +31,17 @@ const ready = (g: Game, under = false) => {
   if (under) { W.side = -1; W.flip = 1; }
 };
 const ahead = (g: Game, d: number) => g.wavell.x + d;
+/** THE SILENCER climbs out of the line ahead of him, as on reaching the last level. */
+const boss = (g: Game) => (g as unknown as { startBoss(): void }).startBoss();
+/** The Silencer out of the line and in his place, holding his powers, and his front wave (Tide-Al) rolling in from d ahead. */
+const tideAl = (g: Game, d = 120) => {
+  ready(g);
+  boss(g);
+  const B = g.boss!;
+  B.state = 'idle';
+  (B as unknown as { wait: number }).wait = 99;
+  g.tidals.push({ x: ahead(g, d), dir: -1, amp: DIFF.bossWaveAmp, done: false, gone: false });
+};
 
 export const SCENES: Scene[] = [
   { name: 'Appear', dur: 1.4 },
@@ -180,6 +191,11 @@ export const SCENES: Scene[] = [
     name: 'Reflux: on the other side, passes him', dur: 2.5,
     setup: (g) => { ready(g); g.refluxes.push(reflux(-12, 1, -1, g.wavell)); },
   },
+  { name: 'Silencer: climbs out of the line', dur: 4, setup: (g) => { ready(g); boss(g); } },
+  { name: 'Silencer: Tide-Al hits him', dur: 2.2, setup: (g) => tideAl(g) },
+  { name: 'Silencer: Tide-Al floated over', dur: 3, keys: [['upPressed', 0.3], ['up', 0.5, 1]], setup: (g) => tideAl(g) },
+  { name: 'Silencer: Tide-Al pulled flat (facing it)', dur: 1.8, keys: [['pullPressed', 0.3]], setup: (g) => tideAl(g) },
+  { name: 'Silencer: Tide-Al wiped back at him', dur: 3, keys: [['dragPressed', 0.3]], setup: (g) => tideAl(g) },
   { name: 'Free play (your keys are recorded)', dur: 0, setup: (g) => ready(g) },
 ];
 export const FREE = SCENES.length - 1;

@@ -8,7 +8,7 @@ Every rule the game follows, with its numbers, as of 10 November 2026. It is tak
 - [Controls](#controls)
 - [Wavell, the line and dying](#wavell-the-line-and-dying)
 - [Enemies and hazards](#enemies-and-hazards)
-- [The boss: THE FLATTENER](#the-boss-the-flattener)
+- [The boss: THE SILENCER](#the-boss-the-silencer)
 - [Sparkles and power-ups](#sparkles-and-power-ups)
 - [Scoring and levels](#scoring-and-levels)
 - [Music, beat and sound](#music-beat-and-sound)
@@ -149,9 +149,9 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 - Enemies on the line never overlap. Crawlers queue behind whatever is ahead; a Disturchin or Bubble Burst only appears where there is room. A thrown-back enemy stops at the next one or shoves it along. One on its way out (fading, sinking, melting, or a Disturchin pulling its spikes in) keeps its room until it has gone.
 - The Backwave and Reflux are waves in the line, so they pass through the others. A bubble in the air is off the line.
 
-## The boss: THE FLATTENER
+## The boss: THE SILENCER
 
-Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and THE FLATTENER climbs out of the line ahead of Wavell (2.2 s), with the screen shaking hard (no title). No other threat comes while he is there.
+Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and THE SILENCER climbs out of the line ahead of Wavell (2.2 s), with the screen shaking hard (no title). No other threat comes while he is there.
 
 - **He is a shape-shifter.** He is a stretch of the line on top of it, and he takes a different shape for each power. His outline flows from one shape to the next (0.35 s for most). His shapes and the steps of each power are in `src/data/boss.json`, edited in the lab (Edit boss); the times below are its current numbers.
 - **Idle**, he is a wobbly blob that never holds its shape, with two eyes floating in it, staring at Wavell.
@@ -229,7 +229,7 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 
 - There are 10 levels. Each level costs 50 points more than the one before: level 2 starts at 50 points, level 3 at 150, level 4 at 300, level 5 at 500, level 6 at 750, level 7 at 1050, level 8 at 1400, level 9 at 1800 and level 10 at 2250. On later loops these count from the score the loop started at.
 - A level-up shows a banner, shakes the screen and plays the level sound.
-- Level 10 is the last: the boss fight (see [The boss](#the-boss-the-flattener)). Beating him starts the levels over on the next loop, 2 levels harder.
+- Level 10 is the last: the boss fight (see [The boss](#the-boss-the-silencer)). Beating him starts the levels over on the next loop, 2 levels harder.
 - The best score is saved in the browser.
 
 ### What changes with the level
@@ -286,7 +286,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 
 ### Sound matches shape
 
-- **The Flattener:** a low tremble as he rises and as he rears up, a deep bass building up as his wave rears and a crash cymbal, a slap of water and a boom when it crashes, a meow for the cat (a buzzy tone through a vowel-like filter), a whine that spins up for the saw, a low three-rasp croak for the toad, a tone rising away when his wave is sent back at him, and a big falling groan when it hits.
+- **The Silencer:** a low tremble as he rises and as he rears up, a deep bass building up as his wave rears and a crash cymbal, a slap of water and a boom when it crashes, a meow for the cat (a buzzy tone through a vowel-like filter), a whine that spins up for the saw, a low three-rasp croak for the toad, a tone rising away when his wave is sent back at him, and a big falling groan when it hits.
 - **Sinepede:** pure sine tones whatever the style. It announces itself with one note per segment, high for a crest, low for a trough. Each cancelled segment plays its own note. The nearest one also hums: a sine at 220 Hz for one segment and 110 Hz more for each segment after it (330 Hz for 2, 440 Hz for 3), slightly saturated and with a little reverb. The hum starts 2 beats before a Sinepede comes in and gets louder as it closes in.
 - **Disturchin:** a low tremble under the fuzz, then a harsh, clipped sound while its spikes are out.
 - **Wavell:** a bright run of notes when he grows, a falling one when he shrinks.
@@ -316,7 +316,7 @@ Everything is drawn as glowing vector strokes at the screen's native resolution.
 - **Dying.** Killed by an enemy, he sinks back into the line looking up (0.6 s) until one raised hand is the last of him. Burnt by the end of the line, the break runs along his outline from foot to foot (1.25 s) and drifts away in sparks.
 - **Enemy deaths.** A killed creature melts into a hump that rolls on with the wave that hit it. A Sinepede leaves a ripple as each segment dies.
 - **Screens.** The title is one unbroken stroke. Starting a game breaks it apart. At game over, FLATLINED appears and turns back into the title.
-- **HUD.** Top left: size circles, with the lead gauge under them. Score with its multiplier to the left. Points pop up where they are earned. A banner shows each new level. During the boss fight, THE FLATTENER and a circle for each size he has left sit under the level.
+- **HUD.** Top left: size circles, with the lead gauge under them. Score with its multiplier to the left. Points pop up where they are earned. A banner shows each new level. During the boss fight, THE SILENCER and a circle for each size he has left sit under the level.
 - **Nostalgia mode** (N or the checkerboard icon) gives a low-resolution look and is saved in the browser.
 
 ## Platform and saving

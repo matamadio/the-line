@@ -218,7 +218,7 @@ class Sfx {
     this.tone(sinePitch(-side), 0.14, 0.25, sinePitch(-side), 0.16);
   }
 
-  /** The Flattener slams the line: a deep thud falling away, with a clipped crack on top. */
+  /** The Silencer slams the line: a deep thud falling away, with a clipped crack on top. */
   slam() {
     this.tone(95, 0.8, 0.7, 28);
     this.tone(190, 0.3, 0.3, 60);
@@ -328,7 +328,7 @@ class Sfx {
     slap.stop(at + 0.7);
   }
 
-  /** The Flattener as a cat: a meow, a buzzy tone through a vowel-like filter that opens and closes. */
+  /** The Silencer as a cat: a meow, a buzzy tone through a vowel-like filter that opens and closes. */
   meow() {
     const ctx = this.ctx;
     if (!ctx || this.muted) return;
@@ -352,7 +352,7 @@ class Sfx {
     osc.stop(at + len + 0.02);
   }
 
-  /** The Flattener as a saw: a whine that spins up and keeps going. Returns how to cut it off. */
+  /** The Silencer as a saw: a whine that spins up and keeps going. Returns how to cut it off. */
   whirr(seconds: number): () => void {
     const ctx = this.ctx;
     if (!ctx || this.muted) return () => {};
@@ -384,7 +384,7 @@ class Sfx {
     };
   }
 
-  /** The Flattener as a toad: a low croak, three quick rasps. */
+  /** The Silencer as a toad: a low croak, three quick rasps. */
   croak() {
     const ctx = this.ctx;
     if (!ctx || this.muted) return;
@@ -406,12 +406,12 @@ class Sfx {
     }
   }
 
-  /** Something sent back at the Flattener: a tone rising away, the way it rolls. */
+  /** Something sent back at the Silencer: a tone rising away, the way it rolls. */
   sentBack() {
     this.tone(330, 0.32, 0.3, 990, 0, true);
   }
 
-  /** The Flattener hit by his own power: a big low groan, falling. */
+  /** The Silencer hit by his own power: a big low groan, falling. */
   bossHit() {
     this.play('kill');
     this.tone(220, 0.7, 0.5, 55);

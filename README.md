@@ -123,7 +123,7 @@ Rows that differ from the saved file turn orange, and double-clicking a row puts
 
 ![The animation lab](docs/images/lab.png)
 
-The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave and the burn.
+The lab plays every animation of the game on its own, slowly enough to see. Pick a scene on the right: walking, both attacks, flipping, floating, each enemy's death and bite, cancelling, dizziness, the Backwave, the burn, and THE SILENCER climbing out with his wave (Tide-Al) in each of its outcomes.
 
 **Playback**
 
@@ -172,7 +172,7 @@ The real stroke is drawn over a grid, with the keys either side shown faintly (o
 
 ### Boss editor
 
-**Edit boss**, at the top of the lab (or `/lab.html#boss`), edits THE FLATTENER: his shapes and his powers, saved to [`src/data/boss.json`](src/data/boss.json). Choose a shape or a power from the list.
+**Edit boss**, at the top of the lab (or `/lab.html#boss`), edits THE SILENCER: his shapes and his powers, saved to [`src/data/boss.json`](src/data/boss.json). Choose a shape or a power from the list.
 
 **Shapes** are drawn as the real stroke on the line, at his full size, with Wavell standing by for scale:
 
@@ -207,7 +207,7 @@ src/
     line.ts        The line itself: a wave-equation string
     crumble.ts     A creature coming apart at the end of the line
     fx.ts          Sparks, score popups
-    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, the Flattener (the boss)
+    actors/        Wavell, Sinepede, Disturchin, Worm, Bubble Burst, the Silencer (the boss)
   data/            The tunable numbers and the files the editors save
   editors/         The difficulty editor and the animation lab
 test/              Headless tests: the real simulation, no browser
