@@ -116,12 +116,22 @@ describe('the Silencer', () => {
     }
   });
 
-  it('slams the line first, sending a front wave at Wavell', () => {
+  it('opens with two other powers, then slams the line, sending a front wave at Wavell', () => {
     const g = atBoss();
+    g.lives = 99;
+    const used: string[] = [];
     let seen = false;
-    for (let i = 0; i < 6 * STEPS_PER_SECOND && !seen; i++) { g.tick(IDLE); seen = g.tidals.length > 0; }
+    for (let i = 0; i < 20 * STEPS_PER_SECOND && !seen; i++) {
+      g.tick(IDLE);
+      const p = g.boss?.power;
+      if (p && p !== used[used.length - 1]) used.push(p);
+      seen = g.tidals.length > 0;
+    }
     expect(seen).toBe(true);
     expect(g.tidals[0].dir).toBe(-1);
+    expect(used.length).toBe(3);
+    expect(used.slice(0, 2)).not.toContain('tideAl');
+    expect(used[2]).toBe('tideAl');
   });
 
   it('a front wave sent back takes a size', () => {
@@ -362,7 +372,7 @@ describe('the Silencer', () => {
     expect(strokeWord(END_WORD).width).toBeGreaterThan(1000);
   });
 
-  it('never uses a power twice in a row, and sends the front wave after 2, 3, then 4 others as he shrinks', () => {
+  it('opens with as many other powers as the gap, never the front wave; then never repeats one, and sends the front wave after 2, 3, then 4 others as he shrinks', () => {
     const hurts = (p: string) => BOSS.powers[p].steps.some((s) => s.fire === 'slam');
     for (let seed = 1; seed <= 12; seed++) {
       const rand = seeded(seed);
@@ -373,10 +383,22 @@ describe('the Silencer', () => {
         for (let i = 0; i < 30; i++) { const p = B.choose(rand); picks.push(p); B.begin(p, rand); }
         for (let i = 1; i < picks.length; i++) expect(picks[i]).not.toBe(picks[i - 1]);
         const waves = picks.map((p, i) => (hurts(p) ? i : -1)).filter((i) => i >= 0);
-        expect(waves[0]).toBe(0);
+        expect(waves[0]).toBe(B.waveGap);
         for (let i = 1; i < waves.length; i++) expect(waves[i] - waves[i - 1] - 1).toBe(B.waveGap);
         expect(B.waveGap).toBe(5 - hp);
+        // Past his opening, only the powers of his phase: no Toad before his third.
+        if (hp > 1) expect(picks.slice(waves[0])).not.toContain('toad');
       }
     }
+  });
+
+  it('may open with any of his other powers, the Toad too, though it only comes in his third phase after that', () => {
+    const openers = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      const rand = seeded(seed);
+      const B = new Flattener(0) as unknown as { waveGap: number; choose(r: () => number): string; begin(p: string, r: () => number): void };
+      for (let i = 0; i < B.waveGap; i++) { const p = B.choose(rand); openers.add(p); B.begin(p, rand); }
+    }
+    expect([...openers].sort()).toEqual(['cat', 'saw', 'toad']);
   });
 });
