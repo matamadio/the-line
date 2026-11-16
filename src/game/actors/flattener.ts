@@ -135,6 +135,8 @@ export class Flattener {
   private last: BossPower | null = null;
   /** Powers in a row since the last one that can hurt him. */
   private dry = 0;
+  /** He has sent a front wave at least once. */
+  private waved = false;
   private kick = 0;
   /** Drawn size, easing towards his sizes left. */
   private shown = 1 + GROW * DIFF.bossHits;
@@ -376,6 +378,7 @@ export class Flattener {
     this.power = p;
     this.last = p;
     this.dry = this.hurts(p) ? 0 : this.dry + 1;
+    if (this.hurts(p)) this.waved = true;
     this.order = playOrder(BOSS.powers[p]?.steps ?? [], !!BOSS.powers[p]?.shuffle, rand);
     this.startStep(0);
   }
@@ -420,14 +423,16 @@ export class Flattener {
   private hurts(p: BossPower) { return !!BOSS.powers[p]?.steps.some((s) => s.fire === 'slam'); }
 
   /**
-   * His next power, never the one he just used. The first is always one that can be sent
-   * back at him (the front wave); after it come exactly waveGap others, then it again.
+   * His next power, never the one he just used. He never opens with one that can be sent
+   * back at him (the front wave): first come waveGap others, picked from all of them, those
+   * of later phases too (so he may open with the Toad), and only then the front wave. After
+   * it come exactly waveGap others, from his phase, then it again.
    */
   private choose(rand: () => number): BossPower {
-    const all = Object.entries(BOSS.powers).filter(([, d]) => d.from <= this.phase && d.weight > 0 && d.steps.length);
+    const all = Object.entries(BOSS.powers).filter(([k, d]) => (d.from <= this.phase || (!this.waved && !this.hurts(k))) && d.weight > 0 && d.steps.length);
     const fresh = all.filter(([k]) => k !== this.last);
     const hurt = fresh.filter(([k]) => this.hurts(k)), other = fresh.filter(([k]) => !this.hurts(k));
-    const due = !this.last || this.dry >= this.waveGap;
+    const due = this.last !== null && this.dry >= this.waveGap;
     let pool = due ? hurt : other;
     if (!pool.length) pool = due ? other : hurt;
     if (!pool.length) pool = all;

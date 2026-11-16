@@ -179,7 +179,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 | 2 | 2 | (same) | every 3 other powers | 1.95 s |
 | 3 | 1 | + Toad; 30% chance of a power straight after another | every 4 other powers | 1.5 s |
 
-- **His choices**: he never uses the same power twice in a row. The first power is always the front wave (the one that can be sent back at him); then come exactly as many other powers as his phase says (2, 3, then 4: he gets harder to hurt as he shrinks), then the front wave again. The others are picked by weight (cat 4, saw 4, toad 4), from the phase each comes in.
+- **His choices**: he never uses the same power twice in a row. He never opens with the front wave (the one that can be sent back at him): he opens with 2 other powers, picked from all of them (cat, saw, or the toad, even though it otherwise only comes in phase 3), and only then sends the front wave. After it come exactly as many other powers as his phase says (2, 3, then 4: he gets harder to hurt as he shrinks), then the front wave again. The others are picked by weight (cat 4, saw 4, toad 4), from the phase each comes in.
 - **Powers on the beat**: he picks a power on a beat, and Tide-Al's lean, the shot and the saw's roll land on the beat.
 - **Sparkles** keep coming during the fight, at most 3 at a time. Each hit leaves 2 by him.
 
