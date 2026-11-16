@@ -53,13 +53,34 @@ export class Fx {
   splash(x0: number, x1: number, ground: (x: number) => number, color: string, size = 1) {
     const mid = (x0 + x1) / 2, half = Math.max(1, (x1 - x0) / 2);
     for (let i = 0; i < 18; i++) {
-      const x = rand(x0, x1), out = (x - mid) / half;
-      this.drop(x, ground(x) - rand(1, 6) * size, out * rand(30, 90) * size, -rand(150, 260) * size, rand(1.2, 2.2) * size, rand(1, 1.6), color, 240, 12, ground(x));
+      const x = rand(x0, x1);
+      this.jet(x, ground(x), (x - mid) / half, color, size);
     }
     for (let i = 0; i < 90; i++) {
-      const x = rand(x0 - 8, x1 + 8), out = (x - mid) / half;
-      this.drop(x, ground(x) - rand(2, 16) * size, out * rand(20, 110) * size + rand(-20, 20), -rand(60, 230) * size, rand(0.5, 1.6) * size, rand(0.9, 2), color, 210, 5, ground(x));
+      const x = rand(x0 - 8, x1 + 8);
+      this.splashDrop(x, ground(x), (x - mid) / half, color, size);
     }
+  }
+
+  /** One of a splash's tall jets of water, from the line at (x, y), leaning out by `out` (-1 to 1). */
+  jet(x: number, y: number, out: number, color: string, size = 1) {
+    this.drop(x, y - rand(1, 6) * size, out * rand(30, 90) * size, -rand(150, 260) * size, rand(1.2, 2.2) * size, rand(1, 1.6), color, 240, 12, y);
+  }
+
+  /** One of a splash's round drops, from the line at (x, y), thrown out by `out` (-1 to 1). */
+  splashDrop(x: number, y: number, out: number, color: string, size = 1) {
+    this.drop(x, y - rand(2, 16) * size, out * rand(20, 110) * size + rand(-20, 20), -rand(60, 230) * size, rand(0.5, 1.6) * size, rand(0.9, 2), color, 210, 5, y);
+  }
+
+  /**
+   * Water spilling off a rolling wave's crest at (x, y): a jet or a round drop, as in a
+   * splash, but thrown forward and down ahead of the wave. `ahead` is its speed along the
+   * line, signed the way the wave rolls and faster than it, so it runs out in front of the
+   * crest. Gone after `life` seconds, or once it falls to `floor` (the line ahead of the wave).
+   */
+  spill(x: number, y: number, ahead: number, color: string, size: number, life: number, floor: number) {
+    if (Math.random() < 1 / 6) this.drop(x, y - rand(0, 3) * size, ahead * rand(1, 1.25), rand(30, 110) * size, rand(1.2, 2.2) * size, life * rand(0.8, 1), color, 240, 12, floor);
+    else this.drop(x, y - rand(0, 6) * size, ahead * rand(0.85, 1.2), rand(0, 100) * size, rand(0.5, 1.6) * size, life * rand(0.6, 1), color, 210, 5, floor);
   }
 
   popup(x: number, y: number, text: string) { this.popups.push({ x, y, text, life: 1 }); }

@@ -90,7 +90,6 @@ const RAGE_HOLD = 12;
 const RAGE_OFF = 60;
 /** The Silencer's front wave: it rolls at Wavell (dir -1), or back at him once wiped (dir 1). Its crest stands on top of the line. */
 export interface Tidal { x: number; dir: 1 | -1; amp: number; done: boolean; gone: boolean }
-const TIDAL_WIDTH = 13;
 /** Half the boss's width in his widest shape (u): the room kept for him in view. */
 const BOSS_HALF = 46;
 /** How close in front of Wavell a held wipe catches a tidal wave (u). */
@@ -759,7 +758,7 @@ export class Game {
         this.teach('tidal', 'TIDE-AL IS BUILDING UP: SWIPE ↕ facing the wave to send it back at him', 'TIDE-AL IS BUILDING UP: {drag} facing the wave sends it back at him');
       } else if (e === 'slam') {
         const x = B.front - 6;
-        L.pulse(x, -DIFF.bossWaveAmp, TIDAL_WIDTH, -1, DIFF.bossWaveSpeed);
+        L.pulse(x, -DIFF.bossWaveAmp, TUNE.tidalWidth, -1, DIFF.bossWaveSpeed);
         L.impulse(B.x, 120, 16);
         this.tidals.push({ x, dir: -1, amp: DIFF.bossWaveAmp, done: false, gone: false });
         this.bossHush?.();
@@ -892,7 +891,16 @@ export class Game {
       const vel = this.tidalVel(t);
       t.x += vel * dt;
       const short = Math.max(0, t.amp + L.sample(t.x));
-      L.carry(t.x, -t.amp, TIDAL_WIDTH, vel, -short * 0.05);
+      L.carry(t.x, -t.amp, TUNE.tidalWidth, vel, -short * TUNE.tidalSwell);
+      // It spills as it rolls: the crash's jets and drops, thrown off its crest forward and
+      // down the way it goes (bottom left coming in), one jet to five drops as in the crash,
+      // sized to its height. Short-lived: they are gone before they reach far.
+      for (let k = TUNE.tidalSpray * dt; k > 0; k--) {
+        if (k < 1 && Math.random() >= k) break;
+        const sx = t.x + t.dir * rand(0, TUNE.tidalWidth * 0.6), size = TUNE.tidalSpraySize * t.amp / 50, color = t.dir < 0 ? COLORS.line : '#ffffff';
+        // Faster than the wave itself, so the water runs out ahead of its crest.
+        this.fx.spill(sx, L.sample(sx), vel * TUNE.tidalSprayAhead, color, size, TUNE.tidalSprayLife, L.sample(sx + t.dir * TUNE.tidalWidth * 2.5));
+      }
       // Spray blown off its crest as it rolls.
       if (Math.random() < 0.5) this.fx.spark(t.x + t.dir * rand(0, 6), L.sample(t.x) - rand(0, 3), t.dir * rand(20, 70), rand(-50, -10), rand(0.25, 0.5), t.dir < 0 ? '#ffd0c0' : '#ffffff', 160);
       if (t.dir > 0) {
@@ -910,7 +918,7 @@ export class Game {
       if (thrown || (W.holding && W.attack === 'wipe' && W.facing > 0 && t.x <= W.x + CATCH && t.x > W.x - 4)) {
         t.dir = 1;
         L.calm(t.x, 22);
-        L.pulse(t.x, -t.amp, TIDAL_WIDTH, 1, DIFF.bossWaveBack);
+        L.pulse(t.x, -t.amp, TUNE.tidalWidth, 1, DIFF.bossWaveBack);
         this.addScore(10, W.x, L.sample(W.x) - 30 * W.side);
         n.shake = Math.max(n.shake, 0.8);
         sfx.sentBack();
@@ -928,7 +936,7 @@ export class Game {
   /** Pulled flat by a pull facing it. */
   private cancelTidal(t: Tidal) {
     const L = this.line, W = this.wavell;
-    L.calm(t.x, TIDAL_WIDTH * 2);
+    L.calm(t.x, TUNE.tidalWidth * 2);
     t.gone = true;
     this.addScore(10, W.x, L.sample(W.x) - 30 * W.side);
     this.fx.burst(t.x, L.sample(t.x), 16, 45, COLORS.danger, 0, 0.35);

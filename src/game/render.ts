@@ -2,6 +2,7 @@
 // everything flying around it. Only reads the game's state; the HUD is in hud.ts.
 
 import { COLORS, type Neon, rand, smoothPath } from '../core/neon';
+import { TUNE } from '../data/tune';
 import { wildHue } from './actors/rage';
 import { DIFF } from '../data/difficulty';
 import { BUBBLE_GREEN } from './actors/bubble';
@@ -305,31 +306,16 @@ function drawRage(g: Game) {
   }
 }
 
-/** The boss's tidal waves: orange coming in, white once sent back at him. */
+/** The boss's tidal waves: orange coming in, white once sent back at him. Their splash is in fx (see updateTidals). */
 function drawTidals(g: Game) {
   const n = g.neon, L = g.line;
   for (const t of g.tidals) {
     if (t.done && t.dir < 0) continue;
     const crest: number[] = [];
-    for (let x = Math.max(t.x - 22, g.endX); x <= t.x + 22; x += 2) crest.push(x, L.sample(x));
-    if (crest.length < 4) continue;
+    const span = TUNE.tidalCrest;
+    for (let x = Math.max(t.x - span, g.endX); x <= t.x + span; x += 2) crest.push(x, L.sample(x));
     const color = t.dir < 0 ? COLORS.danger : '#ffffff';
-    n.glow(smoothPath(crest), color, 1.3, 1);
-    // Its lip curls over the way it rolls, with a twist of foam under it.
-    const d = t.dir, x = t.x, y = L.sample(x), wob = Math.sin(g.time * 14) * 0.8;
-    const lip = new Path2D();
-    lip.moveTo(x - d * 4, y + 1);
-    lip.quadraticCurveTo(x + d * 4, y - 6, x + d * 10, y - 1 + wob);
-    lip.quadraticCurveTo(x + d * 12, y + 4, x + d * 8, y + 6);
-    lip.quadraticCurveTo(x + d * 5, y + 7, x + d * 5.5, y + 4.5);
-    n.glow(lip, color, 1.1, 1);
-    const foam = new Path2D();
-    for (let i = 0; i < 4; i++) {
-      const fx = x + d * (2 + i * 2.5), fy = y + 3 + Math.sin(g.time * 9 + i * 2) * 1.5;
-      foam.moveTo(fx + 0.9, fy);
-      foam.arc(fx, fy, 0.9, 0, Math.PI * 2);
-    }
-    n.glow(foam, '#ffffff', 0.5, 0.8);
+    if (crest.length >= 4) n.glow(smoothPath(crest), color, 1.3, 1);
   }
 }
 

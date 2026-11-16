@@ -168,7 +168,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 | **Saw** | A sawblade through the line, both sides (the line doesn't show inside it) | Spins up for 1 s, then rolls at Wavell on the next beat, at 150 u/s | **Float over it** (+6). It cuts Wavell anywhere on the line, on either side, and pops a bubble that is too low. It flattens out 40 u before the end of the line, and he grows back out of the line in his place (0.8 s) |
 | **Toad** | A squat toad, which sinks until only its eyes show | Croaks and squats (0.6 s), sinks (0.6 s) | For 3.5 s, a Bubble Burst blisters up every 0.45 s, anywhere in view on top of the line but never within 18 u of Wavell. Each sits on the line for a beat, then floats off and bursts in the air 1.6 s later. Keep clear: walking into one, or its spray, leaves him dizzy, and the spray pops his bubble. Under the line, the spray can't reach him |
 
-- **Front wave**: 30 u high, 120 u/s towards Wavell, its crest on top of the line and its lip curling over the way it rolls, spray blowing off it. It hits him on the line from either side.
+- **Front wave**: 30 u high, 120 u/s towards Wavell, its crest on top of the line, spilling water as it rolls: about 40 a second of the crash's jets and drops, thrown off its crest forward and down the way it goes (bottom left as it comes in), at about 1.6 times its speed so they run out ahead of the crest, sized to its height and gone within 0.5 s, with spray blowing off it. It hits him on the line from either side.
 - **Saw**: 16 u radius, plus 8% for each size he has left, with 12 teeth.
 - **His size**: every shape is drawn 8% bigger for each size he has left.
 - **Phases**: each hit makes him angrier.
@@ -361,7 +361,7 @@ The game runs in the browser at <https://matamadio.github.io/the-line/> and inst
 | To change | File | Edited with |
 | --- | --- | --- |
 | Difficulty: speeds, spawn rates, ramps, scoring, sizes, beat | `src/data/difficulty.json` (defaults in `difficulty.ts`) | Difficulty editor, `npm run difficulty` |
-| Feel: walk, flip, float, wave, death and melt timings | `src/data/tune.ts` | Animation lab sliders, `npm run lab` (copy values back by hand) |
+| Feel: walk, flip, float, wave, death and melt timings, and the look of Tide-Al's wave | `src/data/tune.ts` | Animation lab sliders, `npm run lab` (copy values back by hand) |
 | Animation keyframes | `src/data/anim.json` | Keyframe editor in the lab |
 | Rules and point values | `src/game/game.ts` | Code |
 | The boss's shape, powers and phases | `src/game/actors/flattener.ts` (his numbers in `difficulty.json`, Boss group) | Code, difficulty editor |

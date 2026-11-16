@@ -38,6 +38,14 @@ export const KNOBS = {
   cancelDepth: knob('Cancelling', 'Shrink at contact (0..1)', 0.8, 0, 1, 0.01),
 
   lineSpeed: knob('Line', 'Wave speed (u/s)', 300, 60, 800, 5),
+
+  tidalWidth: knob('Tide-Al wave', 'Width (u; its height and speeds are in the difficulty editor)', 13, 3, 40, 0.5),
+  tidalSwell: knob('Tide-Al wave', 'Swells back to its height (share of what it is short, per step)', 0.05, 0, 0.5, 0.01),
+  tidalCrest: knob('Tide-Al wave', 'Glow along the crest, each side (u)', 22, 0, 60, 1),
+  tidalSpray: knob('Tide-Al wave', 'Splash as it rolls: jets and drops per second', 40, 0, 200, 1),
+  tidalSpraySize: knob('Tide-Al wave', 'Splash size (1: as big as the crash for its height)', 1, 0, 3, 0.05),
+  tidalSprayAhead: knob('Tide-Al wave', 'Splash speed, × the wave speed (above 1: runs ahead of the crest)', 1.6, 0.5, 4, 0.05),
+  tidalSprayLife: knob('Tide-Al wave', 'Splash: each drop lasts at most (s)', 0.5, 0.1, 2, 0.05),
 };
 
 export type TuneKey = keyof typeof KNOBS;
