@@ -1499,6 +1499,28 @@ describe('the Rage knot', () => {
     expect(bubble.knot?.waiting).toBe(false);
   });
 
+  it('touched by his bubble, he goes back down, ties into the line and only then unties it, and lives', () => {
+    const g = knotted(60);
+    const W = g.wavell;
+    g.tick({ ...IDLE, upPressed: true });
+    // Up high, flying right: no help getting down.
+    for (let i = 0; i < 4 * STEPS_PER_SECOND && !g.knot?.claimed && g.knot?.waiting; i++) g.tick({ ...IDLE, right: true });
+    expect(g.knot?.claimed).toBe(true);
+    expect(W.state).toBe('fly');
+    expect(W.shielded).toBe(true);
+    // It comes down on its own and he grows back out of the line, keys or no keys.
+    for (let i = 0; i < 3 * STEPS_PER_SECOND && g.knot?.waiting; i++) {
+      g.tick({ ...IDLE, up: true });
+      if (g.knot?.waiting) expect(W.rageT).toBe(-1);
+    }
+    expect(g.knot?.waiting).toBe(false);
+    expect(W.state).toBe('ground');
+    run(g, 5);
+    expect(W.alive).toBe(true);
+    expect(W.state).toBe('ground');
+    expect(g.rageWaves.length).toBe(0);
+  });
+
   it('goes after a while if nobody takes it, or when the end of the line reaches it', () => {
     const g = knotted(150);
     g.endGrace = 99;

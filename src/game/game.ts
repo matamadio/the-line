@@ -1526,8 +1526,16 @@ export class Game {
         if (Math.random() < dt * 12) this.fx.spark(k.x + rand(-KNOT_HALF, KNOT_HALF), L.sample(k.x) + rand(-8, 8), rand(-20, 20), rand(-20, 20), 0.4, wildHue(k.t, Math.random() * 5), 0);
         const ground = L.sample(k.x);
         const touched = W.flying ? k.touchesBubble(L, W.x, W.by, W.bubbleR)
-          : W.onLine && W.state !== 'appear' && Math.abs(W.x - k.x) < KNOT_HALF * 0.8 + 4 * W.scale;
-        if (W.alive && touched && this.mode === 'play') {
+          : W.onLine && W.state !== 'appear' && W.state !== 'land' && Math.abs(W.x - k.x) < KNOT_HALF * 0.8 + 4 * W.scale;
+        if (W.alive && touched && this.mode === 'play' && W.flying) {
+          // In the bubble, he goes back down and ties into the line first, safe all the while;
+          // the knot waits for him.
+          W.tieBack();
+          W.shielded = true;
+          k.claimed = true;
+          this.endGrace = Math.max(this.endGrace, 1);
+        } else if (W.alive && (k.claimed ? W.state === 'ground' : touched) && this.mode === 'play') {
+          k.claimed = false;
           k.grab(W.x + W.facing * 2 * W.scale);
           W.shielded = true;
           W.rageT = 0;
@@ -1537,6 +1545,10 @@ export class Game {
           for (let i = 0; i < 6; i++) this.fx.burst(k.x, ground, 12, 50 + 25 * i, wildHue(k.t, i), 0, 0.5 + 0.08 * i);
           this.neon.shake = Math.max(this.neon.shake, 0.6);
           sfx.play('drag', 0.8);
+        } else if (k.claimed) {
+          this.endGrace = Math.max(this.endGrace, 1);
+          // He died on the way down, after all: it is free again.
+          if (!W.alive) { k.claimed = false; W.shielded = false; }
         } else if (k.life <= 0 || k.x < this.endX + KNOT_HALF) {
           this.fx.burst(k.x, ground, 16, 35, '#ff4f8b', 0, 0.5);
           this.knot = null;
@@ -1577,7 +1589,7 @@ export class Game {
       }
     }
     this.rageWaves = this.rageWaves.filter((r) => r.delay > 0 || (r.dir > 0 ? r.x < right : r.x > left));
-    if (!this.raging && W.state !== 'ride') W.shielded = false;
+    if (!this.raging && W.state !== 'ride' && !this.knot?.claimed) W.shielded = false;
     if (!this.raging) W.endRage();
   }
 
