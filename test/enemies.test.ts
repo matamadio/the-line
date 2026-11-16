@@ -9,7 +9,7 @@ import { Urchin } from '../src/game/actors/urchin';
 import { Worm } from '../src/game/actors/worm';
 import { RageKnot, UNTIE, rageWaves } from '../src/game/actors/rage';
 import { Orca, STALK_LEAD } from '../src/game/actors/orca';
-import { backwave, reflux } from '../src/game/game';
+import { whiplash, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
@@ -143,10 +143,10 @@ describe('enemies on the line', () => {
   });
 });
 
-describe('the Backwave', () => {
+describe('the Whiplash', () => {
   const coming = (g: ReturnType<typeof ready>, x: number) => {
-    const b = backwave(x, 0);
-    g.backwaves.push(b);
+    const b = whiplash(x, 0);
+    g.whiplashes.push(b);
     return b;
   };
   const holding = (g: ReturnType<typeof ready>, attack: typeof WIPE, facing: 1 | -1 = -1) => {
@@ -157,8 +157,8 @@ describe('the Backwave', () => {
 
   it('does not shrink on its way, and grows a little', () => {
     const g = ready();
-    const b = backwave(g.neon.camX - 10, 0.01);
-    g.backwaves.push(b);
+    const b = whiplash(g.neon.camX - 10, 0.01);
+    g.whiplashes.push(b);
     run(g, 0.1);
     const first = -g.line.sample(b.x);
     expect(first).toBeGreaterThan(DIFF.backAmp * 0.9);
@@ -166,6 +166,22 @@ describe('the Backwave', () => {
     const last = -g.line.sample(b.x);
     expect(last).toBeGreaterThan(first);
     expect(last).toBeLessThan(first * 1.3);
+  });
+
+  it.each([[2, 0], [3, 1]])('at level %i, %i comes once it is due', (level, count) => {
+    const g = ready();
+    g.quiet = false;
+    g.level = level;
+    g.playTime = DIFF.backFrom + 1;
+    const clocks = g as unknown as { backClock: number; refluxClock: number; sineClock: number; urchinClock: number; wormClock: number; bubbleClock: number };
+    let seen = 0;
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && !seen; i++) {
+      clocks.backClock = 99;
+      clocks.refluxClock = clocks.sineClock = clocks.urchinClock = clocks.wormClock = clocks.bubbleClock = -99;
+      g.tick(IDLE);
+      seen = g.whiplashes.length;
+    }
+    expect(Math.min(seen, 1)).toBe(count);
   });
 
   it('comes slower than the line\'s own waves', () => {
@@ -179,13 +195,13 @@ describe('the Backwave', () => {
   it('is a real ripple: another wave runs through it and comes out whole', () => {
     const after = (withWave: boolean) => {
       const g = ready();
-      if (withWave) g.backwaves.push(backwave(g.neon.camX - 10, 0.01));
+      if (withWave) g.whiplashes.push(whiplash(g.neon.camX - 10, 0.01));
       run(g, 0.05);
       const from = g.wavell.x - 35;
       g.line.pulse(from, 10, 11, -1);
-      run(g, 0.33);
-      const x = from - g.line.c * 0.33;
-      return { other: g.line.sample(x), crest: withWave ? -g.line.sample(g.backwaves[0].x) : 0, apart: withWave ? g.backwaves[0].x - x : 0 };
+      run(g, 0.4);
+      const x = from - g.line.c * 0.4;
+      return { other: g.line.sample(x), crest: withWave ? -g.line.sample(g.whiplashes[0].x) : 0, apart: withWave ? g.whiplashes[0].x - x : 0 };
     };
     const alone = after(false), crossed = after(true);
     expect(crossed.apart).toBeGreaterThan(50);
@@ -213,11 +229,11 @@ describe('the Backwave', () => {
     expect(g.wavell.alive).toBe(true);
     expect(g.score).toBe(10);
     const height = b.amp;
-    while (g.backwaves.length && b.x > g.neon.camX + 40) {
+    while (g.whiplashes.length && b.x > g.neon.camX + 40) {
       g.tick(IDLE);
       if (b.x < g.wavell.x - 60) expect(-g.line.sample(b.x)).toBeGreaterThan(height * 0.8);
     }
-    while (g.backwaves.length) g.tick(IDLE);
+    while (g.whiplashes.length) g.tick(IDLE);
     const end = g.endX;
     run(g, DIFF.backEarn - 0.1);
     expect(g.endX).toBe(end);
@@ -231,7 +247,7 @@ describe('the Backwave', () => {
     g.tick(WIPE);
     while (!g.pulses.length) g.tick(IDLE);
     const b = coming(g, g.pulses[0].x - 150);
-    run(g, 0.3);
+    run(g, 0.4);
     expect(b.dir).toBe(-1);
     expect(b.x).toBeLessThan(g.wavell.x - 60);
   });
@@ -244,11 +260,11 @@ describe('the Backwave', () => {
     run(g, 0.1);
     expect(b.dir).toBe(-1);
     const end = g.endX;
-    for (let i = 0; i < STEPS_PER_SECOND * 2 && g.backwaves.length; i++) {
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && g.whiplashes.length; i++) {
       g.tick(IDLE);
-      if (g.backwaves.length) expect(g.endX).toBeLessThan(b.x);
+      if (g.whiplashes.length) expect(g.endX).toBeLessThan(b.x);
     }
-    expect(g.backwaves.length).toBe(0);
+    expect(g.whiplashes.length).toBe(0);
     expect(g.endX).toBeLessThan(end);
     expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
     expect(g.wavell.alive).toBe(true);
@@ -261,8 +277,8 @@ describe('the Backwave', () => {
     const b = coming(g, g.wavell.x - 90);
     run(g, 0.1);
     expect(b.dir).toBe(-1);
-    for (let i = 0; i < STEPS_PER_SECOND * 2 && g.backwaves.length; i++) g.tick(IDLE);
-    expect(g.backwaves.length).toBe(0);
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && g.whiplashes.length; i++) g.tick(IDLE);
+    expect(g.whiplashes.length).toBe(0);
     const k = { ...IDLE, left: walk < 0 };
     for (let i = 0; i < (DIFF.backEarn - 0.1) * STEPS_PER_SECOND; i++) {
       g.tick(k);
@@ -288,8 +304,8 @@ describe('the Backwave', () => {
     const b = coming(g, g.wavell.x - 90);
     run(g, 0.1);
     expect(b.dir).toBe(-1);
-    for (let i = 0; i < STEPS_PER_SECOND * 4 && g.backwaves.length; i++) g.tick(IDLE);
-    expect(g.backwaves.length).toBe(0);
+    for (let i = 0; i < STEPS_PER_SECOND * 4 && g.whiplashes.length; i++) g.tick(IDLE);
+    expect(g.whiplashes.length).toBe(0);
     // And it stays there: nothing pulls it back in afterwards.
     run(g, 0.5);
     expect(g.endX).toBeLessThanOrEqual(g.neon.camX);
@@ -298,13 +314,13 @@ describe('the Backwave', () => {
   it('is cancelled by a pull facing it, with no time earned', () => {
     const g = ready();
     g.wavell.facing = -1;
-    const b = backwave(g.neon.camX - 10, 0.01);
-    g.backwaves.push(b);
+    const b = whiplash(g.neon.camX - 10, 0.01);
+    g.whiplashes.push(b);
     const grace = () => (g as unknown as { endGrace: number }).endGrace;
     run(g, 0.05);
     g.tick(PULL);
-    for (let i = 0; i < STEPS_PER_SECOND && g.backwaves.length; i++) g.tick(IDLE);
-    expect(g.backwaves.length).toBe(0);
+    for (let i = 0; i < STEPS_PER_SECOND && g.whiplashes.length; i++) g.tick(IDLE);
+    expect(g.whiplashes.length).toBe(0);
     expect(g.wavell.alive).toBe(true);
     expect(g.score).toBe(10);
     expect(Math.abs(g.line.sample(b.x))).toBeLessThan(DIFF.backAmp * 0.4);
@@ -317,8 +333,8 @@ describe('the Backwave', () => {
   it('starts on the line when the end of the line is in view, never left of it', () => {
     const g = ready();
     g.endX = g.neon.camX + 30;
-    const b = backwave(g.neon.camX - 10, 0.01);
-    g.backwaves.push(b);
+    const b = whiplash(g.neon.camX - 10, 0.01);
+    g.whiplashes.push(b);
     run(g, 0.03);
     expect(b.warn).toBeLessThanOrEqual(0);
     expect(b.x - 11 * 2).toBeGreaterThan(g.endX);
@@ -328,10 +344,10 @@ describe('the Backwave', () => {
   it('does not come when there is too little line left behind him', () => {
     const g = ready();
     g.endX = g.wavell.x - 40;
-    const b = backwave(g.neon.camX - 10, 0.01);
-    g.backwaves.push(b);
+    const b = whiplash(g.neon.camX - 10, 0.01);
+    g.whiplashes.push(b);
     run(g, 0.2);
-    expect(g.backwaves.length).toBe(0);
+    expect(g.whiplashes.length).toBe(0);
     expect(g.wavell.alive).toBe(true);
   });
 
@@ -369,7 +385,7 @@ describe('the game', () => {
         g.tick({ ...IDLE, right: true });
         const out = g.sinepedes.filter((s) => s.harmful).length + g.worms.filter((w) => w.harmful).length
           + g.bubbles.filter((b) => b.harmful).length + g.urchins.filter((u) => u.state === 'warn' || u.state === 'spikes').length
-          + g.backwaves.length + g.refluxes.length;
+          + g.whiplashes.length + g.refluxes.length;
         most = Math.max(most, out);
       }
       Object.assign(DIFF, saved);
@@ -720,7 +736,7 @@ describe('the game', () => {
       const cases: ((g: ReturnType<typeof ready>) => void)[] = [
         (g) => { const u = new Urchin(g.wavell.x + 2, 0.01, 2); g.urchins.push(u); },
         (g) => { const w = new Worm(g.wavell.x - 5, 0); w.state = 'move'; g.worms.push(w); },
-        (g) => { g.backwaves.push(backwave(g.wavell.x - 1, 0)); },
+        (g) => { g.whiplashes.push(whiplash(g.wavell.x - 1, 0)); },
       ];
       for (const make of cases) {
         const g = grown(1);
@@ -916,14 +932,14 @@ describe('the game', () => {
       expect(killed((g) => { g.sinepedes.push(new Sinepede(g.wavell.x + 60, 0, 2, 1)); })).toEqual({ above: 0, below: 0 });
     });
 
-    it('a Backwave pulled flat leaves them too', () => {
+    it('a Whiplash pulled flat leaves them too', () => {
       const g = ready();
       g.wavell.facing = -1;
-      g.backwaves.push(backwave(g.neon.camX + 40, 0.01));
+      g.whiplashes.push(whiplash(g.neon.camX + 40, 0.01));
       run(g, 0.05);
       g.tick(PULL);
       run(g, 0.8);
-      expect(g.backwaves.length).toBe(0);
+      expect(g.whiplashes.length).toBe(0);
       expect(g.sparkles.length).toBe(2);
     });
 
@@ -1481,6 +1497,28 @@ describe('the Rage knot', () => {
     bubble.tick({ ...IDLE, upPressed: true });
     for (let i = 0; i < 4 * STEPS_PER_SECOND && bubble.knot?.waiting; i++) bubble.tick({ ...IDLE, right: true, down: true });
     expect(bubble.knot?.waiting).toBe(false);
+  });
+
+  it('touched by his bubble, he goes back down, ties into the line and only then unties it, and lives', () => {
+    const g = knotted(60);
+    const W = g.wavell;
+    g.tick({ ...IDLE, upPressed: true });
+    // Up high, flying right: no help getting down.
+    for (let i = 0; i < 4 * STEPS_PER_SECOND && !g.knot?.claimed && g.knot?.waiting; i++) g.tick({ ...IDLE, right: true });
+    expect(g.knot?.claimed).toBe(true);
+    expect(W.state).toBe('fly');
+    expect(W.shielded).toBe(true);
+    // It comes down on its own and he grows back out of the line, keys or no keys.
+    for (let i = 0; i < 3 * STEPS_PER_SECOND && g.knot?.waiting; i++) {
+      g.tick({ ...IDLE, up: true });
+      if (g.knot?.waiting) expect(W.rageT).toBe(-1);
+    }
+    expect(g.knot?.waiting).toBe(false);
+    expect(W.state).toBe('ground');
+    run(g, 5);
+    expect(W.alive).toBe(true);
+    expect(W.state).toBe('ground');
+    expect(g.rageWaves.length).toBe(0);
   });
 
   it('goes after a while if nobody takes it, or when the end of the line reaches it', () => {

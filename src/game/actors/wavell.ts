@@ -46,6 +46,8 @@ export type WavellEvent = 'appear' | 'drag' | 'haul' | 'release' | 'flipDown' | 
 const FLY_TIME = 3.85;
 /** Just let go of the line: how long it stays broken, and how far the ends spring apart. */
 const SNAP_TIME = 0.2, SNAP_GAP = 6;
+/** How fast the bubble heads back to the line once it has touched the Rage knot (u/s). */
+const TIE_BACK = 160;
 /** Landing: the head height the deflate clip is keyed for, as a bubble of this radius (pose units) touches down. */
 const DEFLATE_R = 11.5;
 /** How far ahead of his hand the held line reaches the ground. */
@@ -113,6 +115,8 @@ export class Wavell {
   safe = 0;
   /** Untying the Rage knot: nothing can hurt him meanwhile. */
   shielded = false;
+  /** The bubble touched the Rage knot: it heads straight down and ties back into the line. */
+  tying = false;
   /** Seconds since he grabbed the Rage knot, or -1: untying it, then the power pose until the waves are gone. */
   rageT = -1;
   /** Riding the Killerwave: where he holds its fin, and how fast it goes (0..1). */
@@ -266,6 +270,12 @@ export class Wavell {
     this.from.set(this.cur);
     this.state = s;
     this.t = 0;
+    if (s !== 'fly') this.tying = false;
+  }
+
+  /** In the bubble, touched the Rage knot: it goes back down to the line on its own and lands. */
+  tieBack() {
+    if (this.state === 'fly') this.tying = true;
   }
 
   update(dt: number, k: Controls, line: SpringLine, canLand: boolean, top: number, bottom: number, ahead: number) {
@@ -365,14 +375,20 @@ export class Wavell {
           if (this.t + dt >= TUNE.takeoff) { line.impulse(this.x, s * 70, 6); this.events.push('fly'); }
           break;
         }
-        if (k.up) this.by -= 50 * dt;
-        if (k.down) this.by += 50 * dt;
         const r = this.bubbleR;
+        if (this.tying) {
+          // Heading for the line, quickly, whatever the keys say.
+          this.vel = 0;
+          this.by += s * TIE_BACK * dt;
+        } else {
+          if (k.up) this.by -= 50 * dt;
+          if (k.down) this.by += 50 * dt;
+        }
         this.by = clamp(this.by, top + r + 2, bottom - r - 2);
         // It stays on its own side of the line, and pushing against the line lands it.
         if (s * (this.by - ground) + r >= 0) {
           this.by = ground - s * r;
-          if ((s > 0 ? k.down : k.up) && canLand) {
+          if (this.tying || ((s > 0 ? k.down : k.up) && canLand)) {
             this.landR = r;
             this.landColor = this.bubbleColor;
             this.go('land');

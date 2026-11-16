@@ -188,7 +188,7 @@ describe('the beat in the game', () => {
       g.tick({ ...IDLE, right: true });
       const onBeat = i % 96 === 0, beat = Math.floor(i / 96) % 4;
       let fresh = 0;
-      for (const e of [...g.sinepedes, ...g.urchins, ...g.worms, ...g.bubbles, ...g.backwaves, ...g.refluxes]) {
+      for (const e of [...g.sinepedes, ...g.urchins, ...g.worms, ...g.bubbles, ...g.whiplashes, ...g.refluxes]) {
         if (!seen.has(e)) { seen.add(e); fresh++; kinds.add(e.constructor.name + ('warn' in e && !('reach' in e) ? 'wave' : '')); }
       }
       if (fresh) {

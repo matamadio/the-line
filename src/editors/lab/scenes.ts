@@ -9,7 +9,7 @@ import { Worm } from '../../game/actors/worm';
 import { RageKnot } from '../../game/actors/rage';
 import { Orca } from '../../game/actors/orca';
 import { TUNE } from '../../data/tune';
-import { backwave, reflux, type Game } from '../../game/game';
+import { whiplash, reflux, type Game } from '../../game/game';
 
 export type Held = 'left' | 'right' | 'up' | 'down';
 export type Tap = 'upPressed' | 'downPressed' | 'dragPressed' | 'pullPressed';
@@ -182,20 +182,20 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g); g.wavell.size = DIFF.growMax; g.wavell.scale = 1 + DIFF.growMax * DIFF.growScale; },
   },
   {
-    name: 'Backwave: hit', dur: 2.2,
-    setup: (g) => { ready(g); g.backwaves.push(backwave(g.neon.camX - 10, 0.4)); },
+    name: 'Whiplash: hit', dur: 2.2,
+    setup: (g) => { ready(g); g.whiplashes.push(whiplash(g.neon.camX - 10, 0.4)); },
   },
   {
-    name: 'Backwave: pulled out (facing it)', dur: 2.4, keys: [['left', 0.1, 0.25], ['pullPressed', 0.6]],
-    setup: (g) => { ready(g); g.backwaves.push(backwave(g.neon.camX - 10, 0.4)); },
+    name: 'Whiplash: pulled out (facing it)', dur: 2.4, keys: [['left', 0.1, 0.25], ['pullPressed', 0.6]],
+    setup: (g) => { ready(g); g.whiplashes.push(whiplash(g.neon.camX - 10, 0.4)); },
   },
   {
-    name: 'Backwave: wiped back, carrying the end of the line', dur: 3.2, end: true, keys: [['left', 0.1, 0.25], ['dragPressed', 0.4]],
-    setup: (g) => { ready(g); g.endX = g.wavell.x - 130; g.backwaves.push(backwave(g.neon.camX - 10, 0.4)); },
+    name: 'Whiplash: wiped back, carrying the end of the line', dur: 3.2, end: true, keys: [['left', 0.1, 0.25], ['dragPressed', 0.4]],
+    setup: (g) => { ready(g); g.endX = g.wavell.x - 130; g.whiplashes.push(whiplash(g.neon.camX - 10, 0.4)); },
   },
   {
-    name: 'Backwave: wiped back', dur: 3, keys: [['left', 0.1, 0.25], ['dragPressed', 0.6]],
-    setup: (g) => { ready(g); g.backwaves.push(backwave(g.neon.camX - 10, 0.4)); },
+    name: 'Whiplash: wiped back', dur: 3, keys: [['left', 0.1, 0.25], ['dragPressed', 0.6]],
+    setup: (g) => { ready(g); g.whiplashes.push(whiplash(g.neon.camX - 10, 0.4)); },
   },
   {
     name: 'Burn at the end of the line', dur: 2.2, end: true,

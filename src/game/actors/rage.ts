@@ -24,6 +24,8 @@ const RAGE_MID = 9;
 
 /** Half its length along the line, and its tallest loop off it (u). */
 export const KNOT_HALF = 12, KNOT_HIGH = 15;
+/** How long it takes to grow from nothing to full size when it turns up (s). */
+export const GROW = 0.3;
 /** How many loops it has. */
 const LOOPS = 11;
 
@@ -37,6 +39,8 @@ export class RageKnot {
   t = 0;
   /** Seconds into untying it, or -1 while it waits to be picked. */
   untie = -1;
+  /** His bubble has touched it: it waits for him to tie back into the line and take it. */
+  claimed = false;
   /** Where his hands hold it while he unties it. */
   hold = 0;
 
@@ -47,7 +51,7 @@ export class RageKnot {
 
   update(dt: number) {
     this.t += dt;
-    if (this.waiting) this.life -= dt;
+    if (this.waiting && !this.claimed) this.life -= dt;
     else this.untie += dt;
   }
 
@@ -66,13 +70,15 @@ export class RageKnot {
   points(line: SpringLine): number[] {
     const k = this.waiting ? 0 : smooth(clamp(this.untie / UNTIE, 0, 1));
     const cx = lerp(this.x, this.hold, k), t = this.t;
-    const half = KNOT_HALF * lerp(1, 0.6, k);
+    // It turns up small and swells to full size, quickly but not at once.
+    const grow = smooth(clamp(t / GROW, 0, 1));
+    const half = KNOT_HALF * lerp(1, 0.6, k) * lerp(0.15, 1, grow);
     const pulse = 1 + 0.16 * Math.sin(t * 17) + 0.08 * Math.sin(t * 29 + 1);
     const out: number[] = [], n = 280;
     for (let i = 0; i <= n; i++) {
       const u = i / n;
       // Biggest in the middle, nothing at the ends.
-      const env = Math.pow(Math.sin(Math.PI * u), 1.1) * (1 - k);
+      const env = Math.pow(Math.sin(Math.PI * u), 1.1) * (1 - k) * grow;
       // How big each loop is, and how fast the pen goes round, both keep changing.
       const size = 0.2 + 0.8 * Math.abs(Math.sin(u * 13 + t * 4.3 + 1.7 * Math.sin(u * 31 - t * 6.1)));
       const a = u * Math.PI * 2 * LOOPS + 2.4 * Math.sin(u * 9 + t * 3.7) + 1.3 * Math.sin(u * 23 - t * 5.9);

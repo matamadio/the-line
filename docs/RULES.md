@@ -57,7 +57,7 @@ Wavell has one life, and his size is his armour. The game ends when he is hit wi
 ### The end of the line
 
 - It crumbles in at 40 u/s at level 1, +3 u/s per level, up to 80 u/s. During the boss fight it crumbles at 60 u/s.
-- Wavell can build a lead of at most 240 u. A gauge under the size counter shows what is left; it reads full while a wiped Backwave holds the end off the screen.
+- Wavell can build a lead of at most 240 u. A gauge under the size counter shows what is left; it reads full while a wiped Whiplash holds the end off the screen.
 - After (re)spawning, the end waits 1.6 s before it moves.
 - If it reaches Wavell he burns away along his outline, whatever his size. A creature it reaches burns the same way: the break crosses it at the speed the end crumbles in, and the end carries on from its far side.
 
@@ -104,7 +104,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 | **Bubble Burst** | Blisters out of either side, swells and bursts | Pop it early with the right attack, or keep clear | After 6 s of play | Every 5.15 s → 2.4 s (−0.26 s/level) |
 | **Disturchin** | Stays still, on both sides of the line | Pull it, or wait it out | After 14 s of play | Every 7 s → 3.5 s (−0.3 s/level) |
 | **Line reflux** | Runs parallel to the line on one side, half Wavell's height away | Be on the other side | After 5 s of play | 29% chance every 3 s, +3%/level |
-| **Backwave** | Rolls in from behind | Float over it, or turn and answer it | After 22 s of play | 35% chance every 4 s, +4%/level |
+| **Whiplash** | Rolls in from behind | Float over it, or turn and answer it | From level 3, after 22 s of play | 35% chance every 4 s, +4%/level |
 
 ### Sinepede
 
@@ -138,9 +138,11 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 - Speed 175 u/s. It hits him on the line if he is on its side, or his bubble if it passes through it.
 
-### Backwave
+### Whiplash
 
-- Height 22 u, speed 220 u/s, growing 15% of its height per second.
+- It used to be called the Backwave. That name survives in the difficulty settings' keys (`backSpeed`, `backLevel` and so on) and in `docs/original-events.txt`, the original game's events.
+- It only comes from level 3 on, so the first two levels have none.
+- Height 22 u, speed 180 u/s, growing 15% of its height per second.
 - Only an attack facing it works; attacking the other way does nothing.
 - A pull cancels it. A wipe throws it back off the left of the screen, carrying the end of the line back with it, all the way to the left of the screen even when that is more than the 240 u lead. The end then stays just off the left of the screen for 2 s, even if he walks back towards it, before it crumbles in again. The lead gauge fills up for that pause.
 
@@ -148,7 +150,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 - **Up to level 3**, threats come one at a time, with 1 s of clear line between them. From level 4 they overlap.
 - Enemies on the line never overlap. Crawlers queue behind whatever is ahead; a Disturchin or Bubble Burst only appears where there is room. A thrown-back enemy stops at the next one or shoves it along. One on its way out (fading, sinking, melting, or a Disturchin pulling its spikes in) keeps its room until it has gone.
-- The Backwave and Reflux are waves in the line, so they pass through the others. A bubble in the air is off the line.
+- The Whiplash and Reflux are waves in the line, so they pass through the others. A bubble in the air is off the line.
 
 ## The boss: THE SILENCER
 
@@ -187,7 +189,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 
 - He melts flat into the line (1.4 s), and one huge hump rolls away to the right, with 250 base points. No text shows.
 - After 3.5 s of quiet line, the levels start over at level 1 on the next loop, with a screen shake and no banner: THE LINE CONTINUES is written in the title's hand by the nearest of the two lines behind the game, going by from right to left at 40 u/s (its letters about 20 u high). The letters are that line itself, as faint as the rest of it. The score carries on, and levels go by what is scored since the loop started.
-- **Each loop counts 2 levels harder** for every ramp (crumble speed, spawn rates, tempo and so on): loop 2's level 1 plays like level 3. The level gates (threats overlapping, two enemies a bar, floating bubbles) use the same harder level.
+- **Each loop counts 2 levels harder** for every ramp (crumble speed, spawn rates, tempo and so on): loop 2's level 1 plays like level 3. The level gates (Whiplashes, threats overlapping, two enemies a bar, floating bubbles) use the same harder level.
 - The music keeps going with all five layers: from the second loop on, every level plays them all.
 - **The time signature changes at random**: each new loop picks another one of the six (2/4, 3/4, 4/4, 5/4, 6/8, 7/8), different from the one playing, from the next bar. The audio menu can still change it. A new game starts in the one picked in the audio menu.
 - The HUD shows the loop: LOOP 2 · LEVEL 1.
@@ -207,12 +209,12 @@ Sparkles are the bait: chasing them gives ground to the line. The power-ups are 
 
 A small scribble of loops tangled into the line (24 u long, up to 15 u off it on each side). It throbs fast and keeps changing shape and colour. It is the original game's Nuke, used the moment it is picked.
 
-- **When:** at most one a level, from level 4 on, 10 s into the level; never during the boss fight. A level passed in under 10 s has none. It sits 100–160 u ahead of Wavell and stays 12 s, blinking for the last 2 s. The end of the line eats it if it gets there first.
-- **Picking it:** walk into it from either side of the line, or touch it with the bubble.
-- **Untying it:** sparks of every colour burst out of it, and his outline takes on its changing colours until the last wave is gone. For 0.55 s he tugs the loops apart, shaking, as they pull out into his hands. From then until the last wave is gone, Wavell holds still on a flat stretch of line, nothing can hurt him, and his bubble's time stands still if he picked it in the air. The end of the line stops while he unties it.
+- **When:** at most one a level, from level 4 on, 10 s into the level; never during the boss fight. A level passed in under 10 s has none. It sits 100–160 u ahead of Wavell, swells from a small tangle to full size in 0.3 s, and stays 12 s, blinking for the last 2 s. The end of the line eats it if it gets there first.
+- **Picking it:** walk into it from either side of the line, or touch it with the bubble. The bubble then heads straight back to the line (160 u/s) and lands whatever the keys say; he ties back in and takes the knot once he is standing. Nothing can hurt him on the way down, the bubble's time stands still, and the knot waits for him.
+- **Untying it:** sparks of every colour burst out of it, and his outline takes on its changing colours until the last wave is gone. For 0.55 s he tugs the loops apart, shaking, as they pull out into his hands. From then until the last wave is gone, Wavell holds still on a flat stretch of line, nothing can hurt him,. The end of the line stops while he unties it.
 - **Making the waves:** he shouts YEEEEH! and the screen shakes; no word comes up. His eyes go red and look up. He crouches and grabs the line with both hands, 13 u out on each side (0.2 s), and heaves it up over his head (to 0.45 s). The line in his hands follows them, down to rest 17 u further out, while the stretch under his feet stays flat. Then he beats it down and up, one stroke every 0.36 s. A huge wave (50 u tall) goes out each way at the end of each stroke: a crest with his arms up, a trough with them down, a crest again: three each way, at 130 u/s. Then he lowers the line back to rest over 0.6 s.
-- **Clearing:** the waves end every creature they pass, and once they reach the edge of the screen, everything beyond it on that side. That covers Sinepedes, Worms, Disturchins, Bubble Bursts (in the air too), Backwaves, Line refluxes and spray. Each creature cleared scores 5 and leaves its 2 sparkles. A Sinepede still on its way in is called off.
-- **The line:** the waves going left carry the end of the line back off the screen, and it then stops for 2 s, as after a wiped Backwave. The lead gauge fills.
+- **Clearing:** the waves end every creature they pass, and once they reach the edge of the screen, everything beyond it on that side. That covers Sinepedes, Worms, Disturchins, Bubble Bursts (in the air too), Whiplashes, Line refluxes and spray. Each creature cleared scores 5 and leaves its 2 sparkles. A Sinepede still on its way in is called off.
+- **The line:** the waves going left carry the end of the line back off the screen, and it then stops for 2 s, as after a wiped Whiplash. The lead gauge fills.
 - **After it:** no new enemy comes until all the waves are gone.
 
 ### Killerwave
@@ -236,9 +238,9 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 | Worm killed | 5 + 3 per size it grew |
 | Disturchin killed | 4 + 3 per size it grew |
 | Bubble Burst popped | 3 |
-| Backwave pulled flat | 10 |
-| Backwave wiped back | 10 |
-| Backwave floated over | 6 |
+| Whiplash pulled flat | 10 |
+| Whiplash wiped back | 10 |
+| Whiplash floated over | 6 |
 | Line reflux passed safely | 6 |
 | Boss's front wave floated over | 6 |
 | Boss's front wave pulled flat, or sent back | 10 |
@@ -267,11 +269,11 @@ Anything that gets harder is a ramp: a value at level 1, a change per level and 
 | Sinepede segments | 1 | +0.25 | 4 |
 | Disturchin warning | 0.9 s | −0.02 | 0.5 s |
 | Bubble Burst time to burst | 1.74 s | −0.045 | 1.1 s |
-| Backwave chance per roll | 35% | +4% | 100% |
+| Whiplash chance per roll | 35% | +4% | 100% |
 | Reflux chance per roll | 29% | +3% | 100% |
 | Music layers (one instrument per level; all 5 from loop 2 on) | 1 | +1 | 5 |
 
-Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.
+Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: Whiplashes come from level 3, threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.
 
 ## Music, beat and sound
 
@@ -285,7 +287,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - The beat is counted in simulation steps (96 steps of 1/120 s per beat), never on a clock, so replays are exact.
 - The line lights up on each beat, brighter on the first beat of a bar, so the beat can be seen with the sound off.
 - **Enemies come in on the beat**: on the last beat of the bar, and from level 6 also on the beat half a bar before it. That is never more than two per bar. Kinds take turns: the one furthest past its due time goes next. A Sinepede is called 2 beats ahead of its cue beat, so its hum is heard first.
-- **Enemy actions wait for the beat**: a Disturchin's spikes, a Backwave or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses last whole beats.
+- **Enemy actions wait for the beat**: a Disturchin's spikes, a Whiplash or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses last whole beats.
 - **Time signature** (2/4, 3/4, 4/4, 5/4, 6/8 or 7/8, from the audio menu) sets the beats per bar. A change waits for the next bar.
 
 ### Music styles
@@ -315,7 +317,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - **Disturchin:** a low tremble under the fuzz, then a harsh, clipped sound while its spikes are out.
 - **Wavell:** a bright run of notes when he grows, a falling one when he shrinks, and recorded shouts: YEEEEH! when he strikes the Rage pose (`yeah.mp3`) and YEE-HAW! when he mounts the Killerwave (`yeehaa.mp3`).
 - **Killerwave:** an orca's whistle as it starts to come up, a quick rise then a long, shivering fall with a few clicks under it, and the same call higher as it charges.
-- **Samples** from the original 2003 game cover the rest: appearing, vanishing, flipping down and up, hits, kills, being eaten, Reflux, bubble pop, level pass, the Backwave bonus and the Rage knot appearing (the original's bonus sound).
+- **Samples** from the original 2003 game cover the rest: appearing, vanishing, flipping down and up, hits, kills, being eaten, Reflux, bubble pop, level pass, the Whiplash bonus and the Rage knot appearing (the original's bonus sound).
 
 ### Audio menu
 

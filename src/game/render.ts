@@ -56,7 +56,7 @@ export function drawGame(g: Game, dt: number) {
   drawDrops(g);
   drawRage(g);
   drawSparkles(g);
-  drawBackwaves(g);
+  drawWhiplashes(g);
   drawTidals(g);
   drawRefluxes(g);
   g.wavell.drawFeatures(n, g.line);
@@ -269,9 +269,9 @@ function drawSparkles(g: Game) {
   }
 }
 
-function drawBackwaves(g: Game) {
+function drawWhiplashes(g: Game) {
   const n = g.neon, L = g.line;
-  for (const b of g.backwaves) {
+  for (const b of g.whiplashes) {
     if (b.warn > 0) {
       if (Math.floor(b.warn * 8) % 2) continue;
       const x = Math.max(n.camX + 8, g.endX + 8), chev = new Path2D();
