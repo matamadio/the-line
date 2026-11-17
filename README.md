@@ -87,7 +87,7 @@ The TV app is in `webos/`: it only opens the hosted game with `?tv`, so it is al
 
 ### On Android TV
 
-On an NVIDIA Shield or another Android TV, play with a joypad. The app in `android/` opens the hosted game, like the LG one, so it is always the latest version. It turns the joypad into the game's keys, because Android's web view may not pass a joypad to the page: the d-pad and the left stick move, A wipes, X pulls, Start pauses and carries on, and B goes to the menu from the pause. The game names those buttons in its hints (it is opened with `?pad`), and they can't be rebound.
+On an NVIDIA Shield or another Android TV, play with a joypad. The app in `android/` opens the hosted game, like the LG one, so it is always the latest version. It turns the joypad into the game's keys, because Android's web view may not pass a joypad to the page: the d-pad and the left stick move, A wipes, X pulls, Start pauses and carries on, and B goes to the menu from the pause. The game names those buttons in its hints (it is opened with `?pad`), and they can't be rebound. FLATTEN on the menu closes the app; an app installed before that came in needs `npm run android:install` again for it.
 
 To put it on the TV:
 

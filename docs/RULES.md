@@ -48,7 +48,7 @@ The player can change keys and joypad buttons under CONTROL in the menu. These a
 - **Android TV app.** It turns the joypad into keys: the d-pad and the left stick are the arrows, A wipes, X pulls, Start pauses and carries on, and B (or Back) goes back to the start screen from the pause; in a game it does nothing, and anywhere else it does what Esc does. It opens the game with `?pad`, so the hints and CONTROL name the joypad's buttons (A, X, START, B) and CONTROL can't change them; picking one says THE APP SETS THESE BUTTONS.
 - **Directions are relative to the line.** "Towards" goes through it and "away" floats off, on whichever side Wavell is.
 - **Menu.** ↑ and ↓ cycle the entries (START, CONTROL, CREDITS, FLATTEN). Enter, a wipe, a pull or joypad A picks the front one: Wavell pulls it in to open it. On a phone, swipe up or down and tap.
-- **FLATTEN** quits: the screen goes dark over 1.2 s and the game closes (the installed app's window, the TV app). A browser tab the page did not open itself may stay open: then it says so, and after 0.5 s any key or tap brings the menu back.
+- **FLATTEN** quits: the screen goes dark over 1.2 s and the game closes (the installed app's window, the LG TV app, and the Android TV app, which closes itself when the page asks, since its web view ignores the browser's close). A browser tab the page did not open itself may stay open: then it says so, and after 0.5 s any key or tap brings the menu back.
 - **First-time hints.** Each enemy and each mistake (such as a wrong attack) shows a hint the first time, for 3.5 s, worded for keys or touch depending on the input in use. Once the levels start over after the boss, no hints show again.
 - **Saved.** Key bindings are saved in the browser.
 

@@ -17,6 +17,9 @@ import android.webkit.WebViewClient;
  * wipes (Z), X pulls (X), Start pauses and carries on (P), and B or Back is the TV remote's
  * Back, which the game (opened with ?pad) takes only to leave the pause. The joypad never reaches the
  * page as a joypad, so nothing counts twice.
+ *
+ * A web view ignores window.close(), so the page closes the app through window.TheLineApp
+ * instead: FLATTEN on the menu calls TheLineApp.quit().
  */
 public class MainActivity extends Activity {
     /** ?tv: always fullscreen, no fullscreen button. ?pad: name the joypad's buttons, as they reach the game as keys. */
@@ -42,6 +45,7 @@ public class MainActivity extends Activity {
         // The title music may start without a tap.
         s.setMediaPlaybackRequiresUserGesture(false);
         web.setWebViewClient(new WebViewClient());
+        web.addJavascriptInterface(new AppBridge(this), "TheLineApp");
         setContentView(web);
         immersive();
         web.requestFocus();
