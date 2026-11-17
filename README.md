@@ -79,7 +79,10 @@ Open the game in the TV's web browser, or install the TV app (below). A Bluetoot
 The TV app is in `webos/`: it only opens the hosted game with `?tv`, so it is always the latest version. To put it on the TV:
 
 1. Install **Developer Mode** from the LG Content Store, sign in with an LG developer account, and turn on Dev Mode and the Key Server. It lasts 50 hours and can be extended from the app.
-2. On the computer, add the TV once with `npx -p @webos-tools/cli@3.2.6 ares-setup-device`, naming it `tv`, with the IP and passphrase that Developer Mode shows.
+2. On the computer, add the TV once and make it the default device, with the IP that Developer Mode shows and any name you like (here `LG TV`):
+   `npx -p @webos-tools/cli@3.2.6 ares-setup-device -a "LG TV" -i "host=TV_IP" -i "port=9922" -i "username=prisoner"`, then
+   `npx -p @webos-tools/cli@3.2.6 ares-setup-device -f "LG TV"`.
+   Then get its key with `npx -p @webos-tools/cli@3.2.6 ares-novacom --device "LG TV" --getkey`, typing the passphrase Developer Mode shows. If that fails to get the key, turn Key Server off and on with the Developer Mode app on screen, and try again at once.
 3. Run `npm run webos`, then `npm run webos:install`. The Line shows up with the TV's apps.
 
 ### On Android TV
@@ -256,9 +259,9 @@ docs/              Game rules reference (RULES.md), design notes and the origina
 | `npm run build` | Type-checks and builds the static site into `dist/` |
 | `npm run preview` | Serves `dist/` to try out the build |
 | `npm run webos` | Packages the LG TV app into `dist-webos/` |
+| `npm run webos:install` | Installs that package on the default webOS device (see [On an LG TV](#on-an-lg-tv)) |
 | `npm run android` | Builds the Android TV app into `dist-android/the-line.apk` |
 | `npm run android:install` | Builds it and installs it on the device adb is connected to |
-| `npm run webos:install` | Installs that package on the TV set up as `tv` |
 
 `dist/` can be hosted anywhere, under any path. It needs a web server, because browsers refuse to load it from a `file://` address.
 
