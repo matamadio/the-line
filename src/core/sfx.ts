@@ -149,7 +149,7 @@ class Sfx {
     this.music.setCrush(this.crushed);
     this.applyTint(60 / 75);
     for (const [key, file] of Object.entries(SAMPLES) as [Sample, string][]) {
-      fetch(`assets/sounds/${file.includes('.') ? file : file + '.wav'}`)
+      fetch(`assets/sounds/${file.includes('.') ? file : file + '.mp3'}`)
         .then((r) => r.arrayBuffer())
         .then((b) => this.ctx!.decodeAudioData(b))
         .then((buf) => this.buffers.set(key, buf))
