@@ -83,7 +83,11 @@ describe('the simulation', () => {
   });
 
   it('plays a couple of minutes with every kind of enemy and no broken numbers', () => {
+    // From the level Sinepedes come from, so every kind turns up.
+    const startLevel = DIFF.startLevel;
+    DIFF.startLevel = DIFF.sineLevel;
     const { seen } = play(11, 20);
+    DIFF.startLevel = startLevel;
     expect(seen.sinepedes).toBeGreaterThan(0);
     expect(seen.urchins).toBeGreaterThan(0);
     expect(seen.worms).toBeGreaterThan(0);
