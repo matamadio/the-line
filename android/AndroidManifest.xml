@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Android TV app (NVIDIA Shield and the like). Like the LG one in webos/, it only
+  opens the hosted game, so it is always the latest version. See README.md, "On Android TV".
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.github.matamadio.theline">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- A TV app: no touch screen needed, and it shows on the TV's home screen. -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
+
+    <application
+        android:label="The Line"
+        android:icon="@mipmap/icon"
+        android:banner="@drawable/banner"
+        android:usesCleartextTraffic="false"
+        android:hardwareAccelerated="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

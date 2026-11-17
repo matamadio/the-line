@@ -379,6 +379,8 @@ export class Menu {
     const inp = this.g.input;
     this.note = '';
     if (row.kind === 'back') this.back();
+    // In the Android TV app the joypad's buttons arrive as fixed keys: there is nothing to change.
+    else if (inp.padOnly) this.note = 'THE APP SETS THESE BUTTONS';
     else if (row.kind === 'device') this.toggleDevice();
     else if (row.kind === 'reset') {
       const device = inp.binds.device;
@@ -392,6 +394,7 @@ export class Menu {
   }
 
   private toggleDevice() {
+    if (this.g.input.padOnly) return;
     const b = this.g.input.binds;
     b.device = b.device === 'keyboard' ? 'joypad' : 'keyboard';
     saveBindings(b);
@@ -639,7 +642,7 @@ export class Menu {
     });
     const foot = this.note || (this.capturing ? (inp.tv ? 'BACK: leave it as it is' : 'Esc: leave it as it is')
       : pad && !inp.padFound ? 'NO JOYPAD FOUND: CONNECT ONE AND PRESS A BUTTON'
-        : pad ? 'THE LEFT STICK WALKS AS WELL   ·   BACK: MENU'
+        : pad ? `THE LEFT STICK WALKS AS WELL   ·   ${inp.padOnly ? 'B' : 'BACK'}: MENU`
           : inp.tv ? 'BACK pause / menu   ·   ANY REMOTE BUTTON CAN BE BOUND'
             : 'Esc menu   M mute   F fullscreen   N nostalgia');
     n.text(foot, n.w / 2, rowY(n, ROWS.length) + s * 0.3, s * 0.55, this.note ? COLORS.danger : GOLD);
