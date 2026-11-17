@@ -212,7 +212,7 @@ describe('the beat in the game', () => {
     expect(kinds.size).toBeGreaterThanOrEqual(3);
   });
 
-  it.each([1, 6])('at level %i, a Sinepede is heard two beats before it comes in, on a beat it may take', (level) => {
+  it.each([2, 6])('at level %i, a Sinepede is heard two beats before it comes in, on a beat it may take', (level) => {
     DIFF.beatOn = 1;
     Math.random = seeded(5 + level);
     const g = headlessGame();

@@ -100,7 +100,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 | Threat | Where it is | Answer | First appears | How often (level 1 → limit) |
 | --- | --- | --- | --- | --- |
-| **Sinepede** | Crawls along the line as crests above and troughs below | The right attack for the segment facing you, one segment at a time | After 1.75 s | Every 4.25 s → 1.8 s (−0.26 s/level) |
+| **Sinepede** | Crawls along the line as crests above and troughs below | The right attack for the segment facing you, one segment at a time | From level 2, 1.75 s into it | Every 4.25 s → 1.8 s (−0.26 s/level) |
 | **Worm** | Crawls underneath, sagging the line | Pull it, from either side | After 10 s of play | Every 6.6 s → 2.6 s (−0.3 s/level) |
 | **Bubble Burst** | Blisters out of either side, swells and bursts | Pop it early with the right attack, or keep clear | After 6 s of play | Every 5.15 s → 2.4 s (−0.26 s/level) |
 | **Disturchin** | Stays still, on both sides of the line | Pull it, or wait it out | After 14 s of play | Every 7 s → 3.5 s (−0.3 s/level) |
@@ -110,8 +110,9 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 ### Sinepede
 
 - The basic enemy. Each segment is half a wave; segments alternate crest and trough.
-- Length: 1 segment at level 1, +0.25 per level (rounded down), up to 4: 1 segment on levels 1–4, 2 on levels 5–8, 3 on level 9. Wrong attacks can grow it to 8.
-- Speed 100 u/s. Its clock runs at 40% while Wavell is not walking.
+- It comes from level 2 on: level 1 has none. Its clock only starts then, so the first one comes 1.75 s into level 2.
+- Length: 1 segment at level 1, +0.25 per level (rounded down), up to 4: 1 segment on levels 2–4, 2 on levels 5–8, 3 on level 9. Wrong attacks can grow it to 8.
+- Speed 90 u/s. Its clock runs at 40% while Wavell is not walking.
 - **Heard before it is seen**: it is called 2 beats before it comes in, and its hum starts then, fading in. With the beat on, it is called 2 beats before a cue beat it may take, and it takes that beat. With the beat off, it comes in 1.6 s after it is called. On the levels where threats come one at a time, nothing else comes in while one is on its way.
 - The right attack cancels the facing segment and sends a ripple on, and what is left of it is set back a little (knockback 150, about 30 u), so even a long one can be worn down. The wrong one throws it back (knockback 650) and adds a segment at the far end.
 - **Running into it**: both bounce apart (his knockback 300) and he loses that ground. On his side it gains a segment. On the other side the waves cancel: it loses a segment, or flattens if it was the last, and he loses a size. A bubble always pops on it.
@@ -134,6 +135,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 - It starts as a fuzz on the line (warning 0.9 s at level 1, −0.02 s per level, down to 0.5 s), then bursts out in spikes for 1 s.
 - The opposite-sides rule doesn't apply: **a pull always kills it and a wipe always feeds it.**
 - Each wipe bounces it back (knockback 250), restarts its time with 0.5 s more, makes it bigger and takes one more pull. Dots show how many are left.
+- **Walking into its spikes**, on either side of the line, hits him (he loses a size, or the game with none left) and throws him back out of them (knockback 300), the way he came.
 
 ### Line reflux
 
@@ -274,7 +276,7 @@ Anything that gets harder is a ramp: a value at level 1, a change per level and 
 | Reflux chance per roll | 29% | +3% | 100% |
 | Music layers (one instrument per level; all 5 from loop 2 on) | 1 | +1 | 5 |
 
-Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: Whiplashes come from level 3, threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.
+Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: Sinepedes come from level 2, Whiplashes from level 3, threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.
 
 ## Music, beat and sound
 
