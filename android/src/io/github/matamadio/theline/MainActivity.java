@@ -14,8 +14,8 @@ import android.webkit.WebViewClient;
 /**
  * The hosted game, fullscreen. A WebView may not pass a joypad to the page, so the joypad
  * is turned into the game's keys here: the d-pad and the left stick are the arrows, A
- * wipes (Z), X pulls (X), Start pauses (P), and B or Back is the TV remote's Back, which
- * pauses a game first and goes to the menu from the pause. The joypad never reaches the
+ * wipes (Z), X pulls (X), Start pauses and carries on (P), and B or Back is the TV remote's
+ * Back, which the game (opened with ?pad) takes only to leave the pause. The joypad never reaches the
  * page as a joypad, so nothing counts twice.
  */
 public class MainActivity extends Activity {
