@@ -77,5 +77,10 @@ export async function toggleFullscreen() {
  * close a tab it opened itself (or one with nothing to go back to), so it may stay open.
  */
 export function quitApp() {
-  try { window.close(); } catch { /* not allowed: the menu offers to come back */ }
+  // The Android TV app (android/) is a web view, which ignores window.close(): it closes itself when asked.
+  try {
+    const app = (window as unknown as { TheLineApp?: { quit(): void } }).TheLineApp;
+    if (app) app.quit();
+    else window.close();
+  } catch { /* not allowed: the menu offers to come back */ }
 }
