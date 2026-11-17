@@ -1018,6 +1018,16 @@ describe('the game', () => {
       expect(Math.floor(at('sineSegs', 500))).toBe(4);
     });
 
+    it.each([[1, 0], [2, 1]])('at level %i, %i comes once it is due', (level, count) => {
+      DIFF.beatOn = 0;
+      const g = ready();
+      g.quiet = false;
+      g.level = level;
+      let seen = 0;
+      for (let i = 0; i < STEPS_PER_SECOND * 6 && !seen; i++) { g.wavell.safe = 9; g.tick({ ...IDLE, right: true }); seen = g.sinepedes.length; }
+      expect(Math.min(seen, 1)).toBe(count);
+    });
+
     it('is set back a little by each right attack, so a long one can be worn down', () => {
       const g = ready();
       const s = new Sinepede(g.wavell.x + 60, 0, 3, 1);
@@ -1039,7 +1049,8 @@ describe('the game', () => {
       g.sinepedes.push(s);
       for (let i = 0; i < STEPS_PER_SECOND * 8 && s.harmful && W.alive; i++) {
         const f = s.front(W.x), near = f && s.frontCentre(W.x) - W.x < 90;
-        const k = { ...IDLE };
+        // He walks on to meet it, rather than wait for it while the end of the line comes.
+        const k = { ...IDLE, right: !near };
         if (near && f && W.state === 'ground') { if (f.side === W.side) k.pullPressed = true; else k.dragPressed = true; }
         g.tick(k);
         expect(s.count).toBeLessThanOrEqual(count);
@@ -1132,6 +1143,25 @@ describe('the game', () => {
   });
 
   describe('the Disturchin', () => {
+    it('throws him back out of its spikes when he walks into them, as well as taking a size', () => {
+      const g = ready();
+      const W = g.wavell;
+      W.size = 2;
+      const u = new Urchin(W.x + 40, 0.01, 3);
+      g.urchins.push(u);
+      for (let i = 0; i < STEPS_PER_SECOND && !u.harmful; i++) g.tick(IDLE);
+      expect(u.harmful).toBe(true);
+      let hitAt = -1;
+      for (let i = 0; i < STEPS_PER_SECOND * 2 && hitAt < 0; i++) { g.tick({ ...IDLE, right: true }); if (W.size < 2) hitAt = W.x; }
+      expect(W.size).toBe(1);
+      run(g, 0.4);
+      expect(W.alive).toBe(true);
+      expect(W.size).toBe(1);
+      // Back out of reach, on the side he came from.
+      expect(W.x).toBeLessThan(u.x - u.reach);
+      expect(W.x).toBeLessThan(hitAt - 10);
+    });
+
     /** Ticks until the wipe has landed on it, or gives up: a wipe that misses must fail, not hang. */
     const wipeLands = (g: ReturnType<typeof ready>, u: Urchin) => {
       const { size, hold } = u;

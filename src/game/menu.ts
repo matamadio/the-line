@@ -11,6 +11,7 @@ import { ACTIONS, RESERVED_KEYS, actionLabel, bindKey, bindPad, defaultBindings,
 import type { Captured, Controls, Input } from '../core/input';
 import { usesTouch } from '../core/input';
 import { COLORS, type Neon, clamp, lerp, smooth, smoothPath } from '../core/neon';
+import { quitApp } from '../core/app';
 import { sfx } from '../core/sfx';
 import { Wavell } from './actors/wavell';
 import type { Game } from './game';
@@ -18,7 +19,7 @@ import { chevron, hudSize, retroSprite } from './hud';
 import { strokeWord } from './lettering';
 import { SpringLine } from './line';
 
-export type MenuPage = 'main' | 'control' | 'credits';
+export type MenuPage = 'main' | 'control' | 'credits' | 'flatten';
 
 /** Where he stands on the menu's lines, as a share of the screen: left of the word, as in the original. */
 export const MENU_FOCUS = 0.3;
@@ -26,9 +27,15 @@ export const MENU_FOCUS = 0.3;
 const WORD_CENTRE = 0.57, WORD_SCALE = 0.22;
 /** How high the lettering stands, in units of its stroke. */
 const WORD_HEIGHT = 94;
-export const ENTRIES = ['START', 'CONTROL', 'CREDITS'] as const;
+export const ENTRIES = ['START', 'CONTROL', 'CREDITS', 'FLATTEN'] as const;
 /** Credits */
 export const CREDIT_NAMES = ['A game by SkepticOwl', 'Vibecoded with Claude Code', 'Thanks to:', 'Taddelya', 'Cherry Pie', 'Tatosgames', 'Sine Wavington', 'Anna Logue', 'Rick O\'Chet', 'Phil Harmonic', 'Amp Litude', 'Al Gorithm', 'Dee Bugger', 'Justin Case', 'Ty Dwave', 'Mr. Wavell\'s Hairdresser',];
+
+/**
+ * FLATTEN: how long the screen takes to go dark before the game closes, and how long
+ * after that, if the browser kept it open, before a key or a tap brings the menu back (s).
+ */
+const QUIT_FADE = 1.2, QUIT_STAY = 0.5;
 
 /** How quickly the lines shrink with depth, and how far above the front line they all meet (u). */
 const DEPTH = 0.5, HORIZON = 90;
@@ -103,6 +110,9 @@ export class Menu {
   gone = 0;
   /** How far the names have come, in units. */
   scroll = 0;
+  /** FLATTEN: how long since it was picked (s), and whether the game has asked to close. */
+  quitT = 0;
+  quitTried = false;
   /** The CONTROL page: the row picked, and the action waiting for its new key or button. */
   row = 1;
   capturing: Action | null = null;
@@ -245,6 +255,15 @@ export class Menu {
       g.startFromMenu();
       return;
     }
+    if (entry === 'FLATTEN') {
+      // The screen goes dark and the game closes, as far as the browser lets it.
+      this.page = 'flatten';
+      this.quitT = 0;
+      this.quitTried = false;
+      g.wavell.kill('zap');
+      sfx.play('offline', 0.7);
+      return;
+    }
     this.fromGame = false;
     this.page = entry === 'CONTROL' ? 'control' : 'credits';
     this.row = 1;
@@ -259,6 +278,7 @@ export class Menu {
   /** Back from a page. */
   back() {
     if (this.page === 'main') return;
+    if (this.page === 'flatten') sfx.pause(false);
     this.endCapture();
     this.page = 'main';
     sfx.play('flipDown', 0.5);
@@ -273,6 +293,14 @@ export class Menu {
     if (this.stack >= 1) this.fromGame = false;
     this.gone = clamp(this.gone + (this.page === 'control' ? dt : -dt) / PAGE_TIME, 0, 1);
     if (this.page === 'credits') this.scroll += CREDIT_SPEED * dt;
+    if (this.page === 'flatten') {
+      this.quitT += dt;
+      if (!this.quitTried && this.quitT >= QUIT_FADE) {
+        this.quitTried = true;
+        sfx.pause(true);
+        quitApp();
+      }
+    }
     if (this.ghost) {
       const { wavell: W, line: L } = this.ghost, pad = n.viewW;
       // He has gone under by the time his line has finished moving.
@@ -317,6 +345,11 @@ export class Menu {
 
   /** Once a frame, on the start screen, once it has settled. */
   handle(inp: Input) {
+    if (this.page === 'flatten') {
+      // Still here: a browser tab the page may not close. Anything brings the menu back.
+      if (this.quitT >= QUIT_FADE + QUIT_STAY && (inp.anyPressed || inp.confirm || inp.tap)) this.back();
+      return;
+    }
     if (this.page === 'main') this.handleMain(inp);
     else if (this.page === 'credits' || usesTouch(inp)) { if (inp.confirm || inp.tap) this.back(); }
     else if (this.remoteGuide) {
@@ -379,6 +412,8 @@ export class Menu {
     const inp = this.g.input;
     this.note = '';
     if (row.kind === 'back') this.back();
+    // In the Android TV app the joypad's buttons arrive as fixed keys: there is nothing to change.
+    else if (inp.padOnly) this.note = 'THE APP SETS THESE BUTTONS';
     else if (row.kind === 'device') this.toggleDevice();
     else if (row.kind === 'reset') {
       const device = inp.binds.device;
@@ -392,6 +427,7 @@ export class Menu {
   }
 
   private toggleDevice() {
+    if (this.g.input.padOnly) return;
     const b = this.g.input.binds;
     b.device = b.device === 'keyboard' ? 'joypad' : 'keyboard';
     saveBindings(b);
@@ -524,8 +560,27 @@ export class Menu {
   }
 
   /** The menu's part of the HUD, on the start screen. */
+  /** FLATTEN: the whole screen going dark, over everything; and if the page is still open, what to do. */
+  drawFlatten() {
+    if (this.page !== 'flatten') return;
+    const n = this.g.neon, c = n.ctx, s = hudSize(n), inp = this.g.input;
+    n.overlay();
+    c.globalCompositeOperation = 'source-over';
+    c.globalAlpha = smooth(clamp(this.quitT / QUIT_FADE, 0, 1));
+    c.fillStyle = '#000';
+    c.fillRect(0, 0, n.fullW, n.fullH);
+    c.globalAlpha = 1;
+    const left = this.quitT - QUIT_FADE - QUIT_STAY;
+    if (left < 0) return;
+    n.screen();
+    const a = clamp(left / 0.5, 0, 1) * 0.8;
+    n.text('the line is flat', n.w / 2, n.lineY - s * 0.6, s * 0.8, '#c9a640', 'center', a);
+    n.text(usesTouch(inp) ? 'close the tab, or tap to come back' : inp.tv ? 'press OK to come back' : 'close the tab, or press any key to come back', n.w / 2, n.lineY + s * 0.8, s * 0.55, '#c9a640', 'center', a * 0.8);
+  }
+
   drawHud() {
     const n = this.g.neon, s = hudSize(n), inp = this.g.input, touch = usesTouch(inp);
+    if (this.page === 'flatten') return;
     if (this.page === 'credits') {
       this.drawCredits();
       n.text(touch ? 'tap to go back' : inp.tv ? 'OK to go back' : 'Enter to go back', n.w / 2, n.h - s * 1.4, s * 0.55, '#c9a640');
@@ -639,7 +694,7 @@ export class Menu {
     });
     const foot = this.note || (this.capturing ? (inp.tv ? 'BACK: leave it as it is' : 'Esc: leave it as it is')
       : pad && !inp.padFound ? 'NO JOYPAD FOUND: CONNECT ONE AND PRESS A BUTTON'
-        : pad ? 'THE LEFT STICK WALKS AS WELL   ·   BACK: MENU'
+        : pad ? `THE LEFT STICK WALKS AS WELL   ·   ${inp.padOnly ? 'B' : 'BACK'}: MENU`
           : inp.tv ? 'BACK pause / menu   ·   ANY REMOTE BUTTON CAN BE BOUND'
             : 'Esc menu   M mute   F fullscreen   N nostalgia');
     n.text(foot, n.w / 2, rowY(n, ROWS.length) + s * 0.3, s * 0.55, this.note ? COLORS.danger : GOLD);

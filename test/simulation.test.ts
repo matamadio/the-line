@@ -83,7 +83,11 @@ describe('the simulation', () => {
   });
 
   it('plays a couple of minutes with every kind of enemy and no broken numbers', () => {
+    // From the level Sinepedes come from, so every kind turns up.
+    const startLevel = DIFF.startLevel;
+    DIFF.startLevel = DIFF.sineLevel;
     const { seen } = play(11, 20);
+    DIFF.startLevel = startLevel;
     expect(seen.sinepedes).toBeGreaterThan(0);
     expect(seen.urchins).toBeGreaterThan(0);
     expect(seen.worms).toBeGreaterThan(0);
@@ -579,11 +583,11 @@ describe('the menu', () => {
 
   it('goes round in circles, in either direction', () => {
     const g = ready(), seen = [ENTRIES[g.menu.selected]];
-    for (let i = 0; i < 3; i++) { g.menu.go(1); run(g, 1); seen.push(ENTRIES[g.menu.selected]); }
-    expect(seen).toEqual(['START', 'CONTROL', 'CREDITS', 'START']);
+    for (let i = 0; i < 4; i++) { g.menu.go(1); run(g, 1); seen.push(ENTRIES[g.menu.selected]); }
+    expect(seen).toEqual(['START', 'CONTROL', 'CREDITS', 'FLATTEN', 'START']);
     g.menu.go(-1);
     run(g, 1);
-    expect(ENTRIES[g.menu.selected]).toBe('CREDITS');
+    expect(ENTRIES[g.menu.selected]).toBe('FLATTEN');
   });
 
   it('sinks him on the line he leaves while he rises on the one coming to the front', () => {
@@ -685,7 +689,22 @@ describe('the menu', () => {
     g.menu.choose();
     expect(g.mode).toBe('title');
     run(g, 4);
-    expect(g.menu.page).toBe('control');
+    expect(g.menu.page).toBe('credits');
+  });
+
+  it('goes dark and asks to close on FLATTEN, and comes back if the page is still open', () => {
+    const g = ready();
+    g.menu.go(-1);
+    run(g, 1);
+    expect(ENTRIES[g.menu.selected]).toBe('FLATTEN');
+    g.menu.choose();
+    run(g, 2);
+    expect(g.menu.page).toBe('flatten');
+    run(g, 2);
+    expect(g.menu.quitTried).toBe(true);
+    expect(g.mode).toBe('title');
+    g.menu.handle({ anyPressed: true } as never);
+    expect(g.menu.page).toBe('main');
   });
 
   it('keeps him under the line on a page of its own, and lets him back up after', () => {
@@ -708,7 +727,8 @@ describe('the menu', () => {
   it('runs the names along the line on the credits page, which stays where it is', () => {
     const g = ready();
     g.menu.go(-1);
-    run(g, 1);
+    g.menu.go(-1);
+    run(g, 2);
     g.menu.choose();
     run(g, 2);
     expect(g.menu.page).toBe('credits');

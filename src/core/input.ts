@@ -110,6 +110,11 @@ export class Input implements Controls {
   onGesture: (() => void) | null = null;
   /** On an LG TV, whose remote has OK and Back in place of Enter and Esc. Set when a remote's button is first seen, if the browser didn't say. */
   tv = onTV();
+  /**
+   * ?pad: an app (the Android TV one) turns a joypad into keys before the page sees it. The
+   * game then names the joypad's buttons, and they can't be rebound: they arrive as fixed keys.
+   */
+  readonly padOnly = typeof location !== 'undefined' && new URLSearchParams(location.search).has('pad');
   /** The last key that came in, as its keyCode and name: ?perf shows it, for finding out what a remote sends. */
   lastKey = '';
 
@@ -281,6 +286,7 @@ export class Input implements Controls {
 
   /** These keys and buttons from now on. */
   setBindings(b: Bindings) {
+    if (this.padOnly) { b.device = 'joypad'; this.padFound = true; }
     this.binds = b;
     this.keyMap.clear();
     for (const { action } of ACTIONS) for (const code of b.keys[action]) this.keyMap.set(code, action);

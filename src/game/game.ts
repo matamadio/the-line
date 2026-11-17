@@ -456,9 +456,10 @@ export class Game {
     this.input.poll();
     const ready = this.mode === 'over' && this.overT > 0.8;
     // Back on the TV remote: a game pauses first, and goes to the menu only from the pause.
-    // Anywhere else it is Esc. OK is the remote's pause, so it carries on too.
+    // Anywhere else it is Esc. OK is the remote's pause, so it carries on too. With a joypad
+    // in the Android TV app (B is Back), Start pauses and carries on, and B only leaves the pause.
     if (this.backAsked && this.mode === 'play' && !this.audio.open) {
-      if (this.paused) this.menuAsked = true; else this.setPaused(true);
+      if (this.paused) this.menuAsked = true; else if (!this.input.padOnly) this.setPaused(true);
     } else if (this.backAsked) this.menuAsked = true;
     this.backAsked = false;
     if (this.audio.open) {
@@ -1026,7 +1027,8 @@ export class Game {
   private mostOverdue(): EnemyKind | null {
     const W = this.wavell, t = this.playTime, l = this.ramp;
     const free = this.whiplashes.length === 0 && this.refluxes.length === 0;
-    const late: [EnemyKind, number][] = [['sine', this.sineClock / at('sineEvery', l)]];
+    const late: [EnemyKind, number][] = [];
+    if (l >= DIFF.sineLevel) late.push(['sine', this.sineClock / at('sineEvery', l)]);
     if (t >= DIFF.urchinFrom) late.push(['urchin', this.urchinClock / at('urchinEvery', l)]);
     if (t >= DIFF.wormFrom) late.push(['worm', this.wormClock / at('wormEvery', l)]);
     if (t > DIFF.bubbleFrom) late.push(['bubble', this.bubbleClock / at('bubbleEvery', l)]);
@@ -1073,7 +1075,8 @@ export class Game {
       this.teach('sinepede', 'SINEPEDE: a crest on your side: SWIPE ↔. A trough on the other: SWIPE ↕', 'SINEPEDE: a crest on your side: {pull}. A trough on the other: {drag}');
     }
     // The original only counts while you walk right; standing still is punished by the end of the line.
-    if (this.quiet || !this.canSpawn()) return;
+    // None on the first level: its clock only starts on the level they come from.
+    if (this.quiet || !this.canSpawn() || this.ramp < DIFF.sineLevel) return;
     this.sineClock += dt * (W.vel > 0 ? 1 : DIFF.sineIdle);
     // With the beat off it is called whenever it is due, and comes in two beats' time later.
     if (!DIFF.beatOn && this.sineDue() && this.takes('sine')) {
@@ -1086,7 +1089,7 @@ export class Game {
   private sineDue() {
     const W = this.wavell;
     return !this.herald && this.mode === 'play' && W.alive && W.state !== 'appear' && !this.quiet && !this.bossTime && this.canSpawn()
-      && this.sineClock >= at('sineEvery', this.ramp);
+      && this.ramp >= DIFF.sineLevel && this.sineClock >= at('sineEvery', this.ramp);
   }
 
   /**
@@ -1181,7 +1184,11 @@ export class Game {
         continue;
       }
       if (this.mode !== 'play' || !u.harmful) continue;
-      if (W.alive && W.onLine && Math.abs(W.x - u.x) < u.reach) W.hurt('zap');
+      if (W.alive && W.onLine && Math.abs(W.x - u.x) < u.reach) {
+        // Walking into its spikes hurts, and throws him back out of them.
+        W.hurt('zap');
+        if (W.alive) W.bounce(-(Math.sign(u.x - W.x) || W.facing) * DIFF.urchinBounce);
+      }
       if (W.flying && u.touches(L, W.x, W.by, W.bubbleR)) W.hurt('pop');
     }
     this.urchins = this.urchins.filter((u) => u.state !== 'done' && u.x > n.camX - 60);

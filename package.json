@@ -20,7 +20,9 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm run test",
     "webos": "npx --yes -p @webos-tools/cli@3.2.6 ares-package webos -o dist-webos",
-    "webos:install": "npx --yes -p @webos-tools/cli@3.2.6 ares-install dist-webos/io.github.matamadio.theline_1.0.0_all.ipk"
+    "webos:install": "npx --yes -p @webos-tools/cli@3.2.6 ares-install dist-webos/io.github.matamadio.theline_1.0.0_all.ipk",
+    "android": "node tools/android.mjs",
+    "android:install": "node tools/android.mjs install"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

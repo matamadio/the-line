@@ -45,8 +45,10 @@ The player can change keys and joypad buttons under CONTROL in the menu. These a
 | Back to the start screen | Esc | Back | | Back, while paused |
 
 - **LG TV.** On webOS the remote's buttons are keys like any other, and can be bound under CONTROL (one the game has no name for shows as REMOTE and its number). CH + wipes, CH − pulls and OK pauses (in menus OK still picks, and on the game-over screen it carries on). CH +/−, red, green, OK and Play are bound on every device, after its own keys, so Enter also pauses on a computer, since a TV's browser may not say it is one. The game takes itself for a TV when the browser says so, or at the first button only a remote has (Back, a colour, a media button, or a key that comes with no name). The remote's buttons then come first, so the hints name them, unless the player has bound keys of their own. Back never leaves the page: in a game it pauses, and pressed again while paused it goes back to the start screen; OK carries on. Anywhere else Back does what Esc does. On a TV, CONTROL shows a drawing of the remote with what each button does, instead of the list of keys; ← → there switches to the joypad, whose buttons can be changed. A TV never counts as a touch screen, even if its browser takes the Magic Remote's pointer for a finger: no thumb controls, and hints name the remote's buttons. In the TV app there is no fullscreen icon: it is always fullscreen.
+- **Android TV app.** It turns the joypad into keys: the d-pad and the left stick are the arrows, A wipes, X pulls, Start pauses and carries on, and B (or Back) goes back to the start screen from the pause; in a game it does nothing, and anywhere else it does what Esc does. It opens the game with `?pad`, so the hints and CONTROL name the joypad's buttons (A, X, START, B) and CONTROL can't change them; picking one says THE APP SETS THESE BUTTONS.
 - **Directions are relative to the line.** "Towards" goes through it and "away" floats off, on whichever side Wavell is.
-- **Menu.** ↑ and ↓ cycle the entries (START, CONTROL, CREDITS). Enter, a wipe, a pull or joypad A picks the front one: Wavell pulls it in to open it. On a phone, swipe up or down and tap.
+- **Menu.** ↑ and ↓ cycle the entries (START, CONTROL, CREDITS, FLATTEN). Enter, a wipe, a pull or joypad A picks the front one: Wavell pulls it in to open it. On a phone, swipe up or down and tap.
+- **FLATTEN** quits: the screen goes dark over 1.2 s and the game closes (the installed app's window, the TV app). A browser tab the page did not open itself may stay open: then it says so, and after 0.5 s any key or tap brings the menu back.
 - **First-time hints.** Each enemy and each mistake (such as a wrong attack) shows a hint the first time, for 3.5 s, worded for keys or touch depending on the input in use. Once the levels start over after the boss, no hints show again.
 - **Saved.** Key bindings are saved in the browser.
 
@@ -99,7 +101,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 | Threat | Where it is | Answer | First appears | How often (level 1 → limit) |
 | --- | --- | --- | --- | --- |
-| **Sinepede** | Crawls along the line as crests above and troughs below | The right attack for the segment facing you, one segment at a time | After 1.75 s | Every 4.25 s → 1.8 s (−0.26 s/level) |
+| **Sinepede** | Crawls along the line as crests above and troughs below | The right attack for the segment facing you, one segment at a time | From level 2, 1.75 s into it | Every 4.25 s → 1.8 s (−0.26 s/level) |
 | **Worm** | Crawls underneath, sagging the line | Pull it, from either side | After 10 s of play | Every 6.6 s → 2.6 s (−0.3 s/level) |
 | **Bubble Burst** | Blisters out of either side, swells and bursts | Pop it early with the right attack, or keep clear | After 6 s of play | Every 5.15 s → 2.4 s (−0.26 s/level) |
 | **Disturchin** | Stays still, on both sides of the line | Pull it, or wait it out | After 14 s of play | Every 7 s → 3.5 s (−0.3 s/level) |
@@ -109,8 +111,9 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 ### Sinepede
 
 - The basic enemy. Each segment is half a wave; segments alternate crest and trough.
-- Length: 1 segment at level 1, +0.25 per level (rounded down), up to 4: 1 segment on levels 1–4, 2 on levels 5–8, 3 on level 9. Wrong attacks can grow it to 8.
-- Speed 100 u/s. Its clock runs at 40% while Wavell is not walking.
+- It comes from level 2 on: level 1 has none. Its clock only starts then, so the first one comes 1.75 s into level 2.
+- Length: 1 segment at level 1, +0.25 per level (rounded down), up to 4: 1 segment on levels 2–4, 2 on levels 5–8, 3 on level 9. Wrong attacks can grow it to 8.
+- Speed 90 u/s. Its clock runs at 40% while Wavell is not walking.
 - **Heard before it is seen**: it is called 2 beats before it comes in, and its hum starts then, fading in. With the beat on, it is called 2 beats before a cue beat it may take, and it takes that beat. With the beat off, it comes in 1.6 s after it is called. On the levels where threats come one at a time, nothing else comes in while one is on its way.
 - The right attack cancels the facing segment and sends a ripple on, and what is left of it is set back a little (knockback 150, about 30 u), so even a long one can be worn down. The wrong one throws it back (knockback 650) and adds a segment at the far end.
 - **Running into it**: both bounce apart (his knockback 300) and he loses that ground. On his side it gains a segment. On the other side the waves cancel: it loses a segment, or flattens if it was the last, and he loses a size. A bubble always pops on it.
@@ -133,6 +136,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 - It starts as a fuzz on the line (warning 0.9 s at level 1, −0.02 s per level, down to 0.5 s), then bursts out in spikes for 1 s.
 - The opposite-sides rule doesn't apply: **a pull always kills it and a wipe always feeds it.**
 - Each wipe bounces it back (knockback 250), restarts its time with 0.5 s more, makes it bigger and takes one more pull. Dots show how many are left.
+- **Walking into its spikes**, on either side of the line, hits him (he loses a size, or the game with none left) and throws him back out of them (knockback 300), the way he came.
 
 ### Line reflux
 
@@ -273,7 +277,7 @@ Anything that gets harder is a ramp: a value at level 1, a change per level and 
 | Reflux chance per roll | 29% | +3% | 100% |
 | Music layers (one instrument per level; all 5 from loop 2 on) | 1 | +1 | 5 |
 
-Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: Whiplashes come from level 3, threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.
+Spawn intervals are in the [Enemies](#enemies-and-hazards) table. Other level gates: Sinepedes come from level 2, Whiplashes from level 3, threats overlap from level 4, enemies come on two beats per bar from level 6, and Bubble Bursts float off from level 6.
 
 ## Music, beat and sound
 

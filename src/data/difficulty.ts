@@ -23,13 +23,14 @@ export const DIFF_KNOBS = {
   soloUntil: knob('One at a time', 'One threat at a time up to level', 3, 0, 30, 1),
   soloGap: knob('One at a time', 'Clear line between threats (s)', 1, 0, 6, 0.1),
 
-  sineSpeed: knob('Sinepede', 'Speed at level 1 (u/s)', 100, 20, 250, 1),
+  sineSpeed: knob('Sinepede', 'Speed at level 1 (u/s)', 90, 20, 250, 1),
   sineSpeedPer: knob('Sinepede', '… added per level', 0, 0, 30, 0.5),
   sineSpeedCap: knob('Sinepede', '… at most', 250, 20, 400, 1),
   sineEvery: knob('Sinepede', 'One every (s) at level 1', 4.25, 0.5, 15, 0.05),
   sineEveryPer: knob('Sinepede', '… change per level', -0.35, -2, 2, 0.05),
   sineEveryCap: knob('Sinepede', '… limit', 1.8, 0.3, 15, 0.05),
   sineFirst: knob('Sinepede', 'First one after (s)', 1.75, 0, 15, 0.05),
+  sineLevel: knob('Sinepede', 'Comes from level', 2, 1, 30, 1),
   sineIdle: knob('Sinepede', 'Clock rate when not walking on', 0.4, 0, 1, 0.05),
   sineSegs: knob('Sinepede', 'Segments at level 1', 1, 1, 8, 1),
   sineSegsPer: knob('Sinepede', '… added per level (rounded down)', 0.5, 0, 3, 0.25),
@@ -46,6 +47,7 @@ export const DIFF_KNOBS = {
   urchinHold: knob('Disturchin', 'Spikes stay out (s)', 1, 0.1, 4, 0.05),
   urchinFrom: knob('Disturchin', 'First after (s of play)', 14, 0, 120, 1),
   urchinKnock: knob('Disturchin', 'Wiped: knockback', 250, 0, 1000, 10),
+  urchinBounce: knob('Disturchin', 'Walked into: throws him back (knockback)', 300, 0, 1000, 10),
   urchinRenew: knob('Disturchin', 'Wiped: spikes stay out this much longer (s)', 0.5, 0, 3, 0.05),
 
   wormSpeed: knob('Worm', 'Speed at level 1 (u/s)', 70, 10, 200, 1),
