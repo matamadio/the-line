@@ -9,14 +9,14 @@ import { BUBBLE_GREEN } from './actors/bubble';
 import type { Sinepede, Skirts } from './actors/sinepede';
 import type { Game } from './game';
 import { drawHud } from './hud';
-import { END_WORD, END_WORD_SCALE, endWordX } from './endWord';
+import { END_WORD_SCALE, endWordX } from './endWord';
 import { strokeWord } from './lettering';
 import { BACK_LINES, TALL_LINES, backWave, depthScale } from './menu';
 
 
-/** THE LINE CONTINUES on screen, as flat points riding a line: base(x) is the line's y at x px. */
-function endWordPoints(viewW: number, t: number, base: (x: number) => number, u: number): number[] {
-  const { pts } = strokeWord(END_WORD), c = endWordX(viewW, t) * u, k = END_WORD_SCALE * u, out: number[] = [];
+/** A word on the line behind on screen, as flat points riding it: base(x) is the line's y at x px. */
+function endWordPoints(word: string, viewW: number, t: number, base: (x: number) => number, u: number): number[] {
+  const { pts } = strokeWord(word), c = endWordX(viewW, t, word) * u, k = END_WORD_SCALE * u, out: number[] = [];
   for (let i = 0; i < pts.length; i += 2) {
     const x = c + pts[i] * k;
     out.push(x, base(x) + pts[i + 1] * k);
@@ -99,8 +99,8 @@ function drawBackdrop(g: Game) {
   n.fade = g.quiet || g.menu.backdropShows ? 1 : 0;
   BACK_LINES.forEach((line, i) => {
     const u = n.unit, base = (x: number) => n.lineY - line.off * u + backWave(line, x / u + n.camX, n.camX, g.time) * u;
-    // After the boss the nearest one writes THE LINE CONTINUES, going by from right to left.
-    const word = i === 0 && g.endWord >= 0 ? endWordPoints(n.viewW, g.endWord, base, u) : null;
+    // The nearest one writes the level as it starts, and THE LINE CONTINUES after the boss, going by from right to left.
+    const word = i === 0 && g.endWord >= 0 ? endWordPoints(g.lineWord, n.viewW, g.endWord, base, u) : null;
     const p = new Path2D();
     p.moveTo(-10, base(-10));
     // The word is written once: past it, the line simply goes on.
@@ -114,7 +114,9 @@ function drawBackdrop(g: Game) {
       p.lineTo(x, base(x));
     }
     // The letters are the line itself: the same colour and brightness.
+    n.blur = line.blur;
     n.glow(p, COLORS.line, u * 0.5, line.alpha);
+    n.blur = 0;
   });
   n.fade = 1;
 }

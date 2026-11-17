@@ -48,7 +48,7 @@ import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, audioButton, n
 import { drawGame } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
 import { MORPH_TIME, TitleDust } from './title';
-import { endWordGone } from './endWord';
+import { END_WORD, endWordGone, levelWord } from './endWord';
 
 type Mode = 'title' | 'play' | 'over';
 
@@ -159,14 +159,14 @@ export class Game {
   boss: Flattener | null = null;
   /** Seconds left of the pause after the boss is flattened, before the levels start over. */
   private winT = 0;
-  /** Seconds THE LINE CONTINUES has been going by on the nearest line behind, after the boss (-1: it isn't). */
+  /** Seconds the nearest line behind has been writing lineWord, going by (-1: it isn't). */
   endWord = -1;
+  /** What it writes: LEVEL n as a level starts, THE LINE CONTINUES after the boss. */
+  lineWord = END_WORD;
   /** Times the boss has been beaten this game: each loop starts the levels harder. */
   loop = 0;
   /** The score this loop started at: levels go by what has been scored since. */
   private loopBase = 0;
-  /** What the banner says, if not the level. */
-  bannerText = '';
   private bossHush: (() => void) | null = null;
   /** The rolling saw has gone past Wavell. */
   private sawPassed = false;
@@ -201,7 +201,6 @@ export class Game {
   hintT = 0;
   private taught = new Set<string>();
   private refluxClock = 0;
-  banner = 0;
   private tremor = 0;
   overT = 0;
   paused = false;
@@ -333,7 +332,6 @@ export class Game {
     this.endWord = -1;
     this.loop = 0;
     this.loopBase = 0;
-    this.bannerText = '';
     this.fx.clear();
     this.crumbles = [];
     // The start screen's music carries on, on the same beat and bar, and thins out to
@@ -383,7 +381,6 @@ export class Game {
     this.winT = 0;
     this.endWord = -1;
     this.hintT = 0;
-    this.banner = 0;
     this.tremor = 0;
     W.kill('zap');
   }
@@ -537,7 +534,6 @@ export class Game {
     const front = this.mode === 'play' && W.alive ? this.endX + 7 : null;
     for (const c of this.crumbles) c.update(front ?? c.front + this.endSpeed * dt, L, this.fx);
     this.crumbles = this.crumbles.filter((c) => !c.done);
-    this.banner = Math.max(0, this.banner - dt);
     this.onBeat = this.cue = !DIFF.beatOn;
     this.cueKind = null;
     if (this.mode !== 'play') this.onBeat = true;
@@ -570,10 +566,10 @@ export class Game {
       if (this.titleMusic && this.beat.step(DIFF.startLevel)) sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, LAYERS);
       return;
     }
-    // THE LINE CONTINUES goes on by after the boss, a game over or not.
+    // The word on the line behind goes on by, a game over or not.
     if (this.endWord >= 0) {
       this.endWord += dt;
-      if (endWordGone(this.neon.viewW, this.endWord)) this.endWord = -1;
+      if (endWordGone(this.neon.viewW, this.endWord, this.lineWord)) this.endWord = -1;
     }
     if (this.mode === 'over') { this.overT += dt; this.updateSinepedes(dt); this.updateUrchins(dt); this.idleBoss(dt); this.keepApart(); return; }
 
@@ -674,7 +670,7 @@ export class Game {
         this.tremor = 1.2;
         this.neon.shake = 1.5;
         sfx.play('level');
-        this.endWord = 0;
+        this.write(END_WORD);
         // A new time signature, at random: it comes in on the next bar.
         const others = METERS.filter((m) => m.id !== this.beat.meter.id);
         this.beat.setMeter(others[Math.floor(Math.random() * others.length)]);
@@ -689,15 +685,38 @@ export class Game {
     }
   }
 
-  private levelUp(text = '') {
-    this.bannerText = text;
-    this.banner = 2.2;
+  /** The nearest line behind starts writing a word, coming in at the right: a word still going by gives way. */
+  private write(word: string) {
+    this.lineWord = word;
+    this.endWord = 0;
+  }
+
+  private levelUp() {
+    // No banner: the level is written along the nearest line behind, right to left.
+    this.write(levelWord(this.level, this.level >= DIFF.lastLevel));
     this.tremor = 1.2;
     this.neon.shake = 1.5;
     sfx.play('level');
   }
 
   // ---------------------------------------------------------------- the boss
+
+  /**
+   * For the difficulty editor: jump to a level. The last one brings the boss on at once,
+   * and leaving it sends him back into the line.
+   */
+  goToLevel(level: number) {
+    this.level = Math.max(1, level);
+    if (this.mode !== 'play') return;
+    if (this.level === DIFF.lastLevel) {
+      if (!this.boss && this.winT <= 0) { this.levelUp(); this.startBoss(); }
+    } else if (this.level < DIFF.lastLevel && this.boss) {
+      this.boss.sink();
+      this.bossHush?.();
+      this.bossHush = null;
+      this.tidals = [];
+    }
+  }
 
   /** The line clears, and THE SILENCER climbs out of it ahead of Wavell. */
   private startBoss() {
@@ -795,6 +814,8 @@ export class Game {
       } else if (e === 'bubble') this.toadBubble(B);
       else if (e === 'melted') this.bossBeaten(B);
     }
+    // Sent back into the line (the difficulty editor leaving level 10), he is gone once melted.
+    if (this.boss === B && B.done) this.boss = null;
   }
 
   /**

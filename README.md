@@ -134,7 +134,7 @@ The game runs on the left and every difficulty number sits on the right. Play wh
 | Progress | Lives, points per level, extra lives, the starting level |
 | Beat | Whether the beat is on, the tempo ramp, and from which level enemies come on more beats. See [docs/DESIGN.md](docs/DESIGN.md#the-beat) |
 
-**The bar under the game** has restart, pause, level up and down, buttons that drop a Rage knot ahead of Wavell and bring up the Killerwave behind him, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
+**The bar under the game** has restart, pause, level up and down (picking level 10 brings the boss on at once, starting a game if none is going, and leaving it sends him away), buttons that drop a Rage knot ahead of Wavell and bring up the Killerwave behind him, speeds from 0.5× to 4×, and *Endless lives*, so you can test level 10 without being good at level 9.
 
 **The buttons:**
 

@@ -157,7 +157,9 @@ let paused = false;
 let speed = 1;
 
 function setLevel(l: number) {
-  game.level = Math.max(1, l);
+  // Level 10 is the boss fight: picking it brings him on, starting a game if none is going.
+  if (l === DIFF.lastLevel && game.mode !== 'play') game.start();
+  game.goToLevel(l);
   ramps.forEach(drawRamp);
 }
 

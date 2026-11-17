@@ -359,7 +359,6 @@ export function drawHud(g: Game) {
     drawSizes(g, n.camX + (pad / n.unit) + 4, n.viewTop + pad / n.unit + 1);
     n.screen();
     if (g.mode !== 'over') drawLead(g, pad, pad + s * 1.4, s);
-    if (g.banner > 0) n.text(g.bannerText || g.levelLabel, cx, n.lineY - n.unit * 70, s * 2.4, COLORS.hud, 'center', Math.min(1, g.banner));
     if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 2.4, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
     if (g.paused && !g.audio.open) {
       n.text('PAUSED', cx, n.lineY - n.unit * 75, s * 2.4, COLORS.hud);
