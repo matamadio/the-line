@@ -2,7 +2,7 @@
 // title and game over screens, the on-screen buttons and the touch controls.
 
 import { canFullscreen, canInstall, isFullscreen } from '../core/app';
-import { keyLabel } from '../core/controls';
+import { keyLabel, padLabel } from '../core/controls';
 import { usesTouch } from '../core/input';
 import { COLORS, Neon, clamp } from '../core/neon';
 import { sfx } from '../core/sfx';
@@ -363,7 +363,7 @@ export function drawHud(g: Game) {
     if (g.hintT > 0 && g.mode === 'play') n.text(g.hint, cx, pad + s * 2.4, s * 0.62, '#ffd77a', 'center', Math.min(1, g.hintT));
     if (g.paused && !g.audio.open) {
       n.text('PAUSED', cx, n.lineY - n.unit * 75, s * 2.4, COLORS.hud);
-      n.text(inp.tv ? 'OK to carry on   BACK for the menu' : `${keyLabel(inp.binds.keys.pause[0])} to carry on   Esc for the menu`, cx, n.lineY - n.unit * 50, s * 0.7, '#c9a640');
+      n.text(inp.padOnly ? `${padLabel(inp.binds.pad.pause[0])} to carry on   B for the menu` : inp.tv ? 'OK to carry on   BACK for the menu' : `${keyLabel(inp.binds.keys.pause[0])} to carry on   Esc for the menu`, cx, n.lineY - n.unit * 50, s * 0.7, '#c9a640');
     }
     if (g.mode === 'over') {
       drawFlatlined(n, g.time);

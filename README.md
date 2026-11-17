@@ -82,6 +82,17 @@ The TV app is in `webos/`: it only opens the hosted game with `?tv`, so it is al
 2. On the computer, add the TV once with `npx -p @webos-tools/cli@3.2.6 ares-setup-device`, naming it `tv`, with the IP and passphrase that Developer Mode shows.
 3. Run `npm run webos`, then `npm run webos:install`. The Line shows up with the TV's apps.
 
+### On Android TV
+
+On an NVIDIA Shield or another Android TV, play with a joypad. The app in `android/` opens the hosted game, like the LG one, so it is always the latest version. It turns the joypad into the game's keys, because Android's web view may not pass a joypad to the page: the d-pad and the left stick move, A wipes, X pulls, Start pauses and carries on, and B goes to the menu from the pause. The game names those buttons in its hints (it is opened with `?pad`), and they can't be rebound.
+
+To put it on the TV:
+
+1. On the TV, turn on Developer options (Settings → Device Preferences → About, press Build 7 times), then **Network debugging** in Developer options, and note the address it shows.
+2. On the computer you need a JDK and the Android SDK command-line tools, with `sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"`. No Android Studio or Gradle.
+3. Connect with `adb connect <address>` and allow it on the TV (tick Always allow).
+4. Run `npm run android:install`. The Line shows up on the TV's home screen. It is a normal app: it stays until uninstalled.
+
 ## The editors
 
 The game comes with two editors, each running the real game inside a page. They change the numbers the game reads, so what you see is what ships.
@@ -227,6 +238,7 @@ src/
 test/              Headless tests: the real simulation, no browser
 tools/             The dev server's save endpoint for the editors, the build's service worker
 webos/             The LG TV app, which opens the hosted game
+android/           The Android TV app (NVIDIA Shield), which does the same and turns a joypad into keys
 public/            Sounds, app icons and the app manifest
 docs/              Game rules reference (RULES.md), design notes and the original game's event list
 ```
@@ -244,6 +256,8 @@ docs/              Game rules reference (RULES.md), design notes and the origina
 | `npm run build` | Type-checks and builds the static site into `dist/` |
 | `npm run preview` | Serves `dist/` to try out the build |
 | `npm run webos` | Packages the LG TV app into `dist-webos/` |
+| `npm run android` | Builds the Android TV app into `dist-android/the-line.apk` |
+| `npm run android:install` | Builds it and installs it on the device adb is connected to |
 | `npm run webos:install` | Installs that package on the TV set up as `tv` |
 
 `dist/` can be hosted anywhere, under any path. It needs a web server, because browsers refuse to load it from a `file://` address.

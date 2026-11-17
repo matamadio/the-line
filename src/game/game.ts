@@ -456,9 +456,10 @@ export class Game {
     this.input.poll();
     const ready = this.mode === 'over' && this.overT > 0.8;
     // Back on the TV remote: a game pauses first, and goes to the menu only from the pause.
-    // Anywhere else it is Esc. OK is the remote's pause, so it carries on too.
+    // Anywhere else it is Esc. OK is the remote's pause, so it carries on too. With a joypad
+    // in the Android TV app (B is Back), Start pauses and carries on, and B only leaves the pause.
     if (this.backAsked && this.mode === 'play' && !this.audio.open) {
-      if (this.paused) this.menuAsked = true; else this.setPaused(true);
+      if (this.paused) this.menuAsked = true; else if (!this.input.padOnly) this.setPaused(true);
     } else if (this.backAsked) this.menuAsked = true;
     this.backAsked = false;
     if (this.audio.open) {
