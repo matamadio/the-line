@@ -390,5 +390,6 @@ export function drawHud(g: Game) {
   if (g.mode === 'play' && !g.audio.open && usesTouch(inp)) drawTouch(g);
   n.fade = 1;
   if (g.audio.open) g.audio.draw();
+  if (g.mode === 'title') g.menu.drawFlatten();
   c.globalCompositeOperation = 'source-over';
 }
