@@ -167,7 +167,8 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
   }
   // The menu's word is written by the line itself.
   const word = g.menu.wordOnRealLine();
-  if (word) knots.push({ pts: word, x0: word[0], x1: word[word.length - 2], flash: 0 });
+  const wordKnot: Knot | null = word ? { pts: word, x0: word[0], x1: word[word.length - 2], flash: 0 } : null;
+  if (wordKnot) knots.push(wordKnot);
   // The bulge of a pull stops short of the next creature ahead.
   const f = g.wavell.facing;
   let room = Infinity;
@@ -178,6 +179,15 @@ function drawLine(g: Game): Map<Sinepede, Skirts> {
   for (const k of knots) ahead(k.x0, k.x1);
   for (const s of g.sinepedes) ahead(s.x, s.back);
   const w = g.wavell.stroke(L, room);
+  // A long word (FLATTEN) runs flat a long way in front of its letters, back into him: the
+  // stroke can't splice in two knots that overlap, and the plain line would show under the
+  // word. That flat stretch is only the line, so it starts where he ends instead.
+  if (wordKnot && w) {
+    const wx1 = Math.max(w[0], w[w.length - 2]) + 1.5;
+    let cut = 0;
+    while (cut + 4 < wordKnot.pts.length && wordKnot.pts[cut] < wx1 && Math.abs(wordKnot.pts[cut + 1] - L.sample(wordKnot.pts[cut])) < 0.5) cut += 2;
+    if (cut > 0) { wordKnot.pts = wordKnot.pts.slice(cut); wordKnot.x0 = wordKnot.pts[0]; }
+  }
   // While he crumbles, what is left of him no longer joins the line.
   if (w) knots.push({ pts: w, x0: Math.min(w[0], w[w.length - 2]), x1: Math.max(w[0], w[w.length - 2]), flash: 0, solo: g.wavell.burning || g.wavell.state === 'ride', wild: g.wavell.rageT >= 0 && g.wavell.alive });
   // A Sinepede's shoulders share out the room on each side of it, so they never run into what is next to them.
