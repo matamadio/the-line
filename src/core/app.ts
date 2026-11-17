@@ -71,3 +71,11 @@ export async function toggleFullscreen() {
     await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
   } catch { /* refused, or the browser can't lock: the game still plays */ }
 }
+
+/**
+ * Close the game: the installed app's window, or the TV app. A browser only lets a page
+ * close a tab it opened itself (or one with nothing to go back to), so it may stay open.
+ */
+export function quitApp() {
+  try { window.close(); } catch { /* not allowed: the menu offers to come back */ }
+}
