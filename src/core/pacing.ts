@@ -8,6 +8,12 @@
 // shadows, fewer strokes for lines out of focus. A device far too slow (most frames
 // under 16 a second) goes straight to the lightest setting, instead of a step at a
 // time. It never goes back up while the page is open, so it can't flicker between two settings.
+//
+// The refresh rate is read from the gaps between frames, the short end of many of them
+// rather than the shortest one ever: a browser now and then calls back early, and one
+// stray early frame would make every frame after it look late. One bad check is not
+// enough to step down either: it takes two in a row, so a hitch at the start (fonts,
+// the first glows) doesn't cost a fast computer its glow.
 
 /** How many drawn frames each check looks at, and how many of them may be late. */
 const WINDOW = 60, LATE_SHARE = 0.15;
@@ -29,10 +35,17 @@ const WINDOW_MAX = 1.5;
 const FAR_GAP = 1 / 16, FAR_SHARE = 0.5;
 /** Gaps longer than this (s) are a pause or a load: not slowness. A slow TV can take a quarter of a second for every frame. */
 const PAUSE = 1;
+/** How many recent gaps tell the refresh rate, and which of them, from the shortest: a low share, not the very shortest. */
+const GAPS = 120, GAPS_SHARE = 0.2;
+/** How many checks in a row must find frames late before it steps down. */
+const BAD_CHECKS = 2;
 
 export class Pacing {
   /** Shortest time between two refreshes seen so far (s): the screen's refresh rate. */
   private refresh = PAUSE;
+  private gaps: number[] = [];
+  private gapAt = 0;
+  private bad = 0;
   /** Draw on one refresh in this many. */
   skip = 1;
   /** Resolution, as a share of the full one. Neon reads it. */
@@ -58,7 +71,7 @@ export class Pacing {
     if (this.lastTick >= 0) {
       const gap = now - this.lastTick;
       if (gap > PAUSE) this.pause();
-      else if (gap > 0.002) this.refresh = Math.min(this.refresh, gap);
+      else if (gap > 0.002) this.noteGap(gap);
     }
     this.lastTick = now;
     // By time, not by count: a frame that ran long still leaves the next one on time.
@@ -66,6 +79,18 @@ export class Pacing {
     if (this.lastDraw >= 0) this.measure(now - this.lastDraw, now);
     this.lastDraw = now;
     return true;
+  }
+
+  /** One more gap between refreshes: the refresh rate is the short end of the recent ones. */
+  private noteGap(gap: number) {
+    if (this.gaps.length < GAPS) this.gaps.push(gap);
+    else this.gaps[this.gapAt] = gap;
+    this.gapAt = (this.gapAt + 1) % GAPS;
+    // Sorting every refresh would cost more than it tells: every so often is enough.
+    if (this.gaps.length < 8 || this.gapAt % 15 === 0) {
+      const sorted = [...this.gaps].sort((a, b) => a - b);
+      this.refresh = sorted[Math.floor((sorted.length - 1) * GAPS_SHARE)];
+    }
   }
 
   private measure(gap: number, now: number) {
@@ -83,7 +108,8 @@ export class Pacing {
     if (gap > FAR_GAP) this.farLate++;
     if (this.drawn < WINDOW && now - this.windowFrom < WINDOW_MAX) return;
     if (this.drawn >= 4 && this.farLate > this.drawn * FAR_SHARE) this.lightest();
-    else if (this.late > this.drawn * LATE_SHARE) this.degrade();
+    else if (this.late > this.drawn * LATE_SHARE) { if (++this.bad >= BAD_CHECKS) { this.bad = 0; this.degrade(); } }
+    else this.bad = 0;
     this.drawn = this.late = this.farLate = 0;
     this.windowFrom = now;
   }
@@ -99,7 +125,7 @@ export class Pacing {
   }
 
   /** After the page was hidden, the first frames back say nothing about the device. */
-  pause() { this.settle = SETTLE; this.settleFrom = -1; this.lastDraw = -1; this.drawn = this.late = this.farLate = 0; }
+  pause() { this.settle = SETTLE; this.settleFrom = -1; this.lastDraw = -1; this.drawn = this.late = this.farLate = this.bad = 0; }
 
   /** Called once things have to get lighter: the caller reads skip and scale. */
   onChange: () => void = () => {};

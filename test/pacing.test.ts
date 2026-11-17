@@ -95,6 +95,26 @@ describe('pacing', () => {
     expect(p.lite).toBe(false);
   });
 
+  it('a stray early frame does not make the screen look faster than it is', () => {
+    // A fast computer at 60 Hz whose browser now and then calls back 3 ms after the last frame.
+    const p = new Pacing(0.5);
+    let t = 0;
+    for (let i = 0; i < 4000; i++) { p.tick(t); t += i % 200 === 7 ? 3 : 1000 / 60; }
+    expect(p.skip).toBe(1);
+    expect(p.scale).toBe(1);
+    expect(p.lite).toBe(false);
+  });
+
+  it('a 144 Hz screen with uneven frames keeps its glow', () => {
+    // Frames land a refresh early or late now and then, as on a busy desktop.
+    const p = new Pacing(0.5), r = 1000 / 144;
+    let t = 0, seed = 1;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 6000; i++) { p.tick(t); t += r * (rnd() < 0.08 ? 2 : 1); }
+    expect(p.lite).toBe(false);
+    expect(p.scale).toBe(1);
+  });
+
   it('pauses and the odd hitch are not slowness', () => {
     const p = new Pacing(0.5);
     let t = run(p, 60, 3000, (i) => (i % 100 === 0 ? 50 : 5));
