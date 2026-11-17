@@ -258,7 +258,7 @@ Every score is multiplied by 1 + half Wavell's size: ×1 at no size, ×1.5, ×2,
 ### Levels
 
 - There are 10 levels. Each level costs 50 points more than the one before: level 2 starts at 50 points, level 3 at 150, level 4 at 300, level 5 at 500, level 6 at 750, level 7 at 1050, level 8 at 1400, level 9 at 1800 and level 10 at 2250. On later loops these count from the score the loop started at.
-- A level-up shows a banner, shakes the screen and plays the level sound.
+- A level-up shakes the screen and plays the level sound. There is no banner: the nearest of the two lines behind the game writes LEVEL 2, LEVEL 3 and so on (at level 10, the boss fight: THE SILENCER) in the title's hand, going by from right to left at 40 u/s, the same way as THE LINE CONTINUES after the boss. A new word replaces one still going by.
 - Level 10 is the last: the boss fight (see [The boss](#the-boss-the-silencer)). Beating him starts the levels over on the next loop, 2 levels harder.
 - The best score is saved in the browser.
 
@@ -349,7 +349,7 @@ Everything is drawn as glowing vector strokes at the screen's native resolution.
 - **Dying.** Killed by an enemy, he sinks back into the line looking up (0.6 s) until one raised hand is the last of him. Burnt by the end of the line, the break runs along his outline from foot to foot (1.25 s) and drifts away in sparks.
 - **Enemy deaths.** A killed creature melts into a hump that rolls on with the wave that hit it. A Sinepede leaves a ripple as each segment dies.
 - **Screens.** The title is one unbroken stroke. Starting a game breaks it apart. At game over, FLATLINED appears and turns back into the title.
-- **HUD.** Top left: size circles, with the lead gauge under them. Score with its multiplier to the left. Points pop up where they are earned. A banner shows each new level. During the boss fight, THE SILENCER and a circle for each size he has left sit under the level.
+- **HUD.** Top left: size circles, with the lead gauge under them. Score with its multiplier to the left. Points pop up where they are earned. Each new level is written along the line behind (see above), not shown as a banner. During the boss fight, THE SILENCER and a circle for each size he has left sit under the level.
 - **Nostalgia mode** (N or the checkerboard icon) gives a low-resolution look and is saved in the browser.
 
 ## Platform and saving

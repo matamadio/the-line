@@ -68,6 +68,24 @@ describe('the Silencer', () => {
     expect(Object.values(BOSS.powers).some((p) => p.from <= 1 && p.steps.some((st) => st.fire === 'slam'))).toBe(true);
   });
 
+  it('comes on when the difficulty editor picks the last level, and goes back into the line when it leaves', () => {
+    const g = headlessGame();
+    g.start();
+    g.wavell.state = 'ground';
+    run(g, 0.2);
+    g.goToLevel(DIFF.lastLevel - 1);
+    expect(g.boss).toBeNull();
+    g.goToLevel(DIFF.lastLevel);
+    expect(g.boss).not.toBeNull();
+    expect(g.lineWord).toBe('THE SILENCER');
+    run(g, 1);
+    g.goToLevel(DIFF.lastLevel - 1);
+    run(g, 5);
+    expect(g.boss).toBeNull();
+    expect(g.loop).toBe(0);
+    expect(g.level).toBe(DIFF.lastLevel - 1);
+  });
+
   it('stands farther ahead of Wavell than before', () => {
     const g = atBoss();
     run(g, 3);
@@ -268,8 +286,7 @@ describe('the Silencer', () => {
     run(g, 6);
     expect(g.loop).toBe(1);
     expect(g.musicLayers).toBe(5);
-    expect(g.banner).toBe(0);
-    expect(g.bannerText).not.toBe('FLATTENED!');
+    expect(g.lineWord).toBe(END_WORD);
     expect(g.endWord).toBeGreaterThan(0);
     run(g, 60);
     expect(g.endWord).toBe(-1);
@@ -278,7 +295,6 @@ describe('the Silencer', () => {
   it('climbs out with the screen shaking, and no title', () => {
     const g = atBoss();
     expect(g.boss).not.toBeNull();
-    expect(g.bannerText).not.toBe('THE SILENCER');
   });
 
   it('the cat rolls over to under the line and back without ever going flat', () => {

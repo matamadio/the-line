@@ -12,6 +12,7 @@ import { TUNE } from '../src/data/tune';
 import { MORPH_TIME, TitleDust } from '../src/game/title';
 import { TITLE_HINTS, VERSION_TEXT, audioButton, nostalgiaButton } from '../src/game/hud';
 import { strokeWord } from '../src/game/lettering';
+import { endWordX, levelWord } from '../src/game/endWord';
 import { CREDIT_NAMES, ENTRIES, MENU_FOCUS, depthScale } from '../src/game/menu';
 import { ACTIONS, bindKey, bindPad, defaultBindings, keyLabel, padLabel } from '../src/core/controls';
 import { hasGlyph } from '../src/core/pixelfont';
@@ -860,5 +861,28 @@ describe('progress', () => {
     expect(g.level).toBe(4);
     for (let i = 0; i < 40; i++) { g.score = levelStart(DIFF.lastLevel + 5); g.tick(IDLE); }
     expect(g.level).toBe(DIFF.lastLevel);
+  });
+
+  it('writes each new level along the line behind, going by right to left, THE SILENCER at the last', () => {
+    const g = headlessGame();
+    g.start();
+    expect(g.endWord).toBe(-1);
+    g.score = DIFF.levelScore;
+    g.tick(IDLE);
+    expect(g.lineWord).toBe('LEVEL 2');
+    const t = g.endWord, x = endWordX(g.neon.viewW, t, g.lineWord);
+    for (let i = 0; i < STEPS_PER_SECOND; i++) g.tick(IDLE);
+    expect(endWordX(g.neon.viewW, g.endWord, g.lineWord)).toBeLessThan(x);
+    for (let i = 0; i < 40; i++) { g.score = levelStart(DIFF.lastLevel); g.tick(IDLE); }
+    expect(g.lineWord).toBe('THE SILENCER');
+  });
+
+  it('has a letter for every level word, each starting and ending flat on the line', () => {
+    for (let l = 1; l <= 30; l++) {
+      const { pts } = strokeWord(levelWord(l, l === DIFF.lastLevel));
+      expect(pts.every(Number.isFinite)).toBe(true);
+      expect(pts[1]).toBeCloseTo(0, 1);
+      expect(pts[pts.length - 1]).toBeCloseTo(0, 1);
+    }
   });
 });

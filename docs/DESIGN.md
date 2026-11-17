@@ -34,7 +34,7 @@ Up to level 3, threats come one at a time, with a second of clear line between t
 
 ## Levels
 
-There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. The end of the line crumbles faster each level. Level 10 is the last: the boss fight against THE SILENCER (see [The boss](#the-boss)). Beating him starts the levels over from level 1, on a harder loop in a random time signature, with the music still in full: the line continues.
+There are 10 levels, each costing 50 points more than the one before (level 10 starts at 2250), so the bigger scores of the later levels, and of a bigger Wavell, still take a while to climb through. The end of the line crumbles faster each level. A new level is not announced by a banner: the nearest background line writes it, LEVEL 2 … and at level 10 the boss's name, THE SILENCER, in the title's hand, going by from right to left. Level 10 is the last: the boss fight against THE SILENCER (see [The boss](#the-boss)). Beating him starts the levels over from level 1, on a harder loop in a random time signature, with the music still in full: the line continues.
 
 ## The threats
 

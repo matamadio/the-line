@@ -57,8 +57,9 @@ const QUEUE = 3;
  * with a word on them, and become them when a game starts.
  */
 export const BACK_LINES = [
-  { off: 42, par: 0.5, amp: 4, alpha: 0.22 },
-  { off: 70, par: 0.25, amp: 7, alpha: 0.16 },
+  { off: 42, par: 0.5, amp: 4, alpha: 0.22, blur: 0 },
+  // The further one is fainter, and a little out of focus.
+  { off: 70, par: 0.25, amp: 7, alpha: 0.12, blur: 1.5 },
 ] as const;
 /** Further still, only on a phone held upright: one high in the sky, one below the line. */
 export const TALL_LINES = [
@@ -536,7 +537,7 @@ export class Menu {
     n.setDepth(k, rise * n.unit);
     n.world();
     n.fade = playing ? lerp(depthAlpha(z), backLerp(z, (l) => l.alpha), into) : depthAlpha(z) * show;
-    n.blur = lerp(this.blurAt(z), 0, into);
+    n.blur = lerp(this.blurAt(z), backLerp(z, (l) => l.blur), into);
     this.strokeLine(sample, [this.wordPoints(word, sample, c, 1 - into)], BACK_WIDTH / k);
     n.fade = 1;
     n.blur = 0;
