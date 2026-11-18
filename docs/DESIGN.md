@@ -53,7 +53,7 @@ The Sinepede is the basic enemy. Each segment is half a wave. They alternate, so
 
 Running into it, you both bounce back, away from each other, and you lose that ground to the end of the line. On your side of the line it gains a segment, at no other cost. On the other side the two waves cancel: it loses one and is thrown back, or if that was its last it flattens where it is, and you lose a size, or the game with no size left. A bubble always pops on it.
 
-A Bubble Burst sprays drops that make Wavell dizzy: no moves for a moment and slow walking for two seconds. The wrong attack makes it swell and burst sooner. Walking into one, from either side, pops it but leaves him dizzy too.
+A Bubble Burst sprays drops that make Wavell dizzy: no moves for a moment and slow walking for two seconds. The wrong attack makes it swell and burst sooner. Walking into one on his side pops it but leaves him dizzy too; on the other side of the line he just walks by. Popped by an attack it leaves its sparkles like any kill; walked into, it leaves none.
 
 From level 6, half of them let go of the line partway and float off, the way his own bubble does. Attacks along the line can't reach them, and a fed one is too heavy to go. When one bursts in the air, the spray pops his bubble, and leaves him dizzy if he is on the line under it.
 

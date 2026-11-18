@@ -146,6 +146,14 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g); g.bubbles.push(new BubbleBurst(ahead(g, 14), 1, 0.8)); },
   },
   {
+    name: 'Bubble Burst: walked into on his side (dizzy)', dur: 2.5, keys: [['right', 0.1, 2.3]],
+    setup: (g) => { ready(g); g.bubbles.push(new BubbleBurst(ahead(g, 40), 1, 5)); },
+  },
+  {
+    name: 'Bubble Burst: walked by on the other side', dur: 2.5, keys: [['right', 0.1, 2.3]],
+    setup: (g) => { ready(g); g.bubbles.push(new BubbleBurst(ahead(g, 40), -1, 5)); },
+  },
+  {
     name: 'Bubble Burst: floats off, bursts over him', dur: 3.6,
     setup: (g) => { ready(g); g.bubbles.push(new BubbleBurst(ahead(g, 30), 1, 1.2, 1.6)); },
   },

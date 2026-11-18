@@ -128,13 +128,14 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 ### Bubble Burst
 
 - It appears on Wavell's side 65% of the time. Time to burst: 1.74 s at level 1, −0.045 s per level, down to 1.1 s.
-- Its spray makes him dizzy. The wrong attack makes it swell and burst sooner. Walking into it pops it but still leaves him dizzy.
+- Its spray makes him dizzy. The wrong attack makes it swell and burst sooner, with a bubbling blub. Walking into it on his side of the line pops it but still leaves him dizzy; on the other side he walks by it.
+- Popped by the right attack, it leaves its 2 sparkles. Walked into, it leaves none.
 - **From level 6**, half of them float off the line partway and burst after 1.6 s in the air. Attacks along the line can't reach those, and a fed one is too heavy to fly. The spray pops his bubble, and leaves him dizzy if he is on the line under it.
 
 ### Disturchin
 
-- It comes up 25–80 u further ahead of Wavell than he can walk in its warning, always to the right of him, even when he has turned round: never behind him, where the end of the line is.
-- It starts as a fuzz on the line (warning 0.9 s at level 1, −0.02 s per level, down to 0.5 s), then bursts out in spikes for 1 s.
+- It comes up 185–205 u ahead of Wavell at level 1, 8 u closer each level, down to 110–130 u, but always further than he can walk in its warning, and never past the right of the screen (at least 20 u inside it). It is always to the right of him, even when he has turned round: never behind him, where the end of the line is.
+- It starts as a fuzz on the line (warning 1.6 s at level 1, −0.1 s per level, down to 0.8 s), then bursts out in spikes for 1 s. With the beat on, the warning is whole beats: 2 beats on levels 1–5, 1 beat from level 6.
 - The opposite-sides rule doesn't apply: **a pull always kills it and a wipe always feeds it.**
 - Each wipe bounces it back (knockback 250), restarts its time with 0.5 s more, makes it bigger and takes one more pull. Dots show how many are left.
 - **Walking into its spikes**, on either side of the line, hits him (he loses a size, or the game with none left) and throws him back out of them (knockback 300), the way he came.
@@ -203,7 +204,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 
 Sparkles are the bait: chasing them gives ground to the line. The power-ups are the Rage knot and the Killerwave, an enemy you can ride.
 
-- Every enemy killed leaves 2 sparkles, one on each side of the line. A Sinepede leaves 2 for each segment flattened, as it goes.
+- Every enemy killed leaves 2 sparkles, one on each side of the line, except a Bubble Burst he walks into. A Sinepede leaves 2 for each segment flattened, as it goes.
 - More appear on their own about every 3 s, at most 6 at a time, as many below the line as above, often behind Wavell.
 - They drift at random and blink out after a few seconds.
 - 12% are **gold**. Gold ones sit 45–65 u off the line, where only his bubble reaches, and are worth 5×. Normal ones sit 6–40 u off.

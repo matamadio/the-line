@@ -1,7 +1,7 @@
 // The Sinepede and the Disturchin, played through the real game with scripted keys.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DIFF, at } from '../src/data/difficulty';
+import { DIFF, at, levelStart } from '../src/data/difficulty';
 import { TUNE } from '../src/data/tune';
 import { SEG_W, Sinepede } from '../src/game/actors/sinepede';
 import { BubbleBurst } from '../src/game/actors/bubble';
@@ -11,6 +11,7 @@ import { RageKnot, UNTIE, rageWaves } from '../src/game/actors/rage';
 import { Orca, STALK_LEAD } from '../src/game/actors/orca';
 import { whiplash, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
+import { sfx } from '../src/core/sfx';
 
 vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
 
@@ -521,19 +522,20 @@ describe('the game', () => {
     });
 
     it.each([
-      ['over the line, a bubble on top', false, 1],
-      ['over the line, a bubble below', false, -1],
-      ['under the line, a bubble on top', true, 1],
-      ['under the line, a bubble below', true, -1],
-    ] as const)('a Bubble Burst pops and leaves him dizzy: %s', (_name, under, side) => {
+      ['over the line, a bubble on top', false, 1, true],
+      ['over the line, a bubble below', false, -1, false],
+      ['under the line, a bubble on top', true, 1, false],
+      ['under the line, a bubble below', true, -1, true],
+    ] as const)('a Bubble Burst on his side pops and leaves him dizzy, on the other he walks by: %s', (_name, under, side, pops) => {
       const g = ready();
       if (under) flipUnder(g);
       const b = new BubbleBurst(g.wavell.x + 20, side, 5);
       g.bubbles.push(b);
       run(g, 0.3, { ...IDLE, right: true });
-      expect(b.harmful).toBe(false);
+      expect(b.harmful).toBe(!pops);
       expect(g.wavell.alive).toBe(true);
-      expect(g.wavell.dizzy).toBeGreaterThan(0);
+      if (pops) expect(g.wavell.dizzy).toBeGreaterThan(0);
+      else expect(g.wavell.dizzy).toBe(0);
     });
   });
 
@@ -554,6 +556,54 @@ describe('the game', () => {
         expect(b.state).toBe('grow');
         expect(b.ripeness).toBeGreaterThan(0.4 + 0.8 / 3);
       }
+    });
+
+    /** Sparkles close to x. */
+    const sparklesNear = (g: ReturnType<typeof ready>, x: number) => g.sparkles.filter((s) => Math.abs(s.x - x) < 30).length;
+
+    it('leaves its sparkles when popped by an attack', () => {
+      const g = ready();
+      const b = new BubbleBurst(g.wavell.x + 60, 1, 3);
+      g.bubbles.push(b);
+      const before = sparklesNear(g, b.x);
+      g.tick(PULL);
+      run(g, 0.3);
+      expect(b.harmful).toBe(false);
+      expect(sparklesNear(g, b.x)).toBe(before + DIFF.sparkleKill);
+    });
+
+    it('walked into on his side: popped, he is dizzy, and it leaves no sparkles', () => {
+      const g = ready();
+      const b = new BubbleBurst(g.wavell.x + 20, 1, 5);
+      g.bubbles.push(b);
+      const before = sparklesNear(g, b.x);
+      run(g, 1, { ...IDLE, right: true });
+      expect(b.harmful).toBe(false);
+      expect(g.wavell.dizzy).toBeGreaterThan(0);
+      expect(sparklesNear(g, b.x)).toBe(before);
+    });
+
+    it('walked by on the other side of the line: never dizzy, and it stays', () => {
+      const g = ready();
+      const b = new BubbleBurst(g.wavell.x + 20, -1, 5);
+      g.bubbles.push(b);
+      const x0 = g.wavell.x;
+      for (let i = 0; i < STEPS_PER_SECOND; i++) {
+        g.tick({ ...IDLE, right: true });
+        expect(g.wavell.dizzy).toBe(0);
+      }
+      expect(g.wavell.x).toBeGreaterThan(x0 + 30);
+      expect(b.harmful).toBe(true);
+    });
+
+    it('is fed by the wrong attack without the Snawave sound', () => {
+      const g = ready();
+      const play = vi.spyOn(sfx, 'play');
+      g.bubbles.push(new BubbleBurst(g.wavell.x + 60, 1, 3));
+      g.tick(WIPE);
+      run(g, 0.5);
+      expect(play.mock.calls.some(([name]) => name === 'grow')).toBe(false);
+      play.mockRestore();
     });
 
     it('is bigger and bursts sooner for being wiped', () => {
@@ -1181,6 +1231,36 @@ describe('the game', () => {
       for (let i = 0; i < STEPS_PER_SECOND && !g.urchins.length; i++) { g.wavell.facing = -1; g.tick(IDLE); }
       expect(g.urchins.length).toBe(1);
       expect(g.urchins[0].x).toBeGreaterThan(g.wavell.x + 60);
+    });
+
+    /** The first Disturchin to come up at this level: how far ahead of him, and its warning. */
+    function firstAt(level: number) {
+      const g = ready();
+      g.quiet = false;
+      g.score = levelStart(level);
+      for (let i = 0; i < 50 && g.level < level; i++) g.tick(IDLE);
+      expect(g.level).toBe(level);
+      g.playTime = DIFF.urchinFrom + 1;
+      const clocks = g as unknown as { urchinClock: number; sineClock: number; wormClock: number; bubbleClock: number; backClock: number; refluxClock: number };
+      clocks.urchinClock = 99;
+      for (let i = 0; i < STEPS_PER_SECOND * 3 && !g.urchins.length; i++) {
+        clocks.sineClock = clocks.wormClock = clocks.bubbleClock = clocks.backClock = clocks.refluxClock = -99;
+        g.tick(IDLE);
+      }
+      expect(g.urchins.length).toBe(1);
+      const u = g.urchins[0];
+      return { ahead: u.x - g.wavell.x, warn: u.warn, edge: g.neon.camX + g.neon.viewW - u.x };
+    }
+
+    it('comes up far ahead with a long warning at level 1, closer and quicker later, always on the screen', () => {
+      const first = firstAt(1), late = firstAt(9);
+      expect(first.warn).toBeGreaterThan(late.warn);
+      expect(first.ahead).toBeGreaterThan(late.ahead + 30);
+      // He can always stop in time.
+      for (const u of [first, late]) {
+        expect(u.ahead).toBeGreaterThan(u.warn * TUNE.walkSpeed);
+        expect(u.edge).toBeGreaterThanOrEqual(19.9);
+      }
     });
 
     it('starts its time over, and lasts longer, when wiped', () => {

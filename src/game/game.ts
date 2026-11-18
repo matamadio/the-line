@@ -86,6 +86,10 @@ const GRIP_FALL = 17;
 const ORCA_BACK = 140;
 /** The stretch of line he stands on, held flat while Rage goes on (u, each side, at size 0). */
 const RAGE_HOLD = 12;
+/** A Disturchin comes up anywhere in this much further than its distance ahead (u). */
+const URCHIN_SPREAD = 20;
+/** It always comes up at least this far inside the right of the screen (u). */
+const URCHIN_EDGE = 20;
 /** How far off the edge of the screen they go before they are done (u). */
 const RAGE_OFF = 60;
 /** The Silencer's front wave: it rolls at Wavell (dir -1), or back at him once wiped (dir 1). Its crest stands on top of the line. */
@@ -1143,10 +1147,12 @@ export class Game {
     this.urchinClock += dt;
     if (!W.alive || W.state === 'appear' || this.quiet || this.playTime < DIFF.urchinFrom) return;
     if (this.urchinClock < at('urchinEvery', this.ramp) || !this.takes('urchin')) return;
-    // Far enough ahead to stop or go round in the time the warning gives. Always ahead,
-    // even when he has turned round: behind him is where the end of the line is coming.
+    // Far ahead at first, closer every level, and always further than he can walk in the
+    // warning, so he can stop. Always ahead, even when he has turned round: behind him is
+    // where the end of the line is coming. Never off the screen, where he couldn't see it.
     const warn = this.inBeats(at('urchinWarn', this.ramp));
-    const x = W.x + warn * 100 + rand(25, 80);
+    const ahead = Math.max(at('urchinAhead', this.ramp), warn * TUNE.walkSpeed + 10) + rand(0, URCHIN_SPREAD);
+    const x = Math.min(W.x + ahead, this.neon.camX + this.neon.viewW - URCHIN_EDGE);
     // No room there: it tries again on a later beat.
     if (this.clash(x, URCHIN_ROOM)) return;
     this.urchinClock = rand(-1, 0);
@@ -1383,14 +1389,13 @@ export class Game {
         const [cx, cy] = b.centre(L);
         if (W.flying ? Math.hypot(cx - W.x, cy - W.by) < b.r + W.bubbleR : this.onBody(cx, cy, b.side, b.r)) b.burst();
       }
-      // Walking into one on the line, from either side, pops it and leaves him dizzy.
-      if (b.harmful && !b.airborne && W.alive && W.onLine && Math.abs(b.x - W.x) < 6) {
+      // Walking into one on his side of the line pops it and leaves him dizzy, and no sparkles. On the other side he walks by.
+      if (b.harmful && !b.airborne && W.alive && W.onLine && (W.under ? -1 : 1) === b.side && Math.abs(b.x - W.x) < 6) {
         b.pop();
         const [cx, cy] = b.centre(L);
         this.fx.shatter(b.outline(L), BUBBLE_GREEN, 30, 0);
         this.fx.burst(cx, cy, 10, 30, '#ffffff', 0, 0.3);
         L.calm(b.x, 10);
-        this.dropSparkles(b.x);
         sfx.play('pop', 0.6);
         if (W.stun()) this.teach('dizzy', 'DIZZY: slow for a moment, and the line keeps coming', 'DIZZY: slow for a moment, and the line keeps coming');
       }
@@ -1940,7 +1945,8 @@ export class Game {
     const right = (kind === 'pull') === (side === from);
     if (e instanceof BubbleBurst) {
       const [cx, cy] = e.centre(L);
-      if (!right) this.fed(cx, cy, () => e.feed(), BUBBLE_GREEN);
+      // Its own sound when it grows: a bubbling blub.
+      if (!right) this.fed(cx, cy, () => e.feed(), BUBBLE_GREEN, undefined, () => sfx.play('reflux', 0.5));
       else {
         e.pop();
         this.dropSparkles(cx);
@@ -1995,11 +2001,11 @@ export class Game {
   }
 
   /** The wrong wave: the creature takes it in and grows. */
-  private fed(x: number, y: number, grow: () => void, color = COLORS.enemy, hint = ['WRONG ATTACK, IT GREW! Your side: SWIPE ↔. Other side: SWIPE ↕', 'WRONG ATTACK, IT GREW! Your side: {pull}. Other side: {drag}']) {
+  private fed(x: number, y: number, grow: () => void, color = COLORS.enemy, hint = ['WRONG ATTACK, IT GREW! Your side: SWIPE ↔. Other side: SWIPE ↕', 'WRONG ATTACK, IT GREW! Your side: {pull}. Other side: {drag}'], sound = () => sfx.play('grow', 0.5)) {
     grow();
     this.fx.burst(x, y, 12, 30, color, 0, 0.4);
     this.neon.shake = Math.max(this.neon.shake, 0.3);
-    sfx.play('grow', 0.5);
+    sound();
     this.teach('grow', hint[0], hint[1]);
   }
 
