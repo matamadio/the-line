@@ -33,13 +33,13 @@ describe('the beat clock', () => {
     expect(bars).toEqual([0, 48 * 7, 48 * 14]);
   });
 
-  it.each([['6/8', 48, 6], ['7/8', 48, 7], ['5/4', 96, 5]])('in %s has a beat every %i steps, %i to a bar', (id, steps, beats) => {
+  it.each([['6/8', 32, 6], ['7/8', 48, 7], ['5/4', 96, 5]])('in %s has a beat every %i steps, %i to a bar', (id, steps, beats) => {
     const clock = new BeatClock();
     clock.reset(1, meterById(id));
     const hits: number[] = [];
     for (let i = 0; i < steps * beats + 1; i++) if (clock.step(1)) hits.push(i);
     expect(hits).toEqual([...Array(beats + 1).keys()].map((k) => k * steps));
-    // An eighth lasts half a quarter on the clock too, and the world runs no faster.
+    // An eighth lasts as long on the clock too, and the world runs no faster.
     expect(clock.seconds).toBeCloseTo((60 / clock.bpm) * (steps / 96));
     expect(clock.speed).toBe(clock.bpm / BASE_BPM);
   });
@@ -57,7 +57,7 @@ describe('the beat clock', () => {
 
   it('calls a Sinepede two quarters ahead in any time signature', () => {
     const clock = new BeatClock();
-    for (const m of METERS) { clock.reset(1, m); expect(clock.heraldBeats * m.unit).toBe(2); }
+    for (const m of METERS) { clock.reset(1, m); expect(clock.heraldBeats * m.unit).toBeCloseTo(2); }
   });
 
   it('changes time signature only at the start of a bar', () => {
@@ -255,10 +255,10 @@ describe('the beat in the game', () => {
       g.wavell.safe = 9;
       const before = g.sinepedes.length;
       g.tick({ ...IDLE, right: true });
-      if (g.herald && calledAt < 0) { calledAt = i; expect(i % 48).toBe(0); }
+      if (g.herald && calledAt < 0) { calledAt = i; expect(i % 32).toBe(0); }
       if (g.sinepedes.length > before) {
         expect(i - calledAt).toBe(HERALD_STEPS);
-        expect(g.beat.cueAt(Math.floor(i / 48) % 6, 6)).toBe(true);
+        expect(g.beat.cueAt(Math.floor(i / 32) % 6, 6)).toBe(true);
         calledAt = -1;
         checked++;
       }
@@ -334,12 +334,12 @@ describe('the music styles', () => {
 describe('the music building up', () => {
   it('gives every style five layers, each of them its own part', async () => {
     const { STYLES } = await import('../src/core/styles');
-    const { LAYERS, METERS, groupStarts } = await import('../src/core/music');
+    const { LAYERS, METERS, groupStarts, musicMeter } = await import('../src/core/music');
     for (const style of STYLES) {
       expect(style.layers).toHaveLength(LAYERS);
       expect(new Set(style.layers.map((l) => l.name)).size).toBe(LAYERS);
       // Every layer makes sound within 16 bars, in every time signature: none is silent.
-      for (const layer of style.layers) for (const meter of METERS) {
+      for (const layer of style.layers) for (const meter of METERS.map(musicMeter)) {
         let notes = 0;
         const count = () => { notes++; };
         const synth = { kick: count, snare: count, hat: count, block: count, tone: count, keys: count, pad: count, pluck: count, strum: count, flute: count, fiddle: count, bass: count, taiko: count, acid: count, theremin: count };
@@ -356,5 +356,28 @@ describe('the music building up', () => {
     const g = headlessGame();
     const layers = [1, 2, 3, 4, 5, 6, 10].map((level) => { g.level = level; return g.musicLayers; });
     expect(layers).toEqual([1, 2, 3, 4, 5, 5, 5]);
+  });
+});
+
+describe('6/8 and 7/8', () => {
+  it('play each style once per felt step: two in 6/8, three (2 + 2 + 3) in 7/8', async () => {
+    const { Music, meterById } = await vi.importActual<typeof import('../src/core/music')>('../src/core/music');
+    for (const [id, eighth, expected] of [['6/8', 0.2, [[0, 0.6, 0], [3, 0.6, 1]]], ['7/8', 0.3, [[0, 0.6, 0], [2, 0.6, 1], [4, 0.9, 2]]]] as const) {
+      const m = new Music(), played: [number, number, number][] = [];
+      const meter = meterById(id);
+      Object.assign(m, { synth: {}, style: { swing: 0, layers: [{ name: 'x', play: (_: unknown, b: { at: number; len: number; beat: number; meter: { beats: number } }) => played.push([Math.round(b.at / eighth), +b.len.toFixed(3), b.beat]) }] } });
+      for (let i = 0; i < meter.beats; i++) m.beat(i * eighth, eighth, i, meter, 1);
+      expect(played).toEqual(expected);
+    }
+  });
+
+  it('splits a step of three eighths in three', async () => {
+    const { Music, meterById } = await vi.importActual<typeof import('../src/core/music')>('../src/core/music');
+    const m = new Music();
+    let times: number[] = [];
+    Object.assign(m, { synth: {}, style: { swing: 0.3, layers: [{ name: 'x', play: (_: unknown, b: { t(k: number): number }) => { times = [0, 1, 2, 3].map((k) => +b.t(k).toFixed(3)); } }] } });
+    m.beat(0, 0.2, 0, meterById('6/8'), 1);
+    // The eighths of the step, and the last third split once more; no swing on top.
+    expect(times).toEqual([0, 0.2, 0.4, 0.5]);
   });
 });

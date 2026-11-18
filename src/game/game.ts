@@ -994,7 +994,7 @@ export class Game {
       h.due = true;
       this.cue = false;
     } else if (b.cueAt((b.beatOfBar + b.heraldBeats) % b.beats, this.ramp) && this.sineDue() && this.mostOverdue() === 'sine') {
-      // Two quarters before a cue beat it would take (four eighths in 6/8 and 7/8), the
+      // Two quarters before a cue beat it would take (six eighths in 6/8, four in 7/8), the
       // Sinepede is called, so it is heard coming.
       this.callSine(b.heraldBeats);
     }
