@@ -6,7 +6,7 @@ Your world is a line. You are a wave on it, and the end of the line is coming.
 
 ![The title screen](docs/images/title.png)
 
-**Play it:** <https://matamadio.github.io/the-line/>. On a phone it can also be [installed as an app](#on-a-phone).
+**Play it:** <https://skepticowl.github.io/the-line/>. On a phone it can also be [installed as an app](#on-a-phone).
 
 ## Contents
 
@@ -19,12 +19,12 @@ Your world is a line. You are a wave on it, and the end of the line is coming.
 
 ## Run it
 
-**To just play or test**, open the link above. It always runs the latest version of `main`, and needs no install. Bugs and impressions go in [the issues](https://github.com/matamadio/the-line/issues/new/choose).
+**To just play or test**, open the link above. It always runs the latest version of `main`, and needs no install. Bugs and impressions go in [the issues](https://github.com/skepticowl/the-line/issues/new/choose).
 
 **To work on it**, you need [Node.js](https://nodejs.org) 20 or newer:
 
 ```bash
-git clone https://github.com/matamadio/the-line.git
+git clone https://github.com/skepticowl/the-line.git
 cd the-line
 npm install
 npm start
@@ -110,7 +110,7 @@ The game comes with two editors, each running the real game inside a page. They 
 
 When you run them from `npm run ...`, Save writes the file in your checkout, so the change appears in `git diff` like any other and goes into a pull request. A running game picks it up without reloading.
 
-Both editors also work on the [hosted version](https://matamadio.github.io/the-line/difficulty.html), where there is no dev server to write to. There, Save copies the JSON to your clipboard instead: paste it into an issue, and a developer can put it in the file.
+Both editors also work on the [hosted version](https://skepticowl.github.io/the-line/difficulty.html), where there is no dev server to write to. There, Save copies the JSON to your clipboard instead: paste it into an issue, and a developer can put it in the file.
 
 ### Difficulty editor
 
@@ -284,6 +284,6 @@ Everything has been vibecoded with Claude Code in the afterjob of leftover credi
 
 **How to cite:**
 
-> *The Line*, by matamadio and The Line contributors. <https://github.com/matamadio/the-line>. Based on *The Line continues* (Bepposoft, 2003). Licensed under CC BY-NC 4.0.
+> *The Line*, by skepticowl and The Line contributors. <https://github.com/skepticowl/the-line>. Based on *The Line continues* (Bepposoft, 2003). Licensed under CC BY-NC 4.0.
 
 The sound effects come from *The Line continues* and are not covered by this license. They remain the property of their respective authors.

@@ -109,7 +109,7 @@ Enemies on the line never overlap. Those that crawl queue up behind whatever is 
 
 ## The beat
 
-A music-timing core for the game ([issue #3](https://github.com/matamadio/the-line/issues/3)). It is on by default; the first knob of the Beat group in the difficulty editor turns it off.
+A music-timing core for the game ([issue #3](https://github.com/skepticowl/the-line/issues/3)). It is on by default; the first knob of the Beat group in the difficulty editor turns it off.
 
 - The beat is music, made by the game as it plays: drums, bass and chords in the style picked in the audio menu, with one instrument joining per level up to level 5. There is no recorded music. See [Music](#music).
 - The line lights up on each beat, so the beat can be seen with the sound off.

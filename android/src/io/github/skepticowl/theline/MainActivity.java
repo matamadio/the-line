@@ -1,4 +1,4 @@
-package io.github.matamadio.theline;
+package io.github.skepticowl.theline;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -23,7 +23,7 @@ import android.webkit.WebViewClient;
  */
 public class MainActivity extends Activity {
     /** ?tv: always fullscreen, no fullscreen button. ?pad: name the joypad's buttons, as they reach the game as keys. */
-    private static final String URL = "https://matamadio.github.io/the-line/?tv&pad";
+    private static final String URL = "https://skepticowl.github.io/the-line/?tv&pad";
     /** How far the stick has to go to count, as in the game. */
     private static final float STICK = 0.5f;
 

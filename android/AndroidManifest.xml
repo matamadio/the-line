@@ -4,7 +4,7 @@
   opens the hosted game, so it is always the latest version. See README.md, "On Android TV".
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.github.matamadio.theline">
+    package="io.github.skepticowl.theline">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- A TV app: no touch screen needed, and it shows on the TV's home screen. -->

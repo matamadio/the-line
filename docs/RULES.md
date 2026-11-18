@@ -354,11 +354,12 @@ Everything is drawn as glowing vector strokes at the screen's native resolution.
 
 ## Platform and saving
 
-The game runs in the browser at <https://matamadio.github.io/the-line/> and installs as an app (PWA), which also lets it play offline.
+The game runs in the browser at <https://skepticowl.github.io/the-line/> and installs as an app (PWA), which also lets it play offline.
 
 - **Saved in the browser:** best score, key bindings, audio choices (mute, style, time signature) and Nostalgia mode. Nothing is saved online.
 - **Phones:** best held sideways. Held upright, the play area is the same and the view grows taller around it: more sky and two more far lines above and below, the HUD at the top of the screen, the thumb controls at the bottom; nothing changes in play. The screen is not locked sideways, in fullscreen or in the installed app. The corners icon goes fullscreen, except on iPhone. Install from the start screen's install button; on iPhone, from the Share menu.
-- **Shared origin:** several apps live on matamadio.github.io, so the manifest needs its own explicit id (`/the-line/`).
+- **Old address:** the game used to live at matamadio.github.io/the-line/. That address now forwards here (with the same query, so the TV apps still open in TV mode), and retires the old offline copy of an app installed from it. Best scores and settings saved there stay there: they are kept per address.
+- **Own id:** the game lives under skepticowl.github.io, where other apps may join it, so the manifest has its own explicit id (`/the-line/`).
 - **Loading screen:** black until the game is ready. When there is loading to cover (always in the installed app; in a browser tab only if the game is not up within 0.5 s) the owl picture (`public/loading.webp`) fades in from black over 1.6 s and calls (the owl recording, `public/assets/sounds/owl.mp3`, not when muted), stays 0.2 s, then fades into the game over 1.6 s. If the browser holds the sound back, he calls at the first tap or key while still showing. The game waits for the font (at most 3 s), and the title and menu animations start only once the screen has fully faded. The picture is in the offline cache.
 - **Sound** starts at once where the browser allows it (as the installed app often does), so the title music needs no tap; otherwise it starts after the first tap or key press.
 

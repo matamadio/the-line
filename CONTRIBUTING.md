@@ -2,7 +2,7 @@
 
 ## Ways to help
 
-- **Play and report.** Open an [issue](https://github.com/matamadio/the-line/issues/new/choose): a bug, or what felt unfair, confusing or great.
+- **Play and report.** Open an [issue](https://github.com/skepticowl/the-line/issues/new/choose): a bug, or what felt unfair, confusing or great.
 - **Tune it.** Use the [editors](README.md#the-editors) on the hosted version and paste the numbers into a playtest issue, or save them in your checkout and open a pull request.
 - **Change the game.** Read on.
 

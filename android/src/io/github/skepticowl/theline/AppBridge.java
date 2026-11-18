@@ -1,4 +1,4 @@
-package io.github.matamadio.theline;
+package io.github.skepticowl.theline;
 
 import android.app.Activity;
 import android.webkit.JavascriptInterface;
