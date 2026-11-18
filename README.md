@@ -265,6 +265,19 @@ docs/              Game rules reference (RULES.md), design notes and the origina
 
 `dist/` can be hosted anywhere, under any path. It needs a web server, because browsers refuse to load it from a `file://` address.
 
+### Releasing
+
+Every push to `main` updates the test link on GitHub Pages. A release goes to [itch.io](https://skepticowl.itch.io/the-line) only when it is tagged with a version:
+
+```bash
+npm version 1.0.0
+git push --follow-tags
+```
+
+`npm version` sets the version in `package.json` and makes the commit and the `v1.0.0` tag. The tag starts `.github/workflows/itch.yml`, which checks and builds the game and uploads `dist/` to the itch.io page's `html5` channel with [butler](https://itch.io/docs/butler/), only sending the files that changed. The release fails if the tag and `package.json` disagree.
+
+The upload needs the repository secret `BUTLER_API_KEY`, an API key from itch.io's settings; without it the workflow skips the upload. After the very first upload, tick "This file will be played in the browser" on it in the itch.io page's settings; later uploads keep that.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short: branch, change, `npm run check`, open a pull request. You don't need to write code to help: playing and reporting, or tuning the difficulty and sending in the numbers, are both useful.
