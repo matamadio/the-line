@@ -577,7 +577,7 @@ export class Game {
       // as soon as the browser lets sound play. It keeps the game's own beat, all five layers.
       const settled = this.morphT >= MORPH_TIME && W.alive && W.state !== 'appear';
       if (settled && sfx.ready && DIFF.beatOn) this.startTitleMusic();
-      if (this.titleMusic && this.beat.step(DIFF.startLevel)) sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, LAYERS);
+      if (this.titleMusic && this.beat.step(DIFF.startLevel)) sfx.beat(this.beat.seconds, this.beat.beatOfBar, this.beat.meter, LAYERS);
       return;
     }
     // The word on the line behind goes on by, a game over or not.
@@ -993,11 +993,12 @@ export class Game {
       // The cue beat a Sinepede was called for: it takes it, as if it had come in on it.
       h.due = true;
       this.cue = false;
-    } else if (b.cueAt((b.beatOfBar + 2) % b.beats, this.ramp) && this.sineDue() && this.mostOverdue() === 'sine') {
-      // Two beats before a cue beat it would take, the Sinepede is called, so it is heard coming.
-      this.callSine(2);
+    } else if (b.cueAt((b.beatOfBar + b.heraldBeats) % b.beats, this.ramp) && this.sineDue() && this.mostOverdue() === 'sine') {
+      // Two quarters before a cue beat it would take (four eighths in 6/8 and 7/8), the
+      // Sinepede is called, so it is heard coming.
+      this.callSine(b.heraldBeats);
     }
-    sfx.beat(60 / this.beat.bpm, this.beat.beatOfBar, this.beat.meter, this.musicLayers);
+    sfx.beat(this.beat.seconds, this.beat.beatOfBar, this.beat.meter, this.musicLayers);
   }
 
   /**

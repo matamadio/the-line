@@ -11,15 +11,20 @@ import { STYLES, type Style } from './styles';
 /** How many layers every style has: the music stops building up at this level. */
 export const LAYERS = 5;
 
-/** A time signature: how many beats to a bar, and how they group, which says where the strong ones fall. */
-export interface Meter { id: string; beats: number; groups: readonly number[] }
+/**
+ * A time signature: how many beats to a bar, how they group, which says where the strong
+ * ones fall, and how long each beat is in quarter notes (the tempo counts quarters). In
+ * 6/8 and 7/8 the beat is an eighth, half a quarter, so 6/8 sways in two groups of three
+ * quick notes and 7/8 limps in 2 + 2 + 3.
+ */
+export interface Meter { id: string; beats: number; groups: readonly number[]; unit: number }
 export const METERS: readonly Meter[] = [
-  { id: '2/4', beats: 2, groups: [2] },
-  { id: '3/4', beats: 3, groups: [3] },
-  { id: '4/4', beats: 4, groups: [2, 2] },
-  { id: '5/4', beats: 5, groups: [3, 2] },
-  { id: '6/8', beats: 6, groups: [3, 3] },
-  { id: '7/8', beats: 7, groups: [2, 2, 3] },
+  { id: '2/4', beats: 2, groups: [2], unit: 1 },
+  { id: '3/4', beats: 3, groups: [3], unit: 1 },
+  { id: '4/4', beats: 4, groups: [2, 2], unit: 1 },
+  { id: '5/4', beats: 5, groups: [3, 2], unit: 1 },
+  { id: '6/8', beats: 6, groups: [3, 3], unit: 0.5 },
+  { id: '7/8', beats: 7, groups: [2, 2, 3], unit: 0.5 },
 ];
 export const DEFAULT_METER = METERS[2];
 export const meterById = (id: string) => METERS.find((m) => m.id === id) ?? DEFAULT_METER;
@@ -525,9 +530,8 @@ export class Music {
     this.restart();
     const p = { timer: 0, next: ctx.currentTime + 0.05, beat: 0, bpm, layers, meter };
     p.timer = window.setInterval(() => {
-      const len = 60 / p.bpm;
       while (p.next < ctx.currentTime + PREVIEW_AHEAD) {
-        const m = p.meter();
+        const m = p.meter(), len = (60 / p.bpm) * m.unit;
         if (p.beat >= m.beats) p.beat = 0;
         this.beat(p.next, len, p.beat, m, p.layers);
         p.beat = (p.beat + 1) % m.beats;
