@@ -121,6 +121,31 @@ export function nostalgiaButton(n: Neon): [number, number, number] {
   return [n.w - s * (1.4 + BUTTON_GAP), screenTop(n) + BUTTON_Y * s, s * 0.9];
 }
 
+/** A button at the top right, picked with a joypad or the arrow keys rather than tapped. */
+export type Corner = 'nostalgia' | 'audio' | 'fullscreen';
+
+/**
+ * Where a push of the d-pad goes among the buttons at the top right, from the start screen's
+ * line (null). Right reaches the speaker; nostalgia is left of it, fullscreen under it, and left
+ * from nostalgia goes back to the line. A push that leads nowhere stays put.
+ */
+export function cornerMove(from: Corner | null, dir: 'left' | 'right' | 'up' | 'down', fullscreen: boolean): Corner | null {
+  if (from === null) return dir === 'right' ? 'audio' : null;
+  if (from === 'audio') return dir === 'left' ? 'nostalgia' : dir === 'down' && fullscreen ? 'fullscreen' : 'audio';
+  if (from === 'nostalgia') return dir === 'left' ? null : dir === 'right' ? 'audio' : 'nostalgia';
+  return dir === 'up' ? 'audio' : dir === 'left' ? 'nostalgia' : 'fullscreen';
+}
+
+/** The ring round the button the joypad is on. */
+function drawCornerFocus(n: Neon, corner: Corner, time: number) {
+  const [x, y, r] = corner === 'audio' ? audioButton(n) : corner === 'nostalgia' ? nostalgiaButton(n) : fullscreenButton(n);
+  const pulse = 0.65 + 0.35 * Math.sin(time * 5);
+  if (n.retro) { n.pixelFrame(x - r * 1.2, y - r * 1.2, r * 2.4, r * 2.4, COLORS.hud, pulse); return; }
+  const p = new Path2D();
+  p.arc(x, y, r * 1.2, 0, Math.PI * 2);
+  n.glow(p, COLORS.hud, 1.2, pulse);
+}
+
 /** A checkerboard of big pixels: lit up when nostalgia mode is on. */
 function drawNostalgia(n: Neon) {
   const [x, y, r] = nostalgiaButton(n), p = new Path2D(), a = r * 0.36;
@@ -390,6 +415,7 @@ export function drawHud(g: Game) {
 
   if (canFullscreen()) drawFullscreen(n);
   drawNostalgia(n);
+  if (g.corner && !g.audio.open) drawCornerFocus(n, g.corner, g.time);
   drawSurround(g);
   n.fade = hudFade;
   if (g.mode === 'play' && !g.audio.open && usesTouch(inp)) drawTouch(g);

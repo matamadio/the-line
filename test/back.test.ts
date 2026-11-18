@@ -39,3 +39,44 @@ describe('Back in a game', () => {
     expect(g.mode).not.toBe('play');
   });
 });
+
+/** One frame with these presses, as the input would report them, and then let go. */
+const press = (g: ReturnType<typeof headlessGame>, keys: Record<string, boolean>) => {
+  Object.assign(g.input, keys);
+  g.frame(1 / 60);
+  for (const k of Object.keys(keys)) (g.input as unknown as Record<string, boolean>)[k] = false;
+};
+
+describe('the top-right buttons from the pause', () => {
+  it('→ reaches the speaker and A opens the audio menu, without carrying on', () => {
+    const g = headlessGame();
+    g.start();
+    g.setPaused(true);
+    press(g, { menuRight: true });
+    expect(g.corner).toBe('audio');
+    press(g, { confirm: true, pausePressed: true }); // Enter is the pause key too
+    expect(g.audio.open).toBe(true);
+    expect(g.paused).toBe(true);
+  });
+
+  it('Back leaves the buttons rather than the game, and Start carries on from them', () => {
+    const g = headlessGame();
+    g.start();
+    g.setPaused(true);
+    press(g, { menuRight: true });
+    back(g);
+    expect(g.corner).toBe(null);
+    expect(g.mode).toBe('play');
+    press(g, { menuRight: true });
+    press(g, { pausePressed: true });
+    expect(g.paused).toBe(false);
+    expect(g.corner).toBe(null);
+  });
+
+  it('in a game, → walks: the buttons are only for the pause', () => {
+    const g = headlessGame();
+    g.start();
+    press(g, { menuRight: true });
+    expect(g.corner).toBe(null);
+  });
+});
