@@ -117,6 +117,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 - **Heard before it is seen**: it is called 2 beats before it comes in, and its hum starts then, fading in. With the beat on, it is called 2 beats before a cue beat it may take, and it takes that beat. With the beat off, it comes in 1.6 s after it is called. On the levels where threats come one at a time, nothing else comes in while one is on its way.
 - The right attack cancels the facing segment and sends a ripple on, and what is left of it is set back a little (knockback 150, about 30 u), so even a long one can be worn down. The wrong one throws it back (knockback 650) and adds a segment at the far end.
 - **Running into it**: both bounce apart (his knockback 300) and he loses that ground. On his side it gains a segment. On the other side the waves cancel: it loses a segment, or flattens if it was the last, and he loses a size. A bubble always pops on it.
+- **Sparkles:** every segment flattened, by the right attack or by running into it on the other side, leaves 2 sparkles there and then, one on each side of the line.
 
 ### Worm
 
@@ -202,7 +203,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 
 Sparkles are the bait: chasing them gives ground to the line. The power-ups are the Rage knot and the Killerwave, an enemy you can ride.
 
-- Every enemy killed leaves 2 sparkles, one on each side of the line.
+- Every enemy killed leaves 2 sparkles, one on each side of the line. A Sinepede leaves 2 for each segment flattened, as it goes.
 - More appear on their own about every 3 s, at most 6 at a time, as many below the line as above, often behind Wavell.
 - They drift at random and blink out after a few seconds.
 - 12% are **gold**. Gold ones sit 45–65 u off the line, where only his bubble reaches, and are worth 5×. Normal ones sit 6–40 u off.
