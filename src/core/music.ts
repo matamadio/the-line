@@ -13,19 +13,47 @@ export const LAYERS = 5;
 
 /**
  * A time signature: how many beats to a bar, how they group, which says where the strong
- * ones fall, and how long each beat is in quarter notes (the tempo counts quarters). In
- * 6/8 and 7/8 the beat is an eighth, half a quarter, so 6/8 sways in two groups of three
- * quick notes and 7/8 limps in 2 + 2 + 3.
+ * ones fall, and how long each beat is in quarter notes (the tempo counts quarters).
+ *
+ * In 6/8 and 7/8 a beat is an eighth note, and the music is felt in bigger, uneven
+ * steps (`feel`): `pulses` says how many eighths each step takes, and `groups` groups the
+ * steps the way `groups` groups beats. 6/8 is two steps of three eighths, each step a
+ * quarter of the tempo long, so it sways at the same pace as the others. 7/8 is three
+ * steps, 2 + 2 + 3 eighths of half a quarter each, and limps.
  */
-export interface Meter { id: string; beats: number; groups: readonly number[]; unit: number }
+export interface Meter {
+  id: string; beats: number; groups: readonly number[]; unit: number;
+  feel?: { pulses: readonly number[]; groups: readonly number[] };
+}
 export const METERS: readonly Meter[] = [
   { id: '2/4', beats: 2, groups: [2], unit: 1 },
   { id: '3/4', beats: 3, groups: [3], unit: 1 },
   { id: '4/4', beats: 4, groups: [2, 2], unit: 1 },
   { id: '5/4', beats: 5, groups: [3, 2], unit: 1 },
-  { id: '6/8', beats: 6, groups: [3, 3], unit: 0.5 },
-  { id: '7/8', beats: 7, groups: [2, 2, 3], unit: 0.5 },
+  { id: '6/8', beats: 6, groups: [3, 3], unit: 1 / 3, feel: { pulses: [3, 3], groups: [2] } },
+  { id: '7/8', beats: 7, groups: [2, 2, 3], unit: 0.5, feel: { pulses: [2, 2, 3], groups: [2, 1] } },
 ];
+
+/**
+ * The time signature the styles play in: the game's own, or for 6/8 and 7/8 their felt
+ * steps as beats (two in 6/8, three in 7/8), so each style's pattern goes once per step.
+ */
+const feelMeters = new Map<Meter, Meter>();
+export function musicMeter(m: Meter): Meter {
+  if (!m.feel) return m;
+  let out = feelMeters.get(m);
+  if (!out) feelMeters.set(m, (out = { id: m.id, beats: m.feel.pulses.length, groups: m.feel.groups, unit: m.unit * 3 }));
+  return out;
+}
+/** Where each step of a 6/8 or 7/8 bar starts, in its eighths. */
+const pulseStarts = (m: Meter) => {
+  const out: number[] = [];
+  let b = 0;
+  for (const p of m.feel!.pulses) { out.push(b); b += p; }
+  return out;
+};
+/** A step of three eighths is split in three, not four: the kth sixteenth falls here, as a share of the step. */
+const TRIPLET = [0, 1 / 3, 2 / 3, 5 / 6];
 export const DEFAULT_METER = METERS[2];
 export const meterById = (id: string) => METERS.find((m) => m.id === id) ?? DEFAULT_METER;
 
@@ -500,12 +528,22 @@ export class Music {
     const s = this.synth;
     if (!s) return;
     if (beat === 0 || this.bar < 0) this.bar++;
+    let triplet = false;
+    if (meter.feel) {
+      // 6/8 and 7/8: the styles play once per felt step, not on every eighth.
+      const step = pulseStarts(meter).indexOf(beat);
+      if (step < 0) return;
+      triplet = meter.feel.pulses[step] === 3;
+      len *= meter.feel.pulses[step];
+      beat = step;
+      meter = musicMeter(meter);
+    }
     const starts = groupStarts(meter), swing = this.style.swing;
     const b: Beat = {
       at, len, beat, meter, layers, bar: this.bar,
       group: starts.includes(beat),
       groupEnd: starts.includes(beat + 1) || beat === meter.beats - 1,
-      t: (k) => at + (k + (k % 2 ? swing : 0)) * (len / 4),
+      t: triplet ? (k) => at + TRIPLET[k] * len : (k) => at + (k + (k % 2 ? swing : 0)) * (len / 4),
     };
     // A layer that drops out (the start screen's five becoming level 1's one) fades away
     // over a couple of seconds; one that joins comes in at full from its first note.

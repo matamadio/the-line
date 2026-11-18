@@ -9,7 +9,8 @@
 //
 // How many beats make a bar is the time signature the player picked in the audio menu.
 // A new one waits for the next bar, like a new tempo. The tempo counts quarter notes: in
-// 6/8 and 7/8 a beat is an eighth, half as long, but the world runs no faster.
+// 6/8 and 7/8 a beat is an eighth (a third of a quarter in 6/8, half in 7/8), but the
+// world runs no faster.
 
 import { DEFAULT_METER, type Meter } from '../core/music';
 import { DIFF, at } from '../data/difficulty';
@@ -49,7 +50,7 @@ export class BeatClock {
   /** How long a beat lasts on the clock (s): a quarter, or an eighth in 6/8 and 7/8. */
   get seconds() { return (60 / this.bpm) * this.meter.unit; }
   /** A beat in simulation steps. */
-  private get beatSteps() { return QUARTER_STEPS * this.meter.unit; }
+  private get beatSteps() { return Math.round(QUARTER_STEPS * this.meter.unit); }
   /** How many beats before its cue beat a Sinepede is called: two quarters' worth, so its warning is as long in any time signature. */
   get heraldBeats() { return Math.round(2 / this.meter.unit); }
 
