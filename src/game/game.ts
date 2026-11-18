@@ -44,7 +44,7 @@ import { WORM_W, Worm } from './actors/worm';
 import { Flattener } from './actors/flattener';
 import { KNOT_HALF, RageKnot, rageWaves, wildHue } from './actors/rage';
 import { Orca, orcaLength } from './actors/orca';
-import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, audioButton, nostalgiaButton } from './hud';
+import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, inVersion, audioButton, nostalgiaButton } from './hud';
 import { SPARKLE_IN, drawGame, sparkleColor } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
 import { MORPH_TIME, TitleDust } from './title';
@@ -116,6 +116,9 @@ const NO_INPUT: Controls = { left: false, right: false, up: false, down: false, 
 export function reflux(sx: number, dir: 1 | -1, side: 1 | -1, W: Wavell, warn = 0, dist = W.height / 2): Reflux {
   return { sx, y: 0, side, dist, dir, warn, passed: false };
 }
+
+/** Two taps on the version this close together (s) show or hide the DEV box. */
+const DOUBLE_TAP = 0.5;
 
 export class Game {
   readonly line = new SpringLine();
@@ -226,6 +229,10 @@ export class Game {
   private deathHandled = false;
   /** The time until which the start screen explains how to install by hand. */
   installNote = -1;
+  /** The start screen's DEV box: hidden until the version is tapped twice, and hidden again the same way. */
+  devShown = false;
+  /** When the version was last tapped (s of game time), for telling a double tap. */
+  private versionTap = -Infinity;
   /** When the start screen's hints began, once he had climbed out of the line; -1 until then. */
   hintsFrom = -1;
   stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), z: rand(0.04, 0.3), s: rand(0.6, 1.8), p: rand(0, 6) }));
@@ -244,7 +251,13 @@ export class Game {
       const on = ([bx, by, r]: [number, number, number]) => Math.hypot(x - bx, y - by) <= Math.max(r * 1.25, 22);
       // The dev menu and the install button are only there on the start screen, once it has settled.
       const title = this.mode === 'title' && this.morphT >= MORPH_TIME && this.menu.page === 'main';
-      if (title && inDevMenu(n, x, y)) {
+      if (title && inVersion(n, x, y)) {
+        return () => {
+          if (this.time - this.versionTap < DOUBLE_TAP) { this.devShown = !this.devShown; this.versionTap = -Infinity; }
+          else this.versionTap = this.time;
+        };
+      }
+      if (title && this.devShown && inDevMenu(n, x, y)) {
         const page = devLinkAt(n, x, y);
         return () => { if (page) location.href = page; };
       }

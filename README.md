@@ -108,6 +108,8 @@ The game comes with two editors, each running the real game inside a page. They 
 | **For** | How hard the game is, level by level | How things move and feel |
 | **Edits** | [`src/data/difficulty.json`](src/data/difficulty.json) | [`src/data/anim.json`](src/data/anim.json), [`src/data/boss.json`](src/data/boss.json) and the numbers in [`src/data/tune.ts`](src/data/tune.ts) |
 
+The dev box is hidden: double-click or double-tap the version number, bottom right of the start screen, to show it, and again to hide it.
+
 When you run them from `npm run ...`, Save writes the file in your checkout, so the change appears in `git diff` like any other and goes into a pull request. A running game picks it up without reloading.
 
 Both editors also work on the [hosted version](https://skepticowl.github.io/the-line/difficulty.html), where there is no dev server to write to. There, Save copies the JSON to your clipboard instead: paste it into an issue, and a developer can put it in the file.
