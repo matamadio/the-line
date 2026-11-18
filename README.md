@@ -267,7 +267,7 @@ docs/              Game rules reference (RULES.md), design notes and the origina
 
 ### Releasing
 
-Every push to `main` updates the test link on GitHub Pages. A release goes to [itch.io](https://skepticowl.itch.io/the_line) only when it is tagged with a version:
+Every push to `main` updates the test link on GitHub Pages. A release goes to [itch.io](https://skepticowl.itch.io/the-line) only when it is tagged with a version:
 
 ```bash
 npm version 1.0.0

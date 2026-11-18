@@ -1,4 +1,4 @@
-# Publishes a release to itch.io (https://skepticowl.itch.io/the_line) when a version tag is pushed.
+# Publishes a release to itch.io (https://skepticowl.itch.io/the-line) when a version tag is pushed.
 # Tag a release with: npm version 1.0.0 && git push --follow-tags
 # Needs the repository secret BUTLER_API_KEY (an itch.io API key); without it, the upload is skipped.
 name: Release to itch.io
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-      ITCH_TARGET: skepticowl/the_line
+      ITCH_TARGET: skepticowl/the-line
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
