@@ -7,6 +7,7 @@ import { DIFF, at } from '../src/data/difficulty';
 import { LAYERS, METERS, groupStarts, meterById } from '../src/core/music';
 import { BASE_BPM, BeatClock } from '../src/game/beat';
 import { HERALD_STEPS } from '../src/game/game';
+import { audioPrefs } from '../src/core/audioPrefs';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic: vi.fn(), setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
@@ -24,12 +25,39 @@ describe('the beat clock', () => {
     expect(hits).toHaveLength(8);
   });
 
-  it('counts the bar in the time signature it is given', () => {
+  it('counts the bar in the time signature it is given, in eighths for 6/8 and 7/8', () => {
     const clock = new BeatClock();
     clock.reset(1, meterById('7/8'));
     const bars: number[] = [];
-    for (let i = 0; i < 96 * 15; i++) if (clock.step(1) === 'bar') bars.push(i);
-    expect(bars).toEqual([0, 96 * 7, 96 * 14]);
+    for (let i = 0; i < 48 * 15; i++) if (clock.step(1) === 'bar') bars.push(i);
+    expect(bars).toEqual([0, 48 * 7, 48 * 14]);
+  });
+
+  it.each([['6/8', 48, 6], ['7/8', 48, 7], ['5/4', 96, 5]])('in %s has a beat every %i steps, %i to a bar', (id, steps, beats) => {
+    const clock = new BeatClock();
+    clock.reset(1, meterById(id));
+    const hits: number[] = [];
+    for (let i = 0; i < steps * beats + 1; i++) if (clock.step(1)) hits.push(i);
+    expect(hits).toEqual([...Array(beats + 1).keys()].map((k) => k * steps));
+    // An eighth lasts half a quarter on the clock too, and the world runs no faster.
+    expect(clock.seconds).toBeCloseTo((60 / clock.bpm) * (steps / 96));
+    expect(clock.speed).toBe(clock.bpm / BASE_BPM);
+  });
+
+  it('goes back to quarters after a bar of 7/8, on the bar', () => {
+    const clock = new BeatClock();
+    clock.reset(1, meterById('7/8'));
+    clock.step(1);
+    clock.setMeter(meterById('4/4'));
+    const hits: [number, string][] = [];
+    for (let i = 1; i < 48 * 7 + 96 * 4 + 1; i++) { const h = clock.step(1); if (h) hits.push([i, h]); }
+    expect(hits.slice(5, 9)).toEqual([[48 * 6, 'beat'], [48 * 7, 'bar'], [48 * 7 + 96, 'beat'], [48 * 7 + 192, 'beat']]);
+    expect(hits.at(-1)).toEqual([48 * 7 + 96 * 4, 'bar']);
+  });
+
+  it('calls a Sinepede two quarters ahead in any time signature', () => {
+    const clock = new BeatClock();
+    for (const m of METERS) { clock.reset(1, m); expect(clock.heraldBeats * m.unit).toBe(2); }
   });
 
   it('changes time signature only at the start of a bar', () => {
@@ -210,6 +238,33 @@ describe('the beat in the game', () => {
     expect(beatsSeen.size).toBeGreaterThan(0);
     // No one kind takes all the beats.
     expect(kinds.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('in 6/8, a Sinepede gets the same warning, and comes in on an eighth it may take', () => {
+    DIFF.beatOn = 1;
+    const was = audioPrefs.meter;
+    audioPrefs.meter = '6/8';
+    Math.random = seeded(8);
+    const g = headlessGame();
+    g.start();
+    expect(g.beat.meter.id).toBe('6/8');
+    let calledAt = -1, checked = 0;
+    for (let i = 0; i < 40000 && checked < 3; i++) {
+      g.level = 6;
+      g.lives = 9;
+      g.wavell.safe = 9;
+      const before = g.sinepedes.length;
+      g.tick({ ...IDLE, right: true });
+      if (g.herald && calledAt < 0) { calledAt = i; expect(i % 48).toBe(0); }
+      if (g.sinepedes.length > before) {
+        expect(i - calledAt).toBe(HERALD_STEPS);
+        expect(g.beat.cueAt(Math.floor(i / 48) % 6, 6)).toBe(true);
+        calledAt = -1;
+        checked++;
+      }
+    }
+    audioPrefs.meter = was;
+    expect(checked).toBe(3);
   });
 
   it.each([2, 6])('at level %i, a Sinepede is heard two beats before it comes in, on a beat it may take', (level) => {

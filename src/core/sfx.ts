@@ -583,7 +583,8 @@ class Sfx {
     const at = Math.abs(this.nextBeat - soon) < ahead - BEAT_AHEAD + BEAT_SLACK ? this.nextBeat : soon;
     this.nextBeat = at + seconds;
     this.lastBeat = at;
-    if (beat === 0) this.applyTint(seconds);
+    // The echo is timed in quarters, whatever note the beat is.
+    if (beat === 0) this.applyTint(seconds / meter.unit);
     if (!this.muted) this.music.beat(at, seconds, beat, meter, layers);
   }
 

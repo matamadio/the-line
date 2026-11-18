@@ -294,6 +294,7 @@ The game has no recorded soundtrack. Web Audio synthesizes every note as the gam
 - **Enemies come in on the beat**: on the last beat of the bar, and from level 6 also on the beat half a bar before it. That is never more than two per bar. Kinds take turns: the one furthest past its due time goes next. A Sinepede is called 2 beats ahead of its cue beat, so its hum is heard first.
 - **Enemy actions wait for the beat**: a Disturchin's spikes, a Whiplash or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses last whole beats.
 - **Time signature** (2/4, 3/4, 4/4, 5/4, 6/8 or 7/8, from the audio menu) sets the beats per bar. A change waits for the next bar.
+- **The tempo counts quarter notes.** In 2/4 to 5/4 a beat is a quarter. In 6/8 and 7/8 a beat is an eighth, half as long: 6/8 sways in two groups of three quick beats, 7/8 limps in 2 + 2 + 3. The world runs at the same speed in all six, and a Sinepede is still called two quarters (four eighths) before it comes in.
 
 ### Music styles
 

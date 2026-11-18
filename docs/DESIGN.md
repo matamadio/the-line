@@ -116,7 +116,7 @@ A music-timing core for the game ([issue #3](https://github.com/skepticowl/the-l
 - The whole world runs at `BPM / 75`, and the tempo rises by 2 BPM per level, changing only at the start of a bar.
 - Enemies come in on the beat, one to a beat and never more than two to a bar: on beat 4 only up to level 5, and on beats 2 and 4 from level 6. The kinds take turns, the one furthest past its time going next, so the commonest doesn't take every beat.
 - What they do with a sound also waits for the beat: a Disturchin's spikes, a Whiplash or Reflux setting off, a Bubble Burst letting go or bursting. Warnings and fuses are whole beats.
-- The time signature (2/4, 3/4, 4/4, 5/4, 6/8 or 7/8, from the audio menu) sets how many beats make a bar. In any of them, enemies come in on the last beat of the bar, and later also on the one half a bar before it. A new time signature, like a new tempo, waits for the next bar.
+- The time signature (2/4, 3/4, 4/4, 5/4, 6/8 or 7/8, from the audio menu) sets how many beats make a bar. In any of them, enemies come in on the last beat of the bar, and later also on the one half a bar before it. A new time signature, like a new tempo, waits for the next bar. The tempo counts quarter notes, so 6/8 and 7/8 are real eighth-note meters: their beats are half a quarter long, which gives 6/8 its sway (two groups of three quick beats) and 7/8 its limp (2 + 2 + 3). They were first built as six and seven slow quarters, really 6/4 and 7/4, which sounded much like 3/4. The world's speed follows the tempo, not the beat, so it is the same in all of them.
 
 ## Music
 
