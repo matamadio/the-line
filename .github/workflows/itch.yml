@@ -1,0 +1,55 @@
+# Publishes a release to itch.io (https://skepticowl.itch.io/the_line) when a version tag is pushed.
+# Tag a release with: npm version 1.0.0 && git push --follow-tags
+# Needs the repository secret BUTLER_API_KEY (an itch.io API key); without it, the upload is skipped.
+name: Release to itch.io
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: itch
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      ITCH_TARGET: skepticowl/the_line
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The tag must match package.json, so the version on itch.io is the version in the game.
+      - name: Check the tag matches package.json
+        if: github.ref_type == 'tag'
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Tag v$tag does not match package.json version $pkg"
+            exit 1
+          fi
+      - run: npm run check
+      - run: npx vite build
+      - name: Install butler
+        if: env.BUTLER_API_KEY != ''
+        run: |
+          curl -sSfL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d "$RUNNER_TEMP/butler"
+          chmod +x "$RUNNER_TEMP/butler/butler"
+          echo "$RUNNER_TEMP/butler" >> "$GITHUB_PATH"
+      # The html5 channel is the browser version. Only changed files are uploaded.
+      - name: Push to itch.io
+        if: env.BUTLER_API_KEY != ''
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          butler push dist "$ITCH_TARGET:html5" --userversion "$version"
+      - name: Note the skipped upload
+        if: env.BUTLER_API_KEY == ''
+        run: echo "::warning::BUTLER_API_KEY is not set, so nothing was uploaded to itch.io."
