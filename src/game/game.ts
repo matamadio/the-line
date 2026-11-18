@@ -44,7 +44,7 @@ import { WORM_W, Worm } from './actors/worm';
 import { Flattener } from './actors/flattener';
 import { KNOT_HALF, RageKnot, rageWaves, wildHue } from './actors/rage';
 import { Orca, orcaLength } from './actors/orca';
-import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, inVersion, audioButton, nostalgiaButton } from './hud';
+import { type Corner, cornerMove, devLinkAt, fullscreenButton, inDevMenu, inInstallButton, inVersion, audioButton, nostalgiaButton } from './hud';
 import { SPARKLE_IN, drawGame, sparkleColor } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
 import { MORPH_TIME, TitleDust } from './title';
@@ -231,6 +231,8 @@ export class Game {
   installNote = -1;
   /** The start screen's DEV box: hidden until the version is tapped twice, and hidden again the same way. */
   devShown = false;
+  /** The button at the top right a joypad or the arrow keys are on, from the start screen; null on the line. */
+  corner: Corner | null = null;
   /** When the version was last tapped (s of game time), for telling a double tap. */
   private versionTap = -Infinity;
   /** When the start screen's hints began, once he had climbed out of the line; -1 until then. */
@@ -411,6 +413,37 @@ export class Game {
     sfx.preview(bpm, () => meterById(audioPrefs.meter), this.mode === 'play' ? this.musicLayers : LAYERS);
   }
 
+  /**
+   * The buttons at the top right, for a joypad or the arrow keys, on the start screen and in the
+   * pause: right reaches them, the d-pad moves between them, and A (or Enter) presses the one lit.
+   * Left from the last one or Back leaves them. True if the input was theirs.
+   */
+  private handleCorner() {
+    const inp = this.input;
+    // A tap or a click goes where it lands, and leaves the buttons.
+    if (inp.tap) this.corner = null;
+    const paused = this.mode === 'play' && this.paused;
+    if (!paused && (this.menu.page !== 'main' || this.menu.pulling || !this.menu.settled)) { this.corner = null; return false; }
+    // Start carries on from the pause, wherever the ring is. Enter is the pause key too, and on a button it presses it.
+    if (paused && this.corner && inp.pausePressed && !inp.confirm) { this.corner = null; return false; }
+    const from = this.corner, fs = canFullscreen();
+    let to = from;
+    if (inp.menuRight) to = cornerMove(to, 'right', fs);
+    if (inp.menuLeft) to = cornerMove(to, 'left', fs);
+    if (from !== null && inp.menuUp) to = cornerMove(to, 'up', fs);
+    if (from !== null && inp.menuDown) to = cornerMove(to, 'down', fs);
+    if (from === null && to === null) return false;
+    this.corner = to;
+    if (from === null) return true;
+    if (this.menuAsked || inp.backPressed) this.corner = null;
+    else if (to && inp.confirm) {
+      if (to === 'audio') this.openAudio();
+      else if (to === 'nostalgia') this.setNostalgia(!this.neon.retro);
+      else void toggleFullscreen();
+    }
+    return true;
+  }
+
   closeAudio() {
     if (!this.audio.open) return;
     this.audio.hide();
@@ -476,14 +509,17 @@ export class Game {
     if (this.audio.open) {
       if (this.menuAsked || this.input.backPressed) this.closeAudio();
       else this.audio.handle(this.input);
-    } else if (this.menuAsked && this.mode === 'play') this.backToTitle(false);
+    } else if (this.mode === 'play' && this.paused && this.handleCorner()) { /* the buttons had it */ }
+    else if (this.menuAsked && this.mode === 'play') this.backToTitle(false);
     else if (this.input.pausePressed && this.mode === 'play') this.setPaused(!this.paused);
     // OK pauses, so it isn't "any key" in a game; here it carries on all the same.
     else if (ready && (this.menuAsked || this.input.anyPressed || this.input.confirm)) this.backToTitle(true);
     else if (this.mode === 'title' && this.morphT >= MORPH_TIME) {
-      if (this.menuAsked || this.input.backPressed) this.menu.back();
-      else this.menu.handle(this.input);
-    }
+      if (!this.handleCorner()) {
+        if (this.menuAsked || this.input.backPressed) this.menu.back();
+        else this.menu.handle(this.input);
+      }
+    } else if (!this.paused) this.corner = null;
     this.menuAsked = false;
     if (this.paused) { drawGame(this, dt); return; }
     this.titleDust?.update(dt, this.neon, this.time);
