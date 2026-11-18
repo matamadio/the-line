@@ -1389,7 +1389,7 @@ export class Game {
         const [cx, cy] = b.centre(L);
         if (W.flying ? Math.hypot(cx - W.x, cy - W.by) < b.r + W.bubbleR : this.onBody(cx, cy, b.side, b.r)) b.burst();
       }
-      // Walking into one on his side of the line pops it and leaves him dizzy. On the other side he walks by.
+      // Walking into one on his side of the line pops it and leaves him dizzy, and no sparkles. On the other side he walks by.
       if (b.harmful && !b.airborne && W.alive && W.onLine && (W.under ? -1 : 1) === b.side && Math.abs(b.x - W.x) < 6) {
         b.pop();
         const [cx, cy] = b.centre(L);
@@ -1948,8 +1948,8 @@ export class Game {
       // Its own sound when it grows: a bubbling blub.
       if (!right) this.fed(cx, cy, () => e.feed(), BUBBLE_GREEN, undefined, () => sfx.play('reflux', 0.5));
       else {
-        // Popped, it leaves no sparkles: it is only in the way.
         e.pop();
+        this.dropSparkles(cx);
         this.fx.burst(cx, cy, 14, 40, '#ffffff', 0, 0.35);
         this.addScore(3, cx, cy - e.side * 12);
         sfx.play('pop', 0.6);

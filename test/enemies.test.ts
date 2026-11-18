@@ -561,7 +561,7 @@ describe('the game', () => {
     /** Sparkles close to x. */
     const sparklesNear = (g: ReturnType<typeof ready>, x: number) => g.sparkles.filter((s) => Math.abs(s.x - x) < 30).length;
 
-    it('leaves no sparkles when popped by an attack', () => {
+    it('leaves its sparkles when popped by an attack', () => {
       const g = ready();
       const b = new BubbleBurst(g.wavell.x + 60, 1, 3);
       g.bubbles.push(b);
@@ -569,7 +569,7 @@ describe('the game', () => {
       g.tick(PULL);
       run(g, 0.3);
       expect(b.harmful).toBe(false);
-      expect(sparklesNear(g, b.x)).toBe(before);
+      expect(sparklesNear(g, b.x)).toBe(before + DIFF.sparkleKill);
     });
 
     it('walked into on his side: popped, he is dizzy, and it leaves no sparkles', () => {
@@ -972,13 +972,10 @@ describe('the game', () => {
       ['a Sinepede', (g) => { g.sinepedes.push(new Sinepede(g.wavell.x + 60, 0, 1, 1)); }],
       ['a Worm', (g) => { const w = new Worm(g.wavell.x + 60, 0); w.state = 'move'; g.worms.push(w); }],
       ['a Disturchin', (g) => { g.urchins.push(new Urchin(g.wavell.x + 60, 0.01, 5)); }],
+      ['a Bubble Burst', (g) => { g.bubbles.push(new BubbleBurst(g.wavell.x + 60, 1, 5)); }],
     ])('%s leaves one on each side of the line', (_name, plant) => {
       expect(DIFF.sparkleKill).toBe(2);
       expect(killed(plant)).toEqual({ above: 1, below: 1 });
-    });
-
-    it('a Bubble Burst popped leaves none', () => {
-      expect(killed((g) => { g.bubbles.push(new BubbleBurst(g.wavell.x + 60, 1, 5)); })).toEqual({ above: 0, below: 0 });
     });
 
     it('a Sinepede leaves them for each segment as it is flattened, not only for the last', () => {

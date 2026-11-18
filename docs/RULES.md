@@ -129,7 +129,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 - It appears on Wavell's side 65% of the time. Time to burst: 1.74 s at level 1, −0.045 s per level, down to 1.1 s.
 - Its spray makes him dizzy. The wrong attack makes it swell and burst sooner, with a bubbling blub. Walking into it on his side of the line pops it but still leaves him dizzy; on the other side he walks by it.
-- Popping it, with an attack or by walking into it, leaves no sparkles.
+- Popped by the right attack, it leaves its 2 sparkles. Walked into, it leaves none.
 - **From level 6**, half of them float off the line partway and burst after 1.6 s in the air. Attacks along the line can't reach those, and a fed one is too heavy to fly. The spray pops his bubble, and leaves him dizzy if he is on the line under it.
 
 ### Disturchin
@@ -204,7 +204,7 @@ Level 10 is the boss fight. On reaching it, every enemy on the line sinks, and T
 
 Sparkles are the bait: chasing them gives ground to the line. The power-ups are the Rage knot and the Killerwave, an enemy you can ride.
 
-- Every enemy killed leaves 2 sparkles, one on each side of the line, except a Bubble Burst popped by an attack or by walking into it. A Sinepede leaves 2 for each segment flattened, as it goes.
+- Every enemy killed leaves 2 sparkles, one on each side of the line, except a Bubble Burst he walks into. A Sinepede leaves 2 for each segment flattened, as it goes.
 - More appear on their own about every 3 s, at most 6 at a time, as many below the line as above, often behind Wavell.
 - They drift at random and blink out after a few seconds.
 - 12% are **gold**. Gold ones sit 45–65 u off the line, where only his bubble reaches, and are worth 5×. Normal ones sit 6–40 u off.
