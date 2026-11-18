@@ -45,7 +45,7 @@ import { Flattener } from './actors/flattener';
 import { KNOT_HALF, RageKnot, rageWaves, wildHue } from './actors/rage';
 import { Orca, orcaLength } from './actors/orca';
 import { devLinkAt, fullscreenButton, inDevMenu, inInstallButton, audioButton, nostalgiaButton } from './hud';
-import { drawGame } from './render';
+import { SPARKLE_IN, drawGame, sparkleColor } from './render';
 import { MENU_FOCUS, Menu, pressFor } from './menu';
 import { MORPH_TIME, TitleDust } from './title';
 import { END_WORD, endWordGone, levelWord } from './endWord';
@@ -95,7 +95,8 @@ const BOSS_HALF = 46;
 /** How close in front of Wavell a held wipe catches a tidal wave (u). */
 const CATCH = 80;
 export const whiplash = (x: number, warn: number): Whiplash => ({ x, dir: 1, warn, done: false, amp: DIFF.backAmp });
-export interface Sparkle { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean; p: number }
+/** A sparkle drifting about; `caught` once Wavell has it, so it goes without the puff of one running out. */
+export interface Sparkle { x: number; y: number; vx: number; vy: number; life: number; max: number; gold: boolean; p: number; caught?: boolean }
 /** air: it came from a bubble bursting in the air, and pops his bubble too. */
 export interface Drop { x: number; y: number; vx: number; vy: number; side: number; life: number; air: boolean }
 
@@ -1435,8 +1436,13 @@ export class Game {
   private addSparkle(x: number, below: boolean) {
     const gold = Math.random() < DIFF.sparkleGold;
     const off = (below ? 1 : -1) * (gold ? rand(45, 65) : rand(6, 40));
-    const life = rand(3, 4.5);
-    this.sparkles.push({ x, y: this.line.sample(x) + off, vx: rand(-20, 20), vy: rand(-10, 10), life, max: life, gold, p: rand(0, 6) });
+    const life = rand(3, 4.5), y = this.line.sample(x) + off;
+    this.sparkles.push({ x, y, vx: rand(-20, 20), vy: rand(-10, 10), life, max: life, gold, p: rand(0, 6) });
+    // Motes of light gather to where it twinkles in.
+    for (let i = 0; i < (gold ? 9 : 6); i++) {
+      const a = (i / (gold ? 9 : 6)) * Math.PI * 2 + rand(-0.3, 0.3), d = rand(9, 14);
+      this.fx.spark(x + Math.cos(a) * d, y + Math.sin(a) * d, (-Math.cos(a) * d) / SPARKLE_IN, (-Math.sin(a) * d) / SPARKLE_IN, SPARKLE_IN, sparkleColor(gold), 0, 0);
+    }
   }
 
   /** An enemy is dead: what it leaves behind, as many on each side of the line, however many are about already. */
@@ -1463,6 +1469,10 @@ export class Game {
       s.vy = clamp(s.vy, -25, 25);
       s.x += s.vx * dt;
       s.y += s.vy * dt;
+      // A faint trail of glints behind it, more the faster it goes.
+      if (Math.random() < dt * (10 + Math.hypot(s.vx, s.vy) * 0.8)) {
+        this.fx.spark(s.x + rand(-1, 1), s.y + rand(-1, 1), -s.vx * 0.3 + rand(-5, 5), -s.vy * 0.3 + rand(-5, 5) + 6, rand(0.45, 0.8), sparkleColor(s.gold), 0, 2);
+      }
       const g = L.sample(s.x), above = s.y < g;
       if (Math.abs(s.y - g) < 4) { s.y = g + (above ? -4 : 4); s.vy *= -0.5; }
       s.life -= dt;
@@ -1477,6 +1487,7 @@ export class Game {
       }
       if (hit) {
         s.life = 0;
+        s.caught = true;
         this.chain = Math.min(this.chain + 1, 8);
         this.chainT = DIFF.chainTime;
         const pts = this.chain * (s.gold ? 5 : 1);
@@ -1488,6 +1499,8 @@ export class Game {
         this.teach('growth', grow, grow);
       }
     }
+    // Run out (not caught): it goes in a little puff as it shrinks away.
+    for (const s of this.sparkles) if (s.life <= 0 && !s.caught) this.fx.burst(s.x, s.y, s.gold ? 8 : 5, 28, sparkleColor(s.gold), 0, 0.4);
     this.sparkles = this.sparkles.filter((s) => s.life > 0 && s.x > n.camX - 40 && s.x < n.camX + n.viewW + 40);
   }
 

@@ -264,21 +264,39 @@ function drawDrops(g: Game) {
   g.neon.glow(p, BUBBLE_GREEN, 1.1, 1);
 }
 
+/** A sparkle twinkles in over this long (s), and shrinks away over the last SPARKLE_OUT of its life. */
+export const SPARKLE_IN = 0.35;
+export const SPARKLE_OUT = 0.4;
+export const sparkleColor = (gold: boolean) => (gold ? '#fff0a8' : '#ffe680');
+
 function drawSparkles(g: Game) {
   const n = g.neon;
   for (const s of g.sparkles) {
-    // Blinking out in its last second.
-    if (s.life < 1 && Math.floor(s.life * 10) % 2 === 0) continue;
+    const age = s.max - s.life, color = sparkleColor(s.gold);
+    // Blinking in its last second, until it starts to shrink away.
+    if (s.life < 1 && s.life > SPARKLE_OUT && Math.floor(s.life * 10) % 2 === 0) continue;
+    // Twinkling in: it spins open from nothing, a little too big at first, with a ring of light
+    // going out from it. Going: it spins shut, flaring as it shrinks.
+    const k = Math.min(1, age / SPARKLE_IN), out = Math.min(1, s.life / SPARKLE_OUT);
+    const grow = k < 1 ? 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2) : 1;
+    const shrink = out * out * (3 - 2 * out);
+    const spin = (1 - k) * Math.PI * 0.9 - (1 - out) * Math.PI * 1.2;
     const tw = 0.7 + 0.3 * Math.sin(g.time * 9 + s.p);
-    const r = (s.gold ? 5 : 3.4) * tw * Math.min(1, (s.max - s.life) * 4);
+    const r = (s.gold ? 5 : 3.4) * tw * grow * shrink;
+    if (r <= 0.05) continue;
+    const cs = Math.cos(spin), sn = Math.sin(spin);
+    const P = (lx: number, ly: number): [number, number] => [s.x + lx * cs - ly * sn, s.y + lx * sn + ly * cs];
     const p = new Path2D();
+    const ray = (ax: number, ay: number) => { p.moveTo(...P(-ax, -ay)); p.lineTo(...P(ax, ay)); };
     // A four-pointed twinkle.
-    p.moveTo(s.x - r, s.y); p.lineTo(s.x + r, s.y);
-    p.moveTo(s.x, s.y - r); p.lineTo(s.x, s.y + r);
     const q = r * 0.4;
-    p.moveTo(s.x - q, s.y - q); p.lineTo(s.x + q, s.y + q);
-    p.moveTo(s.x - q, s.y + q); p.lineTo(s.x + q, s.y - q);
-    n.glow(p, s.gold ? '#fff0a8' : '#ffe680', s.gold ? 0.8 : 0.6, s.gold ? 1.4 : 1);
+    ray(r, 0); ray(0, r); ray(q, q); ray(q, -q);
+    n.glow(p, color, s.gold ? 0.8 : 0.6, (s.gold ? 1.4 : 1) * (1 + 0.8 * (1 - out)));
+    if (k < 1) {
+      const ring = new Path2D();
+      ring.arc(s.x, s.y, (s.gold ? 5 : 3.4) * (0.6 + 2.4 * k), 0, Math.PI * 2);
+      n.glow(ring, color, 0.4, 1 - k);
+    }
   }
 }
 

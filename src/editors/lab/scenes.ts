@@ -162,6 +162,10 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g, true); const w = new Worm(ahead(g, 90)); w.state = 'move'; g.worms.push(w); },
   },
   {
+    name: 'Sparkles: twinkle in, drift about, run out', dur: 5,
+    setup: (g) => { ready(g); g['dropSparkles'](ahead(g, 70)); g['dropSparkles'](ahead(g, 150)); },
+  },
+  {
     name: 'Growing: the sparkles that make up a size', dur: 3.5, keys: [['right', 0.1, 3.2]],
     setup: (g) => {
       ready(g);
