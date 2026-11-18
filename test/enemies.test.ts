@@ -928,8 +928,8 @@ describe('the game', () => {
       expect(killed(plant)).toEqual({ above: 1, below: 1 });
     });
 
-    it('a Sinepede leaves none until its last segment goes', () => {
-      expect(killed((g) => { g.sinepedes.push(new Sinepede(g.wavell.x + 60, 0, 2, 1)); })).toEqual({ above: 0, below: 0 });
+    it('a Sinepede leaves them for each segment as it is flattened, not only for the last', () => {
+      expect(killed((g) => { g.sinepedes.push(new Sinepede(g.wavell.x + 60, 0, 2, 1)); })).toEqual({ above: 1, below: 1 });
     });
 
     it('a Whiplash pulled flat leaves them too', () => {

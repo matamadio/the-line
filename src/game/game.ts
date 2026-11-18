@@ -1948,7 +1948,8 @@ export class Game {
         this.fx.burst(x, y, 10, 40, COLORS.enemy, 0, 0.3);
         n.shake = Math.max(n.shake, 0.4);
         sfx.cancelled(side, e.count === 0);
-        if (e.count === 0) this.dropSparkles(x);
+        // Every segment flattened leaves its sparkles, there and then.
+        this.dropSparkles(x);
       } else {
         e.grow(W.x);
         e.knock((Math.sign(x - W.x) || 1) * DIFF.knock);
@@ -2030,7 +2031,7 @@ export class Game {
       if (s.count > 0) s.knock(away * DIFF.knock);
       L.pulse(x, -side * 5, 10, away);
       sfx.cancelled(side, s.count === 0);
-      if (s.count === 0) this.dropSparkles(x);
+      this.dropSparkles(x);
     }
   }
 
