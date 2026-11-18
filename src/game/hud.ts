@@ -151,6 +151,12 @@ function drawVersion(n: Neon) {
   n.text(VERSION_TEXT, n.w - s * 0.8, screenBottom(n) - s * 0.45, s * 0.4, '#c9a640', 'right', 0.6);
 }
 
+/** Where a tap counts as on the version: generous, as the text is small. */
+export function inVersion(n: Neon, x: number, y: number) {
+  const s = hudSize(n), bottom = screenBottom(n);
+  return x >= n.w - s * 7 && x <= n.w && y >= bottom - s * 1.2 && y <= bottom;
+}
+
 /** The install button's box on screen, down to the right of the start screen. */
 function installBox(n: Neon) {
   const s = hudSize(n), w = s * 5.6, h = s * 1.3, pad = s * 0.8;
@@ -340,7 +346,7 @@ export function drawHud(g: Game) {
         const hintAlpha = clamp(Math.min(inHint, HINT_TIME - inHint) / HINT_FADE, 0, 1);
         n.text(TITLE_HINTS[Math.floor(t / HINT_TIME) % TITLE_HINTS.length], cx, n.lineY + s * 3.9, s * 0.55, '#c9a640', 'center', hintAlpha);
       }
-      drawDevMenu(g);
+      if (g.devShown) drawDevMenu(g);
       if (canInstall()) drawInstall(g);
       drawVersion(n);
     }

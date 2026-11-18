@@ -457,8 +457,30 @@ describe('the dev menu', () => {
   beforeEach(() => vi.stubGlobal('location', { href: '' }));
   afterEach(() => vi.unstubAllGlobals());
 
+  /** Two taps on the version, down in the right corner of the fake view. */
+  const reveal = (g: ReturnType<typeof headlessGame>) => { tap(g, 330, 196); tap(g, 330, 196); };
+
+  it('is hidden until the version is tapped twice, and hides again the same way', () => {
+    const g = headlessGame();
+    expect(g.devShown).toBe(false);
+    expect(tap(g, ...links.settings)).toBe(false);
+    reveal(g);
+    expect(g.devShown).toBe(true);
+    reveal(g);
+    expect(g.devShown).toBe(false);
+  });
+
+  it('takes two taps far apart as two single taps', () => {
+    const g = headlessGame();
+    tap(g, 330, 196);
+    for (let i = 0; i < STEPS_PER_SECOND; i++) g.tick(IDLE);
+    tap(g, 330, 196);
+    expect(g.devShown).toBe(false);
+  });
+
   it('opens each editor from the start screen', () => {
     const g = headlessGame();
+    reveal(g);
     expect(tap(g, ...links.settings)).toBe(true);
     expect(location.href).toBe('difficulty.html');
     expect(tap(g, ...links.animation)).toBe(true);
@@ -467,12 +489,14 @@ describe('the dev menu', () => {
 
   it('keeps a tap on the rest of the box from starting the game', () => {
     const g = headlessGame();
+    reveal(g);
     expect(tap(g, ...links.heading)).toBe(true);
     expect(location.href).toBe('');
   });
 
   it('is not there during a game, or while the word is changing', () => {
     const g = headlessGame();
+    reveal(g);
     g.start();
     expect(tap(g, ...links.settings)).toBe(false);
     g.backToTitle(true);
