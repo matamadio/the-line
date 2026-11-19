@@ -278,7 +278,13 @@ git push --follow-tags
 
 `npm version` sets the version in `package.json` and makes the commit and the `v1.0.0` tag. The tag starts `.github/workflows/itch.yml`, which checks and builds the game and uploads `dist/` to the itch.io page's `html5` channel with [butler](https://itch.io/docs/butler/), only sending the files that changed. The release fails if the tag and `package.json` disagree.
 
-The upload needs the repository secret `BUTLER_API_KEY`, an API key from itch.io's settings; without it the workflow skips the upload. After the very first upload, tick "This file will be played in the browser" on it in the itch.io page's settings; later uploads keep that.
+The upload needs the secret `BUTLER_API_KEY`, an API key from itch.io's settings, kept in the repository's `itch` environment: only `v*` tags can use that environment, so a workflow on another branch can't read the key. Without it the workflow skips the upload. Only skepticowl can push `v*` tags, so only skepticowl can release; running the workflow by hand only works on a tag. After the very first upload, tick "This file will be played in the browser" on it in the itch.io page's settings; later uploads keep that.
+
+### Repository rules
+
+- `main` takes changes through a pull request whose CI (`check`) passes; no force-pushes or deleting it. The repository admin can bypass this.
+- Secret scanning blocks pushes that contain keys or tokens. Dependabot opens pull requests for vulnerable dependencies.
+- Security problems are reported privately: see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 

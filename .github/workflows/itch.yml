@@ -1,12 +1,16 @@
 # Publishes a release to itch.io (https://skepticowl.itch.io/the-line) when a version tag is pushed.
 # Tag a release with: npm version 1.0.0 && git push --follow-tags
-# Needs the repository secret BUTLER_API_KEY (an itch.io API key); without it, the upload is skipped.
+# Needs the secret BUTLER_API_KEY (an itch.io API key) in the itch environment, which only v* tags can use;
+# without it, the upload is skipped. Only skepticowl can push v* tags (a ruleset), so only skepticowl releases.
 name: Release to itch.io
 
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: itch
@@ -15,6 +19,8 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # The itch.io key lives here, out of reach of workflows on other branches.
+    environment: itch
     env:
       BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
       ITCH_TARGET: skepticowl/the-line
