@@ -40,7 +40,7 @@ export type State = 'appear' | 'ground' | 'drag' | 'flip' | 'fly' | 'land' | 'ri
  * line from both.
  */
 export type Death = 'fall' | 'zap' | 'pop' | 'flatten';
-export type WavellEvent = 'appear' | 'drag' | 'haul' | 'release' | 'flipDown' | 'flipUp' | 'fly' | 'land' | 'step' | 'dizzy' | 'grow' | 'shrink';
+export type WavellEvent = 'appear' | 'drag' | 'haul' | 'release' | 'flipDown' | 'flipUp' | 'inflate' | 'fly' | 'land' | 'step' | 'dizzy' | 'grow' | 'shrink';
 
 /** Units per second for each step of `vel` (the original scrolled 1 px every 10 ms). */
 const FLY_TIME = 3.85;
@@ -322,7 +322,7 @@ export class Wavell {
           this.events.push(this.side < 0 ? 'flipDown' : 'flipUp');
           break;
         }
-        if (this.side > 0 ? up : down) { this.vel = 0; this.go('fly'); this.by = ground - this.side * this.cur[I.head + 1] * this.scale; break; }
+        if (this.side > 0 ? up : down) { this.vel = 0; this.go('fly'); this.events.push('inflate'); this.by = ground - this.side * this.cur[I.head + 1] * this.scale; break; }
         break;
       }
       case 'drag': {
