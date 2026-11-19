@@ -13,7 +13,7 @@ import { whiplash, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 import { sfx } from '../src/core/sfx';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() {}, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { inflate() {}, deflate() {}, blub() {}, static() { return () => {}; }, twinkle() {}, caught() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() { return () => {}; }, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
 
 // These script each enemy to the second; test/beat.test.ts covers them on the beat.
 DIFF.beatOn = 0;
@@ -1995,5 +1995,87 @@ describe('the Killerwave', () => {
     floatAt(g, tx + 14, ty + 4);
     g.tick(IDLE);
     expect(g.wavell.state).toBe('fly');
+  });
+});
+
+describe('sounds that decorate the music', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('fills his head as he floats up, over the takeoff, and empties it as he lands, over the landing', () => {
+    const g = ready();
+    const inflate = vi.spyOn(sfx, 'inflate'), deflate = vi.spyOn(sfx, 'deflate');
+    g.tick({ ...IDLE, upPressed: true });
+    expect(inflate).toHaveBeenCalledTimes(1);
+    expect(inflate).toHaveBeenCalledWith(TUNE.takeoff);
+    run(g, TUNE.takeoff + 0.05);
+    expect(g.wavell.flying).toBe(true);
+    expect(deflate).not.toHaveBeenCalled();
+    for (let i = 0; i < STEPS_PER_SECOND * 8 && g.wavell.state !== 'land'; i++) g.tick({ ...IDLE, down: true });
+    expect(g.wavell.state).toBe('land');
+    expect(deflate).toHaveBeenCalledTimes(1);
+    expect(deflate).toHaveBeenCalledWith(TUNE.landTime);
+    expect(inflate).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('sparkle and Disturchin sounds', () => {
+  afterEach(() => vi.restoreAllMocks());
+  const near = (g: ReturnType<typeof ready>, life = 5) => {
+    const x = g.wavell.x + 2;
+    g.sparkles.push({ x, y: g.line.sample(x) - 15, vx: 0, vy: 0, life, max: life, gold: false, p: 0 });
+  };
+
+  it('rings each sparkle of a chain one step higher, and starts over once the chain breaks', () => {
+    const g = ready();
+    const caught = vi.spyOn(sfx, 'caught');
+    for (let i = 0; i < 3; i++) { near(g); g.tick(IDLE); }
+    expect(caught.mock.calls.map((c) => c[0])).toEqual([1, 2, 3]);
+    run(g, DIFF.chainTime + 0.1);
+    near(g);
+    g.tick(IDLE);
+    expect(caught.mock.lastCall![0]).toBe(1);
+  });
+
+  it('plays each note of a chain higher on the scale than the one before', async () => {
+    const { catchPitch } = await vi.importActual<typeof import('../src/core/sfx')>('../src/core/sfx');
+    const notes = [1, 2, 3, 4, 5, 6, 7, 8].map((c) => catchPitch(c));
+    expect(notes[0]).toBeCloseTo(880);
+    for (let i = 1; i < notes.length; i++) expect(notes[i]).toBeGreaterThan(notes[i - 1]);
+    // In the yo scale too, and the eighth is an octave and more over the first.
+    const yo = [1, 2, 3, 4, 5, 6].map((c) => catchPitch(c, [0, 2, 5, 7, 9]));
+    expect(yo[5]).toBeCloseTo(1760);
+  });
+
+  it('twinkles a sparkle in, and out again when it runs out uncaught', () => {
+    const g = ready();
+    const twinkle = vi.spyOn(sfx, 'twinkle');
+    (g as unknown as { addSparkle(x: number, below: boolean): void }).addSparkle(g.wavell.x + 60, false);
+    expect(twinkle).toHaveBeenLastCalledWith(1);
+    twinkle.mockClear();
+    const s = g.sparkles[0];
+    run(g, s.life + 0.1);
+    expect(g.sparkles).not.toContain(s);
+    expect(twinkle).toHaveBeenCalledWith(-1);
+  });
+
+  it('crackles with static through a Disturchin\'s warning, cut off with its rumble', () => {
+    const g = ready();
+    const cut = vi.fn();
+    const crackle = vi.spyOn(sfx, 'static').mockReturnValue(cut);
+    g.quiet = false;
+    g.playTime = DIFF.urchinFrom + 1;
+    g.level = 5;
+    const clocks = g as unknown as { backClock: number; refluxClock: number; sineClock: number; urchinClock: number; wormClock: number; bubbleClock: number };
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && !g.urchins.length; i++) {
+      clocks.urchinClock = 99;
+      clocks.backClock = clocks.refluxClock = clocks.sineClock = clocks.wormClock = clocks.bubbleClock = -99;
+      g.tick(IDLE);
+    }
+    const u = g.urchins[0];
+    expect(u).toBeDefined();
+    expect(crackle).toHaveBeenCalledTimes(1);
+    expect(crackle.mock.lastCall![0]).toBeCloseTo(u.warn, 1);
+    u.hush!();
+    expect(cut).toHaveBeenCalled();
   });
 });

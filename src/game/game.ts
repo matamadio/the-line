@@ -641,8 +641,9 @@ export class Game {
       else if (e === 'haul') this.haul();
       else if (e === 'flipDown') sfx.play('flipDown');
       else if (e === 'flipUp') sfx.play('flipUp');
+      else if (e === 'inflate') sfx.inflate(this.heard(TUNE.takeoff));
       else if (e === 'fly') this.fx.burst(W.x, L.sample(W.x), 20, 45, COLORS.wavell, 0, 0.35);
-      else if (e === 'land') this.fx.burst(W.x, L.sample(W.x), 14, 50, COLORS.wavell, 60, 0.4);
+      else if (e === 'land') { sfx.deflate(this.heard(TUNE.landTime)); this.fx.burst(W.x, L.sample(W.x), 14, 50, COLORS.wavell, 60, 0.4); }
       else if (e === 'dizzy') sfx.play('offline', 0.6);
       else if (e === 'grow') {
         sfx.grew(W.size);
@@ -922,7 +923,7 @@ export class Game {
       const x = rand(n.camX + 20, n.camX + n.viewW - 20);
       if (Math.abs(x - W.x) < 18 || (x > B.front - 10 && x < B.back + 10) || this.clash(x, BUBBLE_ROOM)) continue;
       this.bubbles.push(new BubbleBurst(x, 1, this.inBeats(0.8), this.inBeats(DIFF.bubbleFlyTime)));
-      sfx.play('pop', 0.25);
+      sfx.blub(0.8);
       return;
     }
   }
@@ -1199,7 +1200,8 @@ export class Game {
     if (this.clash(x, URCHIN_ROOM) || (k && Math.abs(k.x - x) < KNOT_HALF + URCHIN_ROOM + ENEMY_GAP)) return;
     this.urchinClock = rand(-1, 0);
     const u = new Urchin(x, warn, DIFF.urchinHold);
-    u.hush = sfx.rumble(this.heard(warn));
+    const rumble = sfx.rumble(this.heard(warn)), crackle = sfx.static(this.heard(warn));
+    u.hush = () => { rumble(); crackle(); };
     this.urchins.push(u);
     this.cue = false;
     this.teach('urchin', 'DISTURCHIN: where the line fuzzes, spikes come out. SWIPE ↔ to pull it flat', 'DISTURCHIN: where the line fuzzes, spikes come out. {pull} pulls it flat');
@@ -1413,7 +1415,7 @@ export class Game {
         // One that floats off needs a beat on the line and a beat to let go.
         this.bubbles.push(new BubbleBurst(x, side, this.inBeats(at('bubbleGrow', this.ramp), flies ? 2 : 1), flies ? this.inBeats(DIFF.bubbleFlyTime) : 0));
         this.cue = false;
-        sfx.play('reflux', 0.25);
+        sfx.blub();
         this.teach('bubble', 'BUBBLE BURST: SWIPE ↔ on your side, SWIPE ↕ on the other, or keep away', 'BUBBLE BURST: {pull} on your side, {drag} on the other, or keep away');
       }
     }
@@ -1499,6 +1501,7 @@ export class Game {
     const off = (below ? 1 : -1) * (gold ? rand(45, 65) : rand(6, 40));
     const life = rand(3, 4.5), y = this.line.sample(x) + off;
     this.sparkles.push({ x, y, vx: rand(-20, 20), vy: rand(-10, 10), life, max: life, gold, p: rand(0, 6) });
+    sfx.twinkle(1);
     // Motes of light gather to where it twinkles in.
     for (let i = 0; i < (gold ? 9 : 6); i++) {
       const a = (i / (gold ? 9 : 6)) * Math.PI * 2 + rand(-0.3, 0.3), d = rand(9, 14);
@@ -1554,14 +1557,14 @@ export class Game {
         const pts = this.chain * (s.gold ? 5 : 1);
         this.addScore(pts, s.x, s.y - 8);
         this.fx.burst(s.x, s.y, s.gold ? 20 : 10, 40, s.gold ? '#ffffff' : '#fff3a0', 0, 0.35);
-        sfx.play('bonus', 0.35);
+        sfx.caught(this.chain, s.gold);
         W.collect();
         const grow = `${DIFF.sparksPerSize} SPARKLES FILL A CIRCLE: a hit takes a circle, with none left it's game over`;
         this.teach('growth', grow, grow);
       }
     }
     // Run out (not caught): it goes in a little puff as it shrinks away.
-    for (const s of this.sparkles) if (s.life <= 0 && !s.caught) this.fx.burst(s.x, s.y, s.gold ? 8 : 5, 28, sparkleColor(s.gold), 0, 0.4);
+    for (const s of this.sparkles) if (s.life <= 0 && !s.caught) { this.fx.burst(s.x, s.y, s.gold ? 8 : 5, 28, sparkleColor(s.gold), 0, 0.4); sfx.twinkle(-1); }
     this.sparkles = this.sparkles.filter((s) => s.life > 0 && s.x > n.camX - 40 && s.x < n.camX + n.viewW + 40);
   }
 

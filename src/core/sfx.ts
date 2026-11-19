@@ -5,7 +5,7 @@
 // lowpass and an echo timed to the beat), and the music. Muting turns the master down.
 
 import { audioPrefs, saveAudioPrefs } from './audioPrefs';
-import { LAYERS, Music, type Meter } from './music';
+import { LAYERS, Music, noteRand, type Meter } from './music';
 import { STYLES, styleById, type Style } from './styles';
 
 const SAMPLES = {
@@ -81,6 +81,28 @@ const DISTORTION = (() => {
   for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(((i / (curve.length - 1)) * 2 - 1) * 14);
   return curve;
 })();
+
+/** How loud his head filling and emptying as he floats is: it sits under the music. */
+const FLOAT_VOLUME = 0.35;
+
+/** A Bubble Burst forming on the line: two blubs. */
+const BLUB_VOLUME = 0.8;
+/** How loud a Sinepede's notes are as it comes in. */
+const CALL_VOLUME = 0.45;
+/** The Disturchin's static, under its rumble. */
+const STATIC_VOLUME = 0.1;
+/** Sparkles: twinkling in and out, quietly, and the bell of one caught. */
+const TWINKLE_VOLUME = 0.08, CATCH_VOLUME = 0.3;
+/** Sparkles twinkling in or out closer together than this (s) make one sound. */
+const TWINKLE_GAP = 0.08;
+/** The scale the decorations keep to when the style has none: A minor, the key of the music. */
+const A_MINOR = [0, 2, 3, 5, 7, 8, 10];
+
+/** A caught sparkle's note (Hz): A 880 for the first of a chain, one step up the scale for each after it. */
+export function catchPitch(chain: number, scale: readonly number[] = A_MINOR) {
+  const steps = [...scale].sort((x, y) => x - y), k = Math.max(0, chain - 1);
+  return 880 * 2 ** ((12 * Math.floor(k / steps.length) + steps[k % steps.length]) / 12);
+}
 
 /** How loud the sound effects are, under the music (MUSIC_VOLUME in music.ts). */
 const SFX_VOLUME = 0.55;
@@ -229,7 +251,7 @@ class Sfx {
 
   /** A Sinepede announces itself: one pure tone per segment, high for a crest, low for a trough. */
   call(sides: readonly number[]) {
-    sides.forEach((side, i) => this.tone(sinePitch(side), 0.14, 0.3, sinePitch(side), i * 0.11));
+    sides.forEach((side, i) => this.tone(sinePitch(side), 0.14, CALL_VOLUME, sinePitch(side), i * 0.11));
   }
 
   /** The right attack: that segment's own note, dropping away to nothing. */
@@ -530,6 +552,189 @@ class Sfx {
       g.gain.setTargetAtTime(0, now, 0.01);
       for (const o of [a, b]) o.stop(now + 0.06);
     };
+  }
+
+  /** A second of the music's own noise, made once: never Math.random, which the game's replays depend on. */
+  private air: AudioBuffer | null = null;
+  private airSource(ctx: AudioContext) {
+    if (!this.air) {
+      const buf = this.air = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = noteRand() * 2 - 1;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.air;
+    src.loop = true;
+    return src;
+  }
+
+  /** Where a decoration goes: panned, into the style's lowpass and echo like every sound. */
+  private panned(ctx: AudioContext, pan: number) {
+    const p = ctx.createStereoPanner();
+    p.pan.value = pan;
+    p.connect(this.out!);
+    return p;
+  }
+
+  /**
+   * Floating up: his head fills like a balloon over `seconds`, a breathy whistle rising an
+   * octave (A 440 to A 880) over a rush of air, a little vibrato coming in as it fills,
+   * then a soft tick as it lets go of the line.
+   */
+  inflate(seconds: number) { this.whistle(seconds, 1); }
+  /** Landing: the same, backwards. The tick as he touches down, then the whistle and the air sink an octave and die away. */
+  deflate(seconds: number) { this.whistle(seconds, -1); }
+
+  private whistle(seconds: number, dir: 1 | -1) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const at = this.now(ctx), end = at + seconds;
+    const low = 440, high = 880, [from, to] = dir > 0 ? [low, high] : [high, low];
+    const out = this.panned(ctx, 0);
+    // Inflating swells in and stops as it lets go; deflating starts full and dies away.
+    const envelope = (g: GainNode, peak: number) => {
+      g.gain.setValueAtTime(0.0001, at);
+      if (dir > 0) {
+        g.gain.exponentialRampToValueAtTime(peak, end - 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, end + 0.05);
+      } else {
+        g.gain.exponentialRampToValueAtTime(peak, at + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, end);
+      }
+    };
+    const glide = (p: AudioParam, a: number, z: number) => { p.setValueAtTime(a, at); p.exponentialRampToValueAtTime(z, end); };
+    // The flute: a sine with a vibrato that deepens as the bubble fills (or fades as it empties).
+    const osc = ctx.createOscillator(), tg = ctx.createGain(), vib = ctx.createOscillator(), depth = ctx.createGain();
+    glide(osc.frequency, from, to);
+    vib.frequency.value = 6;
+    depth.gain.setValueAtTime(dir > 0 ? 0 : 9, at);
+    depth.gain.linearRampToValueAtTime(dir > 0 ? 9 : 0, end);
+    vib.connect(depth).connect(osc.frequency);
+    envelope(tg, FLOAT_VOLUME);
+    osc.connect(tg).connect(out);
+    // The whistle's breath: air through a narrow band on the note, so the air itself sings.
+    const breath = this.airSource(ctx), band = ctx.createBiquadFilter(), bg = ctx.createGain();
+    band.type = 'bandpass';
+    band.Q.value = 12;
+    glide(band.frequency, from * 2, to * 2);
+    envelope(bg, FLOAT_VOLUME * 2.2);
+    breath.connect(band).connect(bg).connect(out);
+    // And a wide, soft rush of air under it.
+    const rush = this.airSource(ctx), hp = ctx.createBiquadFilter(), rg = ctx.createGain();
+    hp.type = 'highpass';
+    glide(hp.frequency, from * 3, to * 3);
+    envelope(rg, FLOAT_VOLUME * 0.35);
+    rush.connect(hp).connect(rg).connect(out);
+    for (const s of [osc, vib, breath, rush]) { s.start(at); s.stop(end + 0.08); }
+    // The tick: as the bubble lets go of the line, or as it touches back down.
+    const t = ctx.createOscillator(), g = ctx.createGain(), when = dir > 0 ? end : at;
+    t.frequency.value = high * 2;
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(FLOAT_VOLUME * 0.3, when + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+    t.connect(g).connect(out);
+    t.start(when);
+    t.stop(when + 0.07);
+  }
+
+  /** A Bubble Burst starts to form on the line: three blubs, each a sine sweeping quickly up. */
+  blub(volume = 1) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const at = this.now(ctx), out = this.panned(ctx, 0);
+    for (const [from, delay, v] of [[380, 0, 1], [520, 0.07, 0.8], [440, 0.15, 0.65]] as const) {
+      const t = at + delay, osc = ctx.createOscillator(), g = ctx.createGain();
+      osc.frequency.setValueAtTime(from, t);
+      osc.frequency.exponentialRampToValueAtTime(from * 2.5, t + 0.07);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(BLUB_VOLUME * v * volume, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.085);
+      osc.connect(g).connect(out);
+      osc.start(t);
+      osc.stop(t + 0.1);
+    }
+  }
+
+  private crackle: AudioBuffer | null = null;
+  /**
+   * A Disturchin's warning, with the rumble: a faint crackle of static and a thin buzz,
+   * growing over `seconds` until its spikes come out. Returns how to cut it off.
+   */
+  static(seconds: number): () => void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return () => {};
+    if (!this.crackle) {
+      // Hiss with sparse pops in it, like a badly earthed amp.
+      const buf = this.crackle = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) {
+        const pop = noteRand() < 0.0015 ? (noteRand() * 2 - 1) * 6 : 0;
+        d[i] = (noteRand() * 2 - 1) * 0.35 + pop;
+      }
+    }
+    const at = this.now(ctx), end = at + seconds;
+    const src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain(), buzz = ctx.createOscillator(), bz = ctx.createGain();
+    src.buffer = this.crackle;
+    src.loop = true;
+    hp.type = 'highpass';
+    hp.frequency.value = 2500;
+    // A thin mains buzz under the crackle, its upper harmonics only, an octave over the rumble.
+    buzz.type = 'sawtooth';
+    buzz.frequency.value = 116;
+    bz.gain.value = 0.5;
+    buzz.connect(bz).connect(hp);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(STATIC_VOLUME, end - 0.02);
+    g.gain.linearRampToValueAtTime(0, end);
+    src.connect(hp).connect(g).connect(this.out!);
+    for (const o of [src, buzz]) { o.start(at); o.stop(end + 0.02); }
+    return () => {
+      const now = ctx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setTargetAtTime(0, now, 0.01);
+      for (const o of [src, buzz]) o.stop(now + 0.06);
+    };
+  }
+
+  private lastTwinkle = -1;
+  /**
+   * A sparkle twinkles in (dir 1): two soft, high bells rising a fifth, E then B over A 880.
+   * Out (dir -1): the same, falling. Several at once make one sound.
+   */
+  twinkle(dir: 1 | -1) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const now = this.now(ctx);
+    if (now - this.lastTwinkle < TWINKLE_GAP) return;
+    this.lastTwinkle = now;
+    const scale = this.style.scale ?? A_MINOR, out = this.panned(ctx, 0);
+    const a = onScale(1318.5, scale), b = onScale(1975.5, scale), notes = dir > 0 ? [a, b] : [b, a];
+    notes.forEach((f, i) => this.bell(f, now + i * 0.06, TWINKLE_VOLUME * (i ? 0.8 : 1), 0.25, out));
+  }
+
+  /**
+   * A sparkle caught: a bell, one step up the scale for each in the chain, from A 880 for
+   * the first. A gold one rings an octave over it too.
+   */
+  caught(chain: number, gold: boolean) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const f = catchPitch(chain, this.style.scale), at = this.now(ctx), out = this.panned(ctx, 0);
+    this.bell(f, at, CATCH_VOLUME, 0.45, out);
+    if (gold) this.bell(f * 2, at + 0.02, CATCH_VOLUME * 0.5, 0.6, out);
+  }
+
+  /** A small bell: a sine and its quiet, quickly dying overtone. */
+  private bell(f: number, at: number, vol: number, seconds: number, out: AudioNode) {
+    const ctx = this.ctx!;
+    for (const [mul, v, len] of [[1, vol, seconds], [2.76, vol * 0.25, seconds * 0.4]] as const) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f * mul;
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(v, at + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+      o.connect(g).connect(out);
+      o.start(at);
+      o.stop(at + len + 0.02);
+    }
   }
 
   toggleMute() { this.setMuted(!this.muted); }
