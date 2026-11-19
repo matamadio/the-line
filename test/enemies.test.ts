@@ -7,7 +7,7 @@ import { SEG_W, Sinepede } from '../src/game/actors/sinepede';
 import { BubbleBurst } from '../src/game/actors/bubble';
 import { Urchin } from '../src/game/actors/urchin';
 import { Worm } from '../src/game/actors/worm';
-import { RageKnot, UNTIE, rageWaves } from '../src/game/actors/rage';
+import { KNOT_HALF, RageKnot, UNTIE, rageWaves } from '../src/game/actors/rage';
 import { Orca, STALK_LEAD } from '../src/game/actors/orca';
 import { whiplash, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
@@ -1500,7 +1500,7 @@ describe('the Rage knot', () => {
     run(g, 0.2);
     expect(g.knot).not.toBeNull();
     g.knot = null;
-    Object.assign(g, { rageClock: DIFF.rageAfter + 20 });
+    Object.assign(g, { rageClock: DIFF.rageAfter + 20, sincePower: Infinity });
     run(g, 0.5);
     expect(g.knot).toBeNull();
     into(g, DIFF.rageLevel + 1, 0.1);
@@ -1771,6 +1771,80 @@ describe('reaching the end of the line', () => {
     const g = caught(ENEMIES[0][1]);
     run(g, 2);
     expect(g.wavell.alive).toBe(true);
+  });
+});
+
+describe('the power-ups keep apart', () => {
+  type Clocks = { rageClock: number; orcaClock: number; sincePower: number; urchinClock: number };
+  /** At a level with both, the knot and the Killerwave both due, and room behind him. */
+  const bothDue = () => {
+    const g = ready();
+    g.quiet = false;
+    g.level = Math.max(DIFF.rageLevel, DIFF.orcaLevel);
+    g.tick(IDLE);
+    g.endX = g.wavell.x - DIFF.orcaRoom - 20;
+    return g;
+  };
+  const due = (g: ReturnType<typeof ready>, c: Partial<Clocks>) => Object.assign(g, c);
+
+  it('no Rage knot while the Killerwave is out, nor soon after it', () => {
+    const g = bothDue();
+    g.dropOrca();
+    expect(g.orca).not.toBeNull();
+    due(g, { rageClock: DIFF.rageAfter });
+    run(g, 0.5);
+    expect(g.knot).toBeNull();
+    g.orca = null;
+    run(g, 0.5);
+    expect(g.knot).toBeNull();
+    due(g, { sincePower: DIFF.powerGap - 0.3 });
+    run(g, 0.2);
+    expect(g.knot).toBeNull();
+    run(g, 0.2);
+    expect(g.knot).not.toBeNull();
+  });
+
+  it('no Killerwave while a Rage knot is on the line, nor soon after it', () => {
+    const g = bothDue();
+    g.knot = new RageKnot(g.wavell.x + 150, 60);
+    due(g, { orcaClock: DIFF.orcaEvery, rageClock: -99 });
+    run(g, 0.5);
+    expect(g.orca).toBeNull();
+    g.knot = null;
+    run(g, 0.5);
+    expect(g.orca).toBeNull();
+    due(g, { sincePower: DIFF.powerGap - 0.3 });
+    run(g, 0.2);
+    expect(g.orca).toBeNull();
+    run(g, 0.2);
+    expect(g.orca).not.toBeNull();
+  });
+
+  it('no Rage knot on a Disturchin: it waits for a clear spot', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      seeded(seed);
+      const g = bothDue();
+      const u = new Urchin(g.wavell.x + 130, 0.01, 60);
+      g.urchins.push(u);
+      due(g, { rageClock: DIFF.rageAfter, orcaClock: -99, urchinClock: -99 });
+      run(g, 0.5);
+      if (g.knot) expect(Math.abs(g.knot.x - u.x)).toBeGreaterThan(u.reach + KNOT_HALF);
+    }
+  });
+
+  it('no Disturchin on a Rage knot: it tries again later', () => {
+    const g = ready();
+    g.quiet = false;
+    g.playTime = DIFF.urchinFrom + 1;
+    const c = g as unknown as Clocks & { sineClock: number; wormClock: number; bubbleClock: number; backClock: number; refluxClock: number };
+    const clear = () => { c.urchinClock = 99; c.sineClock = c.wormClock = c.bubbleClock = c.backClock = c.refluxClock = -99; };
+    // A knot right where it would come up.
+    g.knot = new RageKnot(Math.min(g.wavell.x + at('urchinAhead', 1) + 10, g.neon.camX + g.neon.viewW - 20), 60);
+    for (let i = 0; i < 2 * STEPS_PER_SECOND; i++) { clear(); g.tick(IDLE); }
+    expect(g.urchins.length).toBe(0);
+    g.knot = null;
+    for (let i = 0; i < 2 * STEPS_PER_SECOND && !g.urchins.length; i++) { clear(); g.tick(IDLE); }
+    expect(g.urchins.length).toBe(1);
   });
 });
 

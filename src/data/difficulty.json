@@ -85,6 +85,7 @@
   "rageStay": 12,
   "rageSpeed": 130,
   "ragePoints": 5,
+  "powerGap": 15,
   "orcaLevel": 5,
   "orcaEvery": 35,
   "orcaRoom": 220,
