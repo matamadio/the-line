@@ -110,6 +110,7 @@ export const DIFF_KNOBS = {
   rageStay: knob('Rage', 'A knot stays for (s)', 12, 2, 60, 1),
   rageSpeed: knob('Rage', 'Its waves run at (u/s)', 130, 40, 600, 10),
   ragePoints: knob('Rage', 'Points for each creature it clears', 5, 0, 50, 1),
+  powerGap: knob('Rage', 'A knot and the Killerwave come at least this far apart (s)', 15, 0, 120, 1),
   orcaLevel: knob('Killerwave', 'Comes from level', 2, 1, 10, 1),
   orcaEvery: knob('Killerwave', 'One every (s)', 35, 5, 300, 1),
   orcaRoom: knob('Killerwave', 'Needs this much line behind Wavell (u)', 220, 140, 400, 5),

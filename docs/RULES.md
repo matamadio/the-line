@@ -136,7 +136,7 @@ There are six threats. Each has one clear rule and one sound that matches its sh
 
 ### Disturchin
 
-- It comes up 185–205 u ahead of Wavell at level 1, 8 u closer each level, down to 110–130 u, but always further than he can walk in its warning, and never past the right of the screen (at least 20 u inside it). It is always to the right of him, even when he has turned round: never behind him, where the end of the line is.
+- It comes up 185–205 u ahead of Wavell at level 1, 8 u closer each level, down to 110–130 u, but always further than he can walk in its warning, and never past the right of the screen (at least 20 u inside it), and never on a Rage knot (it tries again on a later beat). It is always to the right of him, even when he has turned round: never behind him, where the end of the line is.
 - It starts as a fuzz on the line (warning 1.6 s at level 1, −0.1 s per level, down to 0.8 s), then bursts out in spikes for 1 s. With the beat on, the warning is whole beats: 2 beats on levels 1–5, 1 beat from level 6.
 - The opposite-sides rule doesn't apply: **a pull always kills it and a wipe always feeds it.**
 - Each wipe bounces it back (knockback 250), restarts its time with 0.5 s more, makes it bigger and takes one more pull. Dots show how many are left.
@@ -217,7 +217,7 @@ Sparkles are the bait: chasing them gives ground to the line. The power-ups are 
 
 A small scribble of loops tangled into the line (24 u long, up to 15 u off it on each side). It throbs fast and keeps changing shape and colour. It is the original game's Nuke, used the moment it is picked.
 
-- **When:** at most one a level, from level 4 on, 10 s into the level; never during the boss fight. A level passed in under 10 s has none. It sits 100–160 u ahead of Wavell, swells from a small tangle to full size in 0.3 s, and stays 12 s, blinking for the last 2 s. The end of the line eats it if it gets there first.
+- **When:** at most one a level, from level 4 on, 10 s into the level; never during the boss fight. A level passed in under 10 s has none. Never while the Killerwave is out, nor within 15 s of it going. It sits 100–160 u ahead of Wavell, never on a Disturchin (it waits for a clear spot), swells from a small tangle to full size in 0.3 s, and stays 12 s, blinking for the last 2 s. The end of the line eats it if it gets there first.
 - **Picking it:** walk into it from either side of the line, or touch it with the bubble. The bubble then heads straight back to the line (160 u/s) and lands whatever the keys say; he ties back in and takes the knot once he is standing. Nothing can hurt him on the way down, the bubble's time stands still, and the knot waits for him.
 - **Untying it:** sparks of every colour burst out of it, and his outline takes on its changing colours until the last wave is gone. For 0.55 s he tugs the loops apart, shaking, as they pull out into his hands. From then until the last wave is gone, Wavell holds still on a flat stretch of line, nothing can hurt him,. The end of the line stops while he unties it.
 - **Making the waves:** he shouts YEEEEH! and the screen shakes; no word comes up. His eyes go red and look up. He crouches and grabs the line with both hands, 13 u out on each side (0.2 s), and heaves it up over his head (to 0.45 s). The line in his hands follows them, down to rest 17 u further out, while the stretch under his feet stays flat. Then he beats it down and up, one stroke every 0.36 s. A huge wave (50 u tall) goes out each way at the end of each stroke: a crest with his arms up, a trough with them down, a crest again: three each way, at 130 u/s. Then he lowers the line back to rest over 0.6 s.
@@ -229,7 +229,7 @@ A small scribble of loops tangled into the line (24 u long, up to 15 u off it on
 
 An orca made of the line (a killer whale: a killer wave). It is an enemy, and a power-up for whoever rides it.
 
-- **When:** from level 5, one every 35 s, never during the boss fight or Rage. It needs Wavell on the line with at least 220 u of line behind him. It comes up as far back as that line allows (its head up to 140 u behind him, its tail at least 15 u clear of the end), and the end of the line waits until it charges.
+- **When:** from level 5, one every 35 s, never during the boss fight, while a Rage knot is on the line or being used, nor within 15 s of the last one going. It needs Wavell on the line with at least 220 u of line behind him. It comes up as far back as that line allows (its head up to 140 u behind him, its tail at least 15 u clear of the end), and the end of the line waits until it charges.
 - **Coming up:** first only its fin cuts up out of the line, growing from a low bulge to the full fin over 1 s on an otherwise flat line, and comes after him at 1.15× his walking speed (his speed at his size), so he can't outwalk it. Its head never comes closer than 8 u behind him while only the fin shows. Once its head is as far behind him as it goes in a third of its rise (about 50 u), or after 2 s of chasing, the rest of it comes up (1.2 s) and it opens its jaws (0.5 s), keeping its pace all the while: it does not slow down for him, and once it is nearly all out it clears every creature along its body. Then it charges off to the right at 240 u/s, faster than he walks or floats.
 - **On the line, he is hit:** if it reaches him, or he walks into it, while he is on the line (either side), it hits him once (while only the fin is out, only the fin hits), like any enemy: he loses a size, or it is game over at no size.
 - **Up in the bubble, it goes by:** under the bubble it does nothing to him. It clears every creature along its body as it goes, as Rage does (5 points each, and their sparkles), and leaves at the right of the screen.
@@ -275,7 +275,8 @@ Anything that gets harder is a ramp: a value at level 1, a change per level and 
 | End of the line speed | 40 u/s | +3 | 80 u/s |
 | Tempo | 75 BPM | +2 | 120 BPM |
 | Sinepede segments | 1 | +0.25 | 4 |
-| Disturchin warning | 0.9 s | −0.02 | 0.5 s |
+| Disturchin warning | 1.6 s | −0.1 | 0.8 s |
+| Disturchin distance ahead | 185 u | −8 | 110 u |
 | Bubble Burst time to burst | 1.74 s | −0.045 | 1.1 s |
 | Whiplash chance per roll | 35% | +4% | 100% |
 | Reflux chance per roll | 29% | +3% | 100% |

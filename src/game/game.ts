@@ -159,6 +159,8 @@ export class Game {
   /** The Killerwave, rising, charging or ridden. */
   orca: Orca | null = null;
   private orcaClock = 0;
+  /** Seconds since the last Rage knot or Killerwave was gone: the next one waits DIFF.powerGap. */
+  private sincePower = Infinity;
   private rageLv = -1;
   private rageDropped = -1;
   /** What Rage's waves have already cleared, so each creature goes once. */
@@ -346,6 +348,7 @@ export class Game {
     this.rageWaves = [];
     this.orca = null;
     this.orcaClock = 0;
+    this.sincePower = Infinity;
     this.rageClock = 0;
     this.rageLv = -1;
     this.rageDropped = -1;
@@ -1191,8 +1194,9 @@ export class Game {
     const warn = this.inBeats(at('urchinWarn', this.ramp));
     const ahead = Math.max(at('urchinAhead', this.ramp), warn * TUNE.walkSpeed + 10) + rand(0, URCHIN_SPREAD);
     const x = Math.min(W.x + ahead, this.neon.camX + this.neon.viewW - URCHIN_EDGE);
-    // No room there: it tries again on a later beat.
-    if (this.clash(x, URCHIN_ROOM)) return;
+    // No room there, or a Rage knot in the way: it tries again on a later beat.
+    const k = this.knot;
+    if (this.clash(x, URCHIN_ROOM) || (k && Math.abs(k.x - x) < KNOT_HALF + URCHIN_ROOM + ENEMY_GAP)) return;
     this.urchinClock = rand(-1, 0);
     const u = new Urchin(x, warn, DIFF.urchinHold);
     u.hush = sfx.rumble(this.heard(warn));
@@ -1622,8 +1626,11 @@ export class Game {
     const lv = this.loop * 100 + this.level;
     if (lv !== this.rageLv) { this.rageLv = lv; this.rageClock = 0; }
     if (W.alive && W.state !== 'appear') this.rageClock += dt;
-    if (!this.quiet && !this.knot && !this.bossTime && !this.raging && W.alive && W.state !== 'appear'
-      && this.level >= DIFF.rageLevel && this.rageDropped !== lv && this.rageClock >= DIFF.rageAfter) this.dropKnot();
+    // Never with the Killerwave out, nor soon after it.
+    if (this.knot || this.raging || this.orca) this.sincePower = 0;
+    else this.sincePower += dt;
+    if (!this.quiet && !this.knot && !this.bossTime && !this.raging && !this.orca && this.sincePower >= DIFF.powerGap && W.alive && W.state !== 'appear'
+      && this.level >= DIFF.rageLevel && this.rageDropped !== lv && this.rageClock >= DIFF.rageAfter) this.dropKnot(false);
     const k = this.knot;
     if (k) {
       k.update(dt);
@@ -1728,7 +1735,8 @@ export class Game {
     const W = this.wavell, L = this.line, n = this.neon;
     if (!this.orca) {
       if (W.alive && W.state !== 'appear' && !this.bossTime) this.orcaClock += dt;
-      if (!this.quiet && !this.bossTime && !this.raging && W.alive && W.onLine && W.state !== 'appear' && this.level >= DIFF.orcaLevel
+      // Never with a Rage knot about, nor soon after one.
+      if (!this.quiet && !this.bossTime && !this.raging && !this.knot && this.sincePower >= DIFF.powerGap && W.alive && W.onLine && W.state !== 'appear' && this.level >= DIFF.orcaLevel
         && this.orcaClock >= DIFF.orcaEvery && W.x - this.endX >= DIFF.orcaRoom) this.dropOrca();
       return;
     }
@@ -1790,12 +1798,17 @@ export class Game {
   /** From untying the Rage knot until the last of its waves is gone. */
   get raging() { return (this.knot !== null && !this.knot.waiting) || this.rageWaves.length > 0; }
 
-  /** A Rage knot on the line ahead of him, now. The difficulty editor drops one on demand. */
-  dropKnot() {
+  /**
+   * A Rage knot on the line ahead of him, now. The difficulty editor drops one on demand.
+   * Never on a Disturchin: in play it waits until it finds a clear spot; on demand it goes anyway.
+   */
+  dropKnot(force = true) {
     const W = this.wavell, n = this.neon;
     if (this.mode !== 'play' || this.raging) return;
+    const x = Math.min(W.x + rand(100, 160), n.camX + n.viewW - KNOT_HALF - 10);
+    if (!force && this.urchins.some((u) => u.state !== 'done' && Math.abs(u.x - x) < u.reach + KNOT_HALF + ENEMY_GAP)) return;
     this.rageDropped = this.loop * 100 + this.level;
-    this.knot = new RageKnot(Math.min(W.x + rand(100, 160), n.camX + n.viewW - KNOT_HALF - 10), DIFF.rageStay);
+    this.knot = new RageKnot(x, DIFF.rageStay);
     sfx.play('powerup', 0.8);
     this.teach('rage', 'RAGE KNOT: touch it to untie it and clear the line', 'RAGE KNOT: touch it to untie it and clear the line');
   }
