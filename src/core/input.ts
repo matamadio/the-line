@@ -31,6 +31,13 @@ export const usesTouch = (inp: { touchUsed: boolean; tv: boolean }) => !inp.tv &
 
 /** How far a joypad's stick has to go to count. */
 const PAD_STICK = 0.5;
+/**
+ * A stick's axis only counts once it has been seen back near the middle. Some joypads
+ * report a trigger, or nothing, as an axis stuck at one end, and on Android a joypad that
+ * wakes up or reconnects can come back with its axes in another order. Either would
+ * otherwise hold a direction down for good.
+ */
+const PAD_REST = 0.25;
 /** The standard layout: the buttons that work in menus whatever the bindings are. */
 const PAD_CONFIRM = [0, 9], PAD_BACK = 1, PAD_MENU = 8, PAD_UP = 12, PAD_DOWN = 13, PAD_LEFT = 14, PAD_RIGHT = 15;
 
@@ -98,6 +105,9 @@ export class Input implements Controls {
   private stickHeld = { left: false, right: false, up: false, down: false };
   private padHeld = { left: false, right: false, up: false, down: false };
   private padPrev: boolean[] = [];
+  /** Which of the joypad's axes have been seen at rest, and which joypad that was. */
+  private axisRest: boolean[] = [];
+  private padKey = '';
   private ui: { id: number; run: () => void } | null = null;
   readonly onKey = new Map<string, () => void>();
   /**
@@ -150,7 +160,9 @@ export class Input implements Controls {
     window.addEventListener('mousemove', (e) => { [this.mouseX, this.mouseY] = this.pos(e); });
     window.addEventListener('keyup', (e) => { const k = this.keyMap.get(keyCode(e)); if (k && k !== 'pause') this.keys[k] = false; });
     if (this.tv) this.trapBack();
-    window.addEventListener('blur', () => { for (const k of Object.keys(this.keys) as (keyof Held)[]) this.keys[k] = false; });
+    window.addEventListener('blur', () => this.letGo());
+    // An app sent to the background may never hear its keys come back up.
+    if (typeof document !== 'undefined') document.addEventListener?.('visibilitychange', () => this.letGo());
 
     el.addEventListener('pointerdown', (e) => {
       e.preventDefault();
@@ -205,6 +217,16 @@ export class Input implements Controls {
     };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
+  }
+
+  /**
+   * Forget every key held down. A key whose release went missing would otherwise stay
+   * held for as long as the page is open. On Android a joypad's first press can arrive as
+   * a key, with its release then going to the joypad instead, so up stays held. Called
+   * when a game starts, when a joypad turns up, and when the page loses focus.
+   */
+  letGo() {
+    for (const k of Object.keys(this.keys) as (keyof Held)[]) this.keys[k] = false;
   }
 
   get threshold() { return Math.min(window.innerWidth, window.innerHeight) * 0.045; }
@@ -298,12 +320,20 @@ export class Input implements Controls {
     let pad: Gamepad | null = null;
     try { pad = [...(navigator.getGamepads?.() ?? [])].find((p) => p?.connected) ?? null; } catch { /* not allowed in this page */ }
     const h = this.padHeld, l = this.latch;
-    if (!pad) { h.left = h.right = h.up = h.down = false; this.padPrev = []; return; }
+    if (!pad) { h.left = h.right = h.up = h.down = false; this.padPrev = []; this.padKey = ''; return; }
     this.padFound = true;
+    const key = `${pad.index} ${pad.id}`;
+    if (key !== this.padKey) {
+      // A joypad that just turned up, or came back: its axes start out not trusted, and what came in as keys before it is let go.
+      this.padKey = key;
+      this.axisRest = [];
+      this.letGo();
+    }
+    pad.axes.forEach((v, i) => { if (Math.abs(v) < PAD_REST) this.axisRest[i] = true; });
     const now = pad.buttons.map((b) => b.pressed), before = this.padPrev;
     this.padPrev = now;
     const isDown = (a: Action) => this.binds.pad[a].some((b) => now[b]);
-    const x = pad.axes[0] ?? 0, y = pad.axes[1] ?? 0;
+    const x = this.axisRest[0] ? pad.axes[0] ?? 0 : 0, y = this.axisRest[1] ? pad.axes[1] ?? 0 : 0;
     const held = { left: isDown('left') || x < -PAD_STICK, right: isDown('right') || x > PAD_STICK, up: isDown('up') || y < -PAD_STICK, down: isDown('down') || y > PAD_STICK };
     const stick = { left: x < -PAD_STICK, right: x > PAD_STICK, up: y < -PAD_STICK, down: y > PAD_STICK };
     for (let i = 0; i < now.length; i++) {

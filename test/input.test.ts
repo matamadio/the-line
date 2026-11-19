@@ -231,6 +231,39 @@ describe('in menus', () => {
     input.poll();
     expect(input.pausePressed).toBe(true);
   });
+
+  it('an axis stuck at one end never holds a direction, until it has been back to the middle', () => {
+    const { input } = touchScreen();
+    const pad = { index: 0, id: 'pad', connected: true, buttons: Array.from({ length: 16 }, () => ({ pressed: false })), axes: [0, -1] };
+    vi.stubGlobal('navigator', { getGamepads: () => [pad] });
+    for (let i = 0; i < 3; i++) input.poll();
+    expect(input.up || input.upPressed).toBe(false);
+    pad.axes[1] = 0;
+    input.poll();
+    pad.axes[1] = -1;
+    input.poll();
+    expect(input.up && input.upPressed).toBe(true);
+    // It comes back as another joypad, axis stuck again: not trusted until it rests.
+    Object.assign(pad, { index: 1 });
+    input.poll();
+    expect(input.up).toBe(false);
+  });
+
+  it('a key whose release went to the joypad is let go when the joypad turns up, or a game starts', () => {
+    const { input } = touchScreen();
+    const key = (type: string) => window.dispatchEvent(Object.assign(new Event(type), { code: 'ArrowUp', repeat: false }));
+    key('keydown');
+    input.poll();
+    expect(input.up).toBe(true);
+    const pad = { index: 0, id: 'pad', connected: true, buttons: Array.from({ length: 16 }, () => ({ pressed: false })), axes: [0, 0] };
+    vi.stubGlobal('navigator', { getGamepads: () => [pad] });
+    input.poll();
+    expect(input.up).toBe(false);
+    key('keydown');
+    input.letGo();
+    input.poll();
+    expect(input.up).toBe(false);
+  });
 });
 
 describe('the play area', () => {
