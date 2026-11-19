@@ -3,7 +3,7 @@
   "description": "The Line: a game drawn in glowing vector strokes, where everything is part of the line.",
   "private": true,
   "license": "CC-BY-NC-4.0",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "engines": {
     "node": ">=20"
