@@ -310,6 +310,8 @@ export class Game {
 
   start() {
     sfx.unlock();
+    // A key stuck down from before (its release lost) must not carry into a new game.
+    this.input.letGo();
     // On the title he has already risen out of the line, or is doing it now.
     if (this.mode === 'title' && this.wavell.alive) this.wavell.hurry();
     else this.wavell.spawn(this.wavell.x);
