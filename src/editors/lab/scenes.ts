@@ -226,6 +226,10 @@ export const SCENES: Scene[] = [
     setup: (g) => { ready(g); g.endGrace = 0; g.endX = g.wavell.x - 92; const w = new Worm(g.endX + 12); w.state = 'move'; g.worms.push(w); },
   },
   {
+    name: 'End of the line: a Rage knot bursts', dur: 2.2, end: true,
+    setup: (g) => { ready(g); g.endGrace = 0; g.endX = g.wavell.x - 92; g.knot = new RageKnot(g.endX + 20, 12); },
+  },
+  {
     name: 'Reflux: on his side, hits him', dur: 2.5,
     setup: (g) => { ready(g); g.wavell.size = 1; g.refluxes.push(reflux(g.neon.viewW + 12, -1, 1, g.wavell)); },
   },

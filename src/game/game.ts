@@ -1683,7 +1683,17 @@ export class Game {
           this.endGrace = Math.max(this.endGrace, 1);
           // He died on the way down, after all: it is free again.
           if (!W.alive) { k.claimed = false; W.shielded = false; }
-        } else if (k.life <= 0 || k.x < this.endX + KNOT_HALF) {
+        } else if (k.x < this.endX + KNOT_HALF) {
+          // The end of the line eats it: it bursts apart in all its colours, flying up and
+          // out of the line, and its loops scatter as sparks along where it was.
+          for (let i = 0; i < 5; i++) this.fx.burst(k.x, ground, 14, 40 + 22 * i, wildHue(k.t, i), 0, 0.55 + 0.1 * i);
+          for (let i = 0; i < 24; i++) {
+            const a = rand(0, Math.PI * 2), v = rand(30, 110);
+            this.fx.spark(k.x + rand(-KNOT_HALF, KNOT_HALF), ground + rand(-6, 6), Math.cos(a) * v, Math.sin(a) * v - 30, rand(0.5, 0.9), wildHue(k.t, Math.random() * 5), 60);
+          }
+          this.neon.shake = Math.max(this.neon.shake, 0.4);
+          this.knot = null;
+        } else if (k.life <= 0) {
           this.fx.burst(k.x, ground, 16, 35, '#ff4f8b', 0, 0.5);
           this.knot = null;
         }
