@@ -5,7 +5,7 @@
 //
 // Each style is five layers, and the music builds up one instrument per level: level 1
 // plays the first layer, level 2 adds the second, and so on until all five play from
-// level 5 on. A style may have a sixth, joining at level 6.
+// level 5 on. A style may have a sixth and a seventh, joining at levels 6 and 7.
 //
 // To add a style, add an entry to STYLES: an id, a name for the menu, how it dresses
 // the game's own tones, and its five layers. It shows up in the audio menu by itself.
@@ -27,8 +27,8 @@ export interface Style {
    * tones are then moved to the nearest of them, so every note heard belongs to it.
    */
   scale?: readonly number[];
-  /** The first plays from level 1, and each of the others joins one level later. A sixth, if any, joins at level 6. */
-  layers: readonly [Layer, Layer, Layer, Layer, Layer] | readonly [Layer, Layer, Layer, Layer, Layer, Layer];
+  /** The first plays from level 1, and each of the others joins one level later: a sixth at level 6, a seventh at 7. */
+  layers: readonly [Layer, Layer, Layer, Layer, Layer] | readonly [Layer, Layer, Layer, Layer, Layer, Layer] | readonly [Layer, Layer, Layer, Layer, Layer, Layer, Layer];
 }
 
 /** One instrument's part. The first layer may hold a few: the base the others build on. */
@@ -450,6 +450,13 @@ const CELLO_FIGURE = [0, 0, 7, 0, 12, 7, 0, 7];
 const VIOLIN_FIGURE: readonly (readonly (0 | 1 | 2)[])[] = [[1, 0, 2], [0, 2, 1]];
 /** The horns' tune, from the A natural minor scale over two octaves. */
 const hornTune = new Tune([0, 2, 3, 5, 7, 8, 10, 12, 14, 15], 0.2);
+/**
+ * The marching drums, over two beats of four sixteenths each (in 6/8, triplets). The bass
+ * drum on a 3 + 3 + 2 (on 1, the last sixteenth of 1, and the "and" of 2), pushing ahead of
+ * the beat. The snare a military cadence: "TAT, ta-ta" (a flammed accent, two taps on the
+ * last sixteenths), then "rrrrr-TAT" (a buzz roll swelling into an accent on the "and").
+ */
+const MARCH_BASS = [[0, 3], [2]];
 /** How loud the tuba call is: the loudest thing in the orchestra while it plays. */
 const TUBA_VOLUME = 0.32;
 /** How many bars a phrase lasts: the timpani roll and the cymbal swell lead into the next. */
@@ -481,6 +488,30 @@ const epic: Style = {
         const n = low + 12 + CELLO_FIGURE[(step + k / 2) % CELLO_FIGURE.length];
         s.section(b.t(k), hz(n), b.len * 0.38, b.group && k === 0 ? 0.2 : 0.14, { cutoff: 1300, bow: 0.02 });
       }
+    } },
+    { name: 'marching drums', play(s, b) {
+      // A field drum, syncopated, and a military snare: TAT, ta-ta, rrrrr-TAT. On the last
+      // beat of a phrase the snare rolls right through it, swelling into the next. Every
+      // accent and tap has a snap on top: a high, tight crack of the wires and the rim.
+      const half = b.beat % 2;
+      for (const k of MARCH_BASS[half]) s.kick(b.t(k), k ? 0.4 : 0.5, { from: 120, to: 58, decay: 0.16 });
+      const snap = (at: number, vol: number) => {
+        s.snare(at, vol, { band: 5500, decay: 0.022, tone: 0 });
+        s.block(at, vol * 0.45, 1900, 0.008);
+      };
+      const tap = (at: number, vol: number) => s.snare(at, vol, { band: 2800, decay: 0.035, tone: 0.25 });
+      const accent = (at: number, vol = 0.18) => {
+        tap(at - 0.018, vol * 0.35);
+        s.snare(at, vol, { band: 2600, decay: 0.07, tone: 0.35 });
+        snap(at, vol * 0.9);
+      };
+      const roll = (from: number, to: number, vol0: number, vol1: number) => {
+        const n = Math.max(4, Math.round((to - from) / 0.032));
+        for (let i = 0; i < n; i++) tap(from + ((to - from) * i) / n, vol0 + ((vol1 - vol0) * i) / n);
+      };
+      if (endOfPhrase(b)) roll(b.t(0), b.at + b.len, 0.03, 0.12);
+      else if (half === 0) { accent(b.t(0)); for (const [k, v] of [[2, 0.08], [3, 0.1]]) { tap(b.t(k), v); snap(b.t(k), v * 0.7); } }
+      else { roll(b.t(0), b.t(2), 0.03, 0.08); accent(b.t(2)); }
     } },
     { name: 'basses and violas', play(s, b) {
       // The chord held through the bar by the violas, the basses an octave under the root.
@@ -533,7 +564,7 @@ const epic: Style = {
       }
     } },
     { name: 'tuba call', play(s, b) {
-      // The glorious tuba call, from level 6, every two bars: a short root, then the fifth
+      // The glorious tuba call, from level 7, every two bars: a short root, then the fifth
       // held long and proud to the end of the bar.
       if (b.bar % 2 !== 0) return;
       const root = lowRoot(chordAt(EPIC_PROG, b, 2)) + 12;
