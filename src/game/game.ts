@@ -34,8 +34,10 @@ import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
 import { audioPrefs } from '../core/audioPrefs';
 import { LAYERS, METERS, meterById } from '../core/music';
 import { sfx } from '../core/sfx';
+import { WHIP_CRACK_AT } from '../core/cues';
 import { DIFF, at, levelStart } from '../data/difficulty';
 import { TUNE } from '../data/tune';
+import { mark } from '../data/anim';
 import { SEG_W, Sinepede, type Side } from './actors/sinepede';
 import { Urchin } from './actors/urchin';
 import { BUBBLE_GREEN, BubbleBurst } from './actors/bubble';
@@ -57,7 +59,7 @@ export interface Reflux { sx: number; y: number; side: 1 | -1; dist: number; dir
 /** A wipe's crest running along the line; spent on the first creature it reaches. */
 export interface Pulse { x: number; dir: number; side: number; kind: Attack; spent: boolean }
 /** A big wave rolling in from behind. Wavell floats over it, or bounces it back by holding the line as it hits. */
-export interface Whiplash { x: number; dir: 1 | -1; warn: number; done: boolean; amp: number; gone?: boolean }
+export interface Whiplash { x: number; dir: 1 | -1; warn: number; done: boolean; amp: number; gone?: boolean; heard?: boolean; hush?: () => void }
 /** The longest frame the game catches up on in full (s): it keeps real time down to 10 fps, as on a slow TV. */
 const MAX_FRAME = 0.1;
 /** One about to roll in from x, after warn seconds. */
@@ -542,7 +544,22 @@ export class Game {
       this.acc -= STEP;
     }
     this.hum();
+    this.crawl();
     drawGame(this, dt);
+  }
+
+  /** The nearest Worm is heard crawling from when it appears: its drone swells as it gets close. */
+  private crawl() {
+    const W = this.wavell, n = this.neon;
+    let best = Infinity, at = 0, size = 0;
+    if (this.mode === 'play' && W.alive) {
+      for (const w of this.worms) {
+        const d = Math.abs(w.centre - W.x);
+        if (w.harmful && d < best) { best = d; at = w.centre - W.x; size = w.size; }
+      }
+    }
+    if (best === Infinity) sfx.crawl(0);
+    else sfx.crawl(Math.max(0.001, clamp(1 - best / n.viewW, 0, 1)), at / (n.viewW / 2), size);
   }
 
   /** The nearest Sinepede is heard as well as seen: its pure tone swells as it gets close. */
@@ -636,11 +653,11 @@ export class Game {
     if (DIFF.beatOn) this.stepBeat();
     for (const e of W.events.splice(0)) {
       if (e === 'appear') sfx.play('appear');
-      else if (e === 'drag') sfx.play('drag', W.attack === 'wipe' ? 1 : 0.7);
+      else if (e === 'drag') { if (W.attack === 'wipe') sfx.wipe(W.facing, this.heard(mark('wipe', 'release'))); else sfx.play('drag', 0.7); }
       else if (e === 'release' && W.attack === 'wipe') this.pulses.push({ x: W.x + W.facing * 8, dir: W.facing, side: W.side, kind: 'wipe', spent: false });
       else if (e === 'haul') this.haul();
-      else if (e === 'flipDown') sfx.play('flipDown');
-      else if (e === 'flipUp') sfx.play('flipUp');
+      else if (e === 'flipDown') sfx.flip(false);
+      else if (e === 'flipUp') sfx.flip(true);
       else if (e === 'inflate') sfx.inflate(this.heard(TUNE.takeoff));
       else if (e === 'fly') this.fx.burst(W.x, L.sample(W.x), 20, 45, COLORS.wavell, 0, 0.35);
       else if (e === 'land') { sfx.deflate(this.heard(TUNE.landTime)); this.fx.burst(W.x, L.sample(W.x), 14, 50, COLORS.wavell, 60, 0.4); }
@@ -1263,7 +1280,7 @@ export class Game {
       u.update(dt, this.onBeat);
       // The fuzz is in its outline. Here the line just shivers a little around it.
       if (u.state === 'warn' && Math.random() < 0.5) L.impulse(u.x + rand(-9, 9), rand(-14, 14), 3);
-      if (u.justOpened) { u.hush = sfx.crunch(this.heard(u.hold)); n.shake = Math.max(n.shake, 0.4); }
+      if (u.justOpened) { u.hush = sfx.crunch(this.heard(u.hold), 1, u.size); n.shake = Math.max(n.shake, 0.4); }
       if (u.standing && u.x - u.reach < this.endX + 2) {
         this.crumble(u.parts(L));
         u.vanish();
@@ -1328,15 +1345,16 @@ export class Game {
     for (const b of this.whiplashes) {
       if (b.warn > 0) {
         b.warn = this.countDown(b.warn, dt);
+        // Its whip winds up before it comes, so the crack lands as it sets off.
+        if (!b.heard && this.heard(b.warn) <= WHIP_CRACK_AT) { b.heard = true; b.hush = sfx.lash(this.heard(Math.max(0, b.warn))); }
         // The line trembles behind you before it comes.
         const start = this.whiplashStart;
         if (Math.random() < 0.5) L.impulse(start + 10 + rand(0, 20), rand(-40, 40), 3);
         if (b.warn <= 0) {
           // The end of the line has crumbled in too far meanwhile: there is no line left for it.
-          if (start >= W.x - WHIPLASH_ROOM) { b.gone = true; continue; }
+          if (start >= W.x - WHIPLASH_ROOM) { b.gone = true; b.hush?.(); continue; }
           b.x = start;
           L.pulse(b.x, -b.amp, WHIPLASH_WIDTH, 1, DIFF.backSpeed);
-          sfx.play('reflux');
         }
         continue;
       }
@@ -1977,17 +1995,17 @@ export class Game {
         e.grow();
         // Its time starts over. Only growing makes it longer, so wipes can't keep it for ever.
         e.renew(e.size > size ? DIFF.urchinRenew : 0);
-        if (e.state === 'spikes') { e.hush?.(); e.hush = sfx.crunch(this.heard(e.holdLeft)); }
+        if (e.state === 'spikes') { e.hush?.(); e.hush = sfx.crunch(this.heard(e.holdLeft), 1, e.size); }
         e.knock((Math.sign(e.x - W.x) || 1) * DIFF.urchinKnock);
         L.impulse(e.x, W.side * 40, 8);
         this.fx.burst(e.x, y, 12, 30, COLORS.danger, 0, 0.4);
         n.shake = Math.max(n.shake, 0.3);
-        sfx.crunch(0.16, 1.5);
+        sfx.crunch(0.16, 1.5, e.size);
         this.teach('urchinGrow', 'A WIPE FEEDS THE DISTURCHIN! SWIPE ↔ to pull it', 'A WIPE FEEDS THE DISTURCHIN! {pull} pulls it');
       } else if (e.size > 0) {
         e.shrink();
         this.fx.burst(e.x, y, 10, 40, '#ffffff', 0, 0.3);
-        sfx.crunch(0.1, 0.75);
+        sfx.crunch(0.1, 0.75, e.size);
       } else {
         e.sink();
         this.dropSparkles(e.x);

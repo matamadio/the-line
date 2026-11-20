@@ -7,12 +7,13 @@
 import { audioPrefs, saveAudioPrefs } from './audioPrefs';
 import { LAYERS, Music, noteRand, type Meter } from './music';
 import { STYLES, styleById, type Style } from './styles';
+import { WHIP_CRACK_AT, WHIP_RATE } from './cues';
 
 const SAMPLES = {
   appear: 'compare', vanish: 'sparisce', drag: 'colpisce', kill: 'snawave_sparisce',
   flipDown: 'rovescia_in_giu', flipUp: 'rovescia_in_su', offline: 'offline', eaten: 'eated',
   grow: 'snawave', level: 'levelpass', reflux: 'reflux', pop: 'bollapop', bonus: 'linesaver',
-  powerup: 'bonus', yeah: 'yeah.mp3', yeehaa: 'yeehaa.mp3',
+  powerup: 'bonus', yeah: 'yeah.mp3', yeehaa: 'yeehaa.mp3', whiplash: 'whiplash',
 } as const;
 export type Sample = keyof typeof SAMPLES;
 
@@ -44,11 +45,11 @@ const SATURATION = (() => {
 })();
 
 /** A small room for the reverb: stereo noise dying away. */
-function roomImpulse(ctx: BaseAudioContext, seconds: number) {
+function roomImpulse(ctx: BaseAudioContext, seconds: number, rand = Math.random) {
   const len = Math.round(ctx.sampleRate * seconds), buf = ctx.createBuffer(2, len, ctx.sampleRate);
   for (let ch = 0; ch < 2; ch++) {
     const d = buf.getChannelData(ch);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 3;
+    for (let i = 0; i < len; i++) d[i] = (rand() * 2 - 1) * (1 - i / len) ** 3;
   }
   return buf;
 }
@@ -82,8 +83,23 @@ const DISTORTION = (() => {
   return curve;
 })();
 
-/** How loud his head filling and emptying as he floats is: it sits under the music. */
-const FLOAT_VOLUME = 0.35;
+/**
+ * How loud the sounds that decorate the music are: his head filling and emptying as he
+ * floats, a Whiplash drawing back, a Worm's wriggle. They sit under the music.
+ */
+const FLOAT_VOLUME = 0.35, LASH_VOLUME = 1.5;
+/** The Whiplash rings on in a long hall: how long (s), and how much of it is heard. */
+const LASH_VERB_TIME = 2.5, LASH_WET = 0.5;
+/** The wind-up and crack are kept under this (Hz), like the recording it is made after. */
+const LASH_BODY = 1600;
+/** Wavell flipping, a whoop: how loud, how long (s), and the low end of its glide (Hz); it goes an octave and a fifth over that. */
+const FLIP_VOLUME = 0.25, FLIP_TIME = 0.4, FLIP_LOW = 293.7;
+/** His wipe attack: the whoosh, and the soft snap it ends on. */
+const WIPE_VOLUME = 2.2, WIPE_SNAP = 0.45;
+/** How much of the wipe rings on in the hall (2.5 s, the Whiplash's). */
+const WIPE_WET = 0.6;
+/** The Worm's drone: how loud, how many humps a second (its ripple), and how low its filter shuts (Hz). */
+const WORM_VOLUME = 0.3, WAH_RATE = 13 / (2 * Math.PI), WAH_LOW = 350;
 
 /** A Bubble Burst forming on the line: two blubs. */
 const BLUB_VOLUME = 0.8;
@@ -95,6 +111,17 @@ const STATIC_VOLUME = 0.1;
 const TWINKLE_VOLUME = 0.08, CATCH_VOLUME = 0.3;
 /** Sparkles twinkling in or out closer together than this (s) make one sound. */
 const TWINKLE_GAP = 0.08;
+/** The recorded whiplash (whiplash.mp3): how loud. It is a quiet recording, peaking at -10 dB. */
+const WHIP_SAMPLE_VOLUME = 3.8;
+/** It is played darker too, through a lowpass here (Hz), before the style's own. */
+const WHIP_DARK = 1800;
+/** Where a Whiplash comes from: behind him (left). -1 is all left. */
+const WHIP_PAN = -0.6;
+/** An enemy grown by the wrong attack sounds bigger: a major third lower for each size (an octave at 3), and louder. */
+export const sizePitch = (size: number) => 2 ** (-size / 3);
+export const sizeVolume = (size: number) => 1 + SIZE_LOUDER * size;
+/** How much louder each size makes an enemy (0.4: about +3 dB at 1, +7 dB at 3). */
+const SIZE_LOUDER = 0.4;
 /** The scale the decorations keep to when the style has none: A minor, the key of the music. */
 const A_MINOR = [0, 2, 3, 5, 7, 8, 10];
 
@@ -122,6 +149,8 @@ class Sfx {
   /** The game's sounds go in here; the master is where they meet the music. */
   private out: GainNode | null = null;
   private master: GainNode | null = null;
+  /** Sounds that must keep their edge go in here, past the style's lowpass: the whip's crack. */
+  private direct: GainNode | null = null;
   private tint: { filter: BiquadFilterNode; delay: DelayNode; wet: GainNode } | null = null;
   private crushed = false;
   private previewing = false;
@@ -164,6 +193,9 @@ class Sfx {
     filter.type = 'lowpass';
     back.gain.value = 0.3;
     this.out.connect(filter).connect(this.master);
+    this.direct = ctx.createGain();
+    this.direct.gain.value = SFX_VOLUME;
+    this.direct.connect(this.master);
     filter.connect(delay).connect(wet).connect(this.master);
     delay.connect(back).connect(delay);
     this.tint = { filter, delay, wet };
@@ -526,21 +558,25 @@ class Sfx {
     return () => { for (const o of [osc, wobble]) o.stop(); };
   }
 
-  /** A Disturchin: harsh and clipped, higher when it grows and lower when it shrinks. Returns how to cut it off. */
-  crunch(seconds: number, pitch = 1): () => void {
+  /**
+   * A Disturchin: harsh and clipped. pitch: a short blip's own pitch; size: how big it has
+   * grown, each size lower and louder. Returns how to cut it off.
+   */
+  crunch(seconds: number, pitch = 1, size = 0): () => void {
     const ctx = this.ctx;
     if (!ctx || this.muted) return () => {};
     const at = this.now(ctx);
     const a = ctx.createOscillator(), b = ctx.createOscillator(), clip = ctx.createWaveShaper(), tone = ctx.createBiquadFilter(), g = ctx.createGain();
     a.type = b.type = 'sawtooth';
-    a.frequency.value = 110 * pitch;
-    b.frequency.value = 117 * pitch;
+    const p = pitch * sizePitch(size), v = 0.3 * sizeVolume(size);
+    a.frequency.value = 110 * p;
+    b.frequency.value = 117 * p;
     clip.curve = DISTORTION;
     tone.type = 'lowpass';
     tone.frequency.value = 3200;
     g.gain.setValueAtTime(0.0001, at);
-    g.gain.exponentialRampToValueAtTime(0.3, at + 0.015);
-    g.gain.setValueAtTime(0.3, at + seconds - 0.08);
+    g.gain.exponentialRampToValueAtTime(v, at + 0.015);
+    g.gain.setValueAtTime(v, at + Math.max(0.015, seconds - 0.08));
     g.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
     a.connect(clip);
     b.connect(clip);
@@ -634,6 +670,223 @@ class Sfx {
     t.connect(g).connect(out);
     t.start(when);
     t.stop(when + 0.07);
+  }
+
+  /**
+   * One layer of a noise sound: the music's own noise through a filter, shaped by an
+   * envelope of [seconds after `at`, level] points (exponential between them). `to` sweeps
+   * the filter there by `toAt` (default: the last point).
+   */
+  private noiseLayer(out: AudioNode, at: number, filter: { type: BiquadFilterType; f: number; q?: number; to?: number; toAt?: number }, env: readonly (readonly [number, number])[]) {
+    const ctx = this.ctx!, src = this.airSource(ctx), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    const end = at + env[env.length - 1][0];
+    f.type = filter.type;
+    f.Q.value = filter.q ?? 0.7;
+    f.frequency.setValueAtTime(filter.f, at);
+    if (filter.to) f.frequency.exponentialRampToValueAtTime(filter.to, filter.toAt ? at + filter.toAt : end);
+    g.gain.setValueAtTime(0.0001, at);
+    for (const [t, v] of env) g.gain.exponentialRampToValueAtTime(Math.max(0.0001, v), at + t);
+    src.connect(f).connect(g).connect(out);
+    src.start(at);
+    src.stop(end + 0.02);
+  }
+
+  /**
+   * A snap: what a whip's tip does as it breaks the sound barrier. A click of a few
+   * samples, a tight, bright burst around 3 kHz dying in a few hundredths of a second, a
+   * little ping in it, and a breath of air on top. Nothing low, so it never booms like a shot.
+   */
+  private snap(out: AudioNode, at: number, v: number, soft = false) {
+    const ctx = this.ctx!, f = soft ? 1800 : 2800;
+    const n = Math.round(ctx.sampleRate * 0.002), click = ctx.createBuffer(1, n, ctx.sampleRate), d = click.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = i < 4 ? (1 - i * 0.25) * (i % 2 ? -1 : 1) : (noteRand() * 2 - 1) * (1 - i / n);
+    const src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), cg = ctx.createGain();
+    src.buffer = click;
+    hp.type = 'highpass';
+    hp.frequency.value = soft ? 900 : 1500;
+    cg.gain.value = v * (soft ? 0.5 : 1.2);
+    src.connect(hp).connect(cg).connect(out);
+    src.start(at);
+    this.noiseLayer(out, at, { type: 'bandpass', f, q: 2.5 }, [[0.001, v * 3.5], [0.012, v * 0.7], [0.035, 0]]);
+    if (!soft) this.noiseLayer(out, at, { type: 'highpass', f: 6000 }, [[0.001, v * 0.8], [0.02, 0]]);
+    const ping = ctx.createOscillator(), pg = ctx.createGain();
+    ping.frequency.setValueAtTime(f * 1.18, at);
+    ping.frequency.exponentialRampToValueAtTime(f * 0.93, at + 0.03);
+    pg.gain.setValueAtTime(0.0001, at);
+    pg.gain.exponentialRampToValueAtTime(v * 0.5, at + 0.001);
+    pg.gain.exponentialRampToValueAtTime(0.0001, at + 0.03);
+    ping.connect(pg).connect(out);
+    ping.start(at);
+    ping.stop(at + 0.04);
+  }
+
+  /** The Whiplash's hall, made once with the music's own random numbers. */
+  private lashVerb: AudioBuffer | null = null;
+
+  /**
+   * A Whiplash lashes out, from behind him: the recorded whiplash (`whiplash.mp3`), played lower
+   * and darker, a wind-up and then the crack, started so the crack lands `untilCrack` seconds from now, as the wave
+   * sets off (with less time than its wind-up, it starts part of the way in). Like the other
+   * sounds it goes through the style's lowpass and echo. Until the recording has loaded, a
+   * synthesized one made after it stands in (with less time than the wind-up, that leaves the
+   * wind-up out). Returns how to cut it off, if the wave never comes.
+   */
+  lash(untilCrack = 0): () => void {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return () => {};
+    const rec = this.buffers.get('whiplash');
+    if (rec) {
+      const src = ctx.createBufferSource(), dark = ctx.createBiquadFilter(), g = ctx.createGain();
+      src.buffer = rec;
+      src.playbackRate.value = WHIP_RATE;
+      dark.type = 'lowpass';
+      dark.frequency.value = WHIP_DARK;
+      g.gain.value = WHIP_SAMPLE_VOLUME;
+      src.connect(dark).connect(g).connect(this.panned(ctx, WHIP_PAN));
+      // The offset is in the recording's own time.
+      const at = this.now(ctx);
+      src.start(at + Math.max(0, untilCrack - WHIP_CRACK_AT), Math.max(0, WHIP_CRACK_AT - untilCrack) * WHIP_RATE);
+      return () => { g.gain.setTargetAtTime(0, ctx.currentTime, 0.02); src.stop(ctx.currentTime + 0.1); };
+    }
+    const now = this.now(ctx), crack = now + untilCrack, v = LASH_VOLUME;
+    const out = this.panned(ctx, WHIP_PAN), bus = ctx.createGain();
+    bus.connect(out);
+    if (!this.lashVerb) this.lashVerb = roomImpulse(ctx, LASH_VERB_TIME, noteRand);
+    const verb = ctx.createConvolver(), wet = ctx.createGain();
+    verb.buffer = this.lashVerb;
+    wet.gain.value = LASH_WET;
+    bus.connect(verb).connect(wet).connect(out);
+    // The wind-up and the crack are kept to the middle of the range; only the hiss after them is bright.
+    const body = ctx.createBiquadFilter();
+    body.type = 'lowpass';
+    body.frequency.value = LASH_BODY;
+    body.connect(bus);
+    // The wind-up: a whoosh swelling in and dying down, the band rising.
+    const up = crack - WHIP_CRACK_AT;
+    if (up >= now) {
+      this.noiseLayer(body, up, { type: 'bandpass', f: 500, q: 1.4, to: 1000, toAt: 0.15 }, [[0.11, v * 1.2], [0.17, v * 0.55], [0.3, v * 0.25], [WHIP_CRACK_AT, v * 0.15]]);
+      this.noiseLayer(body, up, { type: 'lowpass', f: 400 }, [[0.1, v * 0.35], [0.3, v * 0.25], [WHIP_CRACK_AT, v * 0.2]]);
+    }
+    // The crack: the middle of the range, struck hard, ringing for a moment, a thump under it.
+    this.noiseLayer(body, crack, { type: 'bandpass', f: 750, q: 1.3 }, [[0.003, v * 2], [0.06, v * 1.2], [0.2, v * 0.6], [0.5, v * 0.16], [0.9, 0]]);
+    this.noiseLayer(body, crack, { type: 'bandpass', f: 1500, q: 1.8 }, [[0.003, v * 0.45], [0.06, v * 0.22], [0.2, v * 0.13], [0.5, v * 0.03], [0.9, 0]]);
+    this.noiseLayer(body, crack, { type: 'lowpass', f: 400 }, [[0.005, v * 0.5], [0.2, v * 0.25], [0.6, 0]]);
+    // The lash just after it: a bright hiss, coming in and dying away.
+    const hiss = crack + 0.11;
+    this.noiseLayer(bus, hiss, { type: 'bandpass', f: 4000, q: 1.2 }, [[0.01, v * 0.12], [0.15, v * 0.07], [0.5, v * 0.015], [0.8, 0]]);
+    this.noiseLayer(bus, hiss, { type: 'highpass', f: 7000 }, [[0.01, v * 0.06], [0.3, v * 0.015], [0.6, 0]]);
+    return () => { bus.gain.setTargetAtTime(0, ctx.currentTime, 0.02); };
+  }
+
+  /** The nearest Worm's drone, made when the first one comes. */
+  private worm: { level: GainNode; pan: StereoPannerNode; pitch: AudioParam[] } | null = null;
+  /**
+   * The nearest Worm crawling. near: 0 for none, else how close it is (0 far, 1 on top of
+   * him); pan: where it is, -1 left to 1 right; size: how big it has grown, each size lower
+   * and louder. A low, buzzy A through a vowel-like filter opening and shutting once per hump
+   * of its body ("wah, wah, wah"), swelling as it closes in.
+   */
+  crawl(near: number, pan = 0, size = 0) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (!this.worm) {
+      if (!near) return;
+      const lp = ctx.createBiquadFilter(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+      const level = ctx.createGain(), p = ctx.createStereoPanner();
+      lp.type = 'lowpass';
+      lp.Q.value = 7;
+      lp.frequency.value = WAH_LOW * 2;
+      lfo.frequency.value = WAH_RATE;
+      depth.gain.value = WAH_LOW;
+      lfo.connect(depth).connect(lp.frequency);
+      level.gain.value = 0;
+      const pitch: AudioParam[] = [];
+      for (const [f, type, v] of [[55, 'sawtooth', 0.5], [55.4, 'sawtooth', 0.5], [110, 'square', 0.25]] as const) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type;
+        o.frequency.value = f;
+        g.gain.value = v;
+        o.connect(g).connect(lp);
+        o.start();
+        pitch.push(o.frequency);
+      }
+      lp.connect(level).connect(p).connect(this.out!);
+      lfo.start();
+      this.worm = { level, pan: p, pitch };
+    }
+    const now = ctx.currentTime, { level, pan: p, pitch } = this.worm;
+    const loud = near ? 0.45 + 0.55 * near : 0;
+    level.gain.cancelScheduledValues(now);
+    level.gain.setTargetAtTime(this.muted ? 0 : WORM_VOLUME * sizeVolume(size) * loud * loud, now, 0.05);
+    if (near) pitch.forEach((f, i) => f.setTargetAtTime([55, 55.4, 110][i] * sizePitch(size), now, 0.08));
+    if (near) p.pan.setTargetAtTime(Math.max(-1, Math.min(1, pan)) * 0.7, now, 0.05);
+  }
+
+  /**
+   * Wavell flips to the other side of the line: a round "whooop", like a voice or a slide
+   * whistle. A soft tone glides an octave and a fifth, up as he comes over the line and down
+   * as he goes under it, quick at first and easing into the note, its filter opening as it
+   * starts (the "wh") with a breath of air, a little vibrato as it settles. It keeps to the scale.
+   */
+  flip(up: boolean) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    const scale = this.style.scale ?? A_MINOR, at = this.now(ctx), end = at + FLIP_TIME, out = this.panned(ctx, 0);
+    const low = onScale(FLIP_LOW, scale), high = onScale(FLIP_LOW * 3, scale), [from, to] = up ? [low, high] : [high, low];
+    const lp = ctx.createBiquadFilter(), g = ctx.createGain();
+    lp.type = 'lowpass';
+    lp.Q.value = 2;
+    lp.frequency.setValueAtTime(from * 1.2, at);
+    lp.frequency.setTargetAtTime(Math.max(from, to) * 3, at, 0.05);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(FLIP_VOLUME, at + 0.05);
+    g.gain.setValueAtTime(FLIP_VOLUME, at + FLIP_TIME * 0.55);
+    g.gain.exponentialRampToValueAtTime(0.0001, end);
+    lp.connect(g).connect(out);
+    const vib = ctx.createOscillator(), depth = ctx.createGain();
+    vib.frequency.value = 6;
+    depth.gain.setValueAtTime(0, at);
+    depth.gain.linearRampToValueAtTime(to * 0.012, end);
+    vib.connect(depth);
+    for (const [type, v] of [['triangle', 1], ['sine', 0.7]] as const) {
+      const osc = ctx.createOscillator(), level = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, at);
+      // Quick at first, easing into the note.
+      osc.frequency.setTargetAtTime(to, at + 0.02, FLIP_TIME * 0.18);
+      depth.connect(osc.frequency);
+      level.gain.value = v;
+      osc.connect(level).connect(lp);
+      osc.start(at);
+      osc.stop(end + 0.02);
+    }
+    vib.start(at);
+    vib.stop(end + 0.02);
+    // The "wh": a breath of air at its start.
+    this.noiseLayer(out, at, { type: 'bandpass', f: from * 2, q: 1.5, to: to * 2, toAt: 0.12 }, [[0.03, FLIP_VOLUME * 0.5], [0.15, 0]]);
+  }
+
+  /**
+   * His wipe attack: the whip swung round, a soft whoosh rising in pitch and running across
+   * the stereo the way he faces, ending on a soft snap as he lets go, `seconds` after it starts,
+   * both ringing on in a hall.
+   */
+  wipe(facing: number, seconds = 0.32) {
+    const ctx = this.ctx;
+    if (!ctx || this.muted || !this.direct) return;
+    const at = this.now(ctx), v = WIPE_VOLUME, out = ctx.createStereoPanner(), snapAt = at + seconds;
+    out.pan.setValueAtTime(-0.7 * facing, at);
+    out.pan.linearRampToValueAtTime(0.7 * facing, snapAt);
+    out.connect(this.direct);
+    // A hall after it, the Whiplash's, so the swing and its snap ring on.
+    const bus = ctx.createGain(), verb = ctx.createConvolver(), wet = ctx.createGain();
+    if (!this.lashVerb) this.lashVerb = roomImpulse(ctx, LASH_VERB_TIME, noteRand);
+    verb.buffer = this.lashVerb;
+    wet.gain.value = WIPE_WET;
+    bus.connect(out);
+    bus.connect(verb).connect(wet).connect(out);
+    this.noiseLayer(bus, at, { type: 'bandpass', f: 300, q: 2, to: 1500 }, [[seconds * 0.85, v], [seconds, v * 0.5], [seconds + 0.06, 0]]);
+    this.snap(bus, snapAt, WIPE_SNAP, true);
   }
 
   /** A Bubble Burst starts to form on the line: three blubs, each a sine sweeping quickly up. */

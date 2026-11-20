@@ -19,7 +19,7 @@ import { hasGlyph } from '../src/core/pixelfont';
 import { IDLE, headlessGame, seeded } from './helpers';
 
 // No audio in tests. start() would otherwise open an AudioContext.
-vi.mock('../src/core/sfx', () => ({ sfx: { inflate() {}, deflate() {}, blub() {}, static() { return () => {}; }, twinkle() {}, caught() {}, pause() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() { return () => {}; }, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { inflate() {}, deflate() {}, lash() {}, flip() {}, wipe() {}, blub() {}, crawl() {}, static() { return () => {}; }, twinkle() {}, caught() {}, pause() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum() {}, rumble() { return () => {}; }, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
 
 const SECONDS = 120;
 const STEPS_PER_SECOND = 120;

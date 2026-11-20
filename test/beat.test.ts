@@ -10,7 +10,7 @@ import { HERALD_STEPS } from '../src/game/game';
 import { audioPrefs } from '../src/core/audioPrefs';
 import { IDLE, headlessGame, seeded } from './helpers';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { inflate() {}, deflate() {}, blub() {}, static() { return () => {}; }, twinkle() {}, caught() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic: vi.fn(), setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() { return () => {}; }, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { inflate() {}, deflate() {}, lash() {}, flip() {}, wipe() {}, blub() {}, crawl() {}, static() { return () => {}; }, twinkle() {}, caught() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic: vi.fn(), setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat: vi.fn(), call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() { return () => {}; }, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
 
 describe('the beat clock', () => {
   it('has a beat every 96 steps and a bar every four beats', () => {
