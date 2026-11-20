@@ -99,12 +99,27 @@ export const hz = (semitones: number) => 440 * 2 ** (semitones / 12);
 
 /** How long a string note has to be for its vibrato to show (s); a shorter one has none. */
 const SHORT_BOW = 0.3;
+/** The voices on one note, by how far out of tune each is (cents): a string section, a choir, brass. */
+const STRING_VOICES = [-9, 0, 11];
+const CHOIR_VOICES = [-12, 0, 13];
+const BRASS_VOICES = [-6, 6];
 /** How fast each note of the choir sways (Hz): a little apart, so the notes never sway as one. */
 const CHOIR_SWAY = [4.8, 5.3, 5.9];
 
 /** The instruments every style plays: drums, plucked strings, keys, pads and plain tones. */
 export class Synth {
   private noiseBuf: AudioBuffer | null = null;
+  /**
+   * The light orchestra, for a TV or a slow device: a string section, a choir's note and a
+   * brass note each play one voice instead of three or two, as loud as they all were, and
+   * none of them has a vibrato (a wavering pitch is costly to play). The same notes, a little
+   * plainer, for a fraction of the work.
+   */
+  light = false;
+  /** The detunings (cents) of the voices playing one note: all of them, or only the middle one when light. */
+  private voices(all: readonly number[]) { return this.light ? [all[Math.floor(all.length / 2)]] : all; }
+  /** How much louder each voice plays when light, so the note is as loud as all of them. */
+  private fill(all: readonly number[]) { return this.light ? Math.sqrt(all.length) : 1; }
   private plucks = new Map<string, AudioBuffer>();
 
   /** Where its notes go. Music moves it to a new fader each time the music starts again. */
@@ -402,9 +417,10 @@ export class Synth {
    * the mallet under it.
    */
   timpani(at: number, freq: number, vol: number, ring = 1.2) {
-    const ctx = this.ctx, end = at + ring * 4;
+    const ctx = this.ctx;
     for (const [mult, level, decay] of [[1, 1, ring], [1.5, 0.35, ring * 0.5], [2, 0.18, ring * 0.35]] as const) {
-      const osc = ctx.createOscillator();
+      // Each partial stops when it has died away (to 2%), the higher ones well before the note.
+      const osc = ctx.createOscillator(), end = at + decay * 4;
       osc.frequency.setValueAtTime(freq * mult * 1.03, at);
       osc.frequency.exponentialRampToValueAtTime(freq * mult, at + 0.08);
       osc.connect(this.hit(at, vol * level, 0.004, decay, end));
@@ -510,12 +526,13 @@ export class Synth {
     f.frequency.exponentialRampToValueAtTime(Math.min(open, 9000), at + 0.07 + 0.05 * (1 - bright));
     f.frequency.setTargetAtTime(Math.min(rest, 7000), at + 0.15, 0.2);
     g.gain.setValueAtTime(0, at);
+    vol *= this.fill(BRASS_VOICES);
     g.gain.linearRampToValueAtTime(vol, at + 0.05);
     g.gain.setTargetAtTime(vol * 0.75, at + 0.05, 0.25);
     g.gain.setTargetAtTime(0, at + dur, 0.1);
     // The vibrato, on long notes only: a short one would be over before it showed.
     let depth: GainNode | null = null;
-    if (dur > 0.5) {
+    if (dur > 0.5 && !this.light) {
       const lfo = ctx.createOscillator();
       depth = ctx.createGain();
       lfo.frequency.value = 5;
@@ -525,7 +542,7 @@ export class Synth {
       lfo.start(at);
       lfo.stop(end);
     }
-    for (const cents of [-6, 6]) {
+    for (const cents of this.voices(BRASS_VOICES)) {
       const osc = ctx.createOscillator();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(freq * 0.97, at);
@@ -553,7 +570,7 @@ export class Synth {
     f.frequency.value = cutoff;
     f.Q.value = 0.6;
     g.gain.setValueAtTime(0, at);
-    g.gain.linearRampToValueAtTime(vol / 3, at + bow);
+    g.gain.linearRampToValueAtTime((vol / 3) * this.fill(STRING_VOICES), at + bow);
     g.gain.setTargetAtTime(0, at + dur, 0.15);
     let into: AudioNode = f;
     if (tremolo > 0) {
@@ -569,7 +586,7 @@ export class Synth {
     }
     f.connect(g).connect(this.out);
     let depth: GainNode | null = null;
-    if (dur >= SHORT_BOW) {
+    if (dur >= SHORT_BOW && !this.light) {
       const lfo = ctx.createOscillator();
       depth = ctx.createGain();
       lfo.frequency.value = 5.6;
@@ -579,7 +596,7 @@ export class Synth {
       lfo.start(at);
       lfo.stop(end);
     }
-    for (const cents of [-9, 0, 11]) {
+    for (const cents of this.voices(STRING_VOICES)) {
       const osc = ctx.createOscillator();
       osc.type = 'sawtooth';
       osc.frequency.value = freq;
@@ -621,7 +638,7 @@ export class Synth {
   choir(at: number, freqs: readonly number[], dur: number, vol: number) {
     const ctx = this.ctx, end = at + dur + 1.5, g = ctx.createGain(), swell = Math.min(dur * 0.4, 0.6);
     g.gain.setValueAtTime(0, at);
-    g.gain.linearRampToValueAtTime(vol / freqs.length, at + swell);
+    g.gain.linearRampToValueAtTime((vol / freqs.length) * this.fill(CHOIR_VOICES), at + swell);
     g.gain.setTargetAtTime(0, at + dur, 0.3);
     g.connect(this.out);
     // The voices sing into all three formants at once.
@@ -635,18 +652,22 @@ export class Synth {
       mouth.connect(f).connect(lv).connect(g);
     }
     freqs.forEach((fr, i) => {
-      const lfo = ctx.createOscillator(), depth = ctx.createGain();
-      lfo.frequency.value = CHOIR_SWAY[i % CHOIR_SWAY.length];
-      depth.gain.value = fr * 0.006;
-      lfo.connect(depth);
-      lfo.start(at);
-      lfo.stop(end);
-      for (const cents of [-12, 0, 13]) {
+      let depth: GainNode | null = null;
+      if (!this.light) {
+        const lfo = ctx.createOscillator();
+        depth = ctx.createGain();
+        lfo.frequency.value = CHOIR_SWAY[i % CHOIR_SWAY.length];
+        depth.gain.value = fr * 0.006;
+        lfo.connect(depth);
+        lfo.start(at);
+        lfo.stop(end);
+      }
+      for (const cents of this.voices(CHOIR_VOICES)) {
         const osc = ctx.createOscillator();
         osc.type = 'sawtooth';
         osc.frequency.value = fr;
         osc.detune.value = cents;
-        depth.connect(osc.frequency);
+        depth?.connect(osc.frequency);
         osc.connect(mouth);
         osc.start(at);
         osc.stop(end);
@@ -759,6 +780,13 @@ export class Music {
   private layerFaders: GainNode[] = [];
   /** How many layers played on the last beat. */
   private heard = LAYERS;
+  private lightOn = false;
+  /** The light orchestra (see Synth.light): on a TV, or a device that has gone lite. */
+  get light() { return this.lightOn; }
+  set light(on: boolean) {
+    this.lightOn = on;
+    if (this.synth) this.synth.light = on;
+  }
   private preview: { timer: number; next: number; beat: number; bpm: number; layers: number; meter: () => Meter } | null = null;
 
   init(ctx: AudioContext, dest: AudioNode) {
@@ -768,6 +796,7 @@ export class Music {
     this.bus.gain.value = MUSIC_VOLUME;
     this.bus.connect(dest);
     this.synth = new Synth(ctx, this.input);
+    this.synth.light = this.lightOn;
     this.newRun();
     this.route();
     if (!ctx.audioWorklet) return;
