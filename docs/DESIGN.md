@@ -104,7 +104,7 @@ Now and then the line ties itself in a knot ahead: a scribble of loops on both s
 
 ## Killerwave
 
-An orca of line comes up behind Wavell, fin first, and charges. It is an enemy and a power-up at once, and which one is up to the player: stay on the line and it hits; float and it goes by under, clearing the way; come down behind its fin and he rides it, hanging on by one hand and streaming out like a flag, while it clears everything ahead. Its name is the joke: a killer whale, a killer wave.
+An orca of line comes up behind Wavell, fin first, and charges. It is an enemy and a power-up at once, and which one is up to the player: stay on the line and it hits, throws him clear and dives straight back in, so the two shapes never lie over each other and the line stays one line; float and it goes by under, clearing the way; come down behind its fin and he rides it, hanging on by one hand and streaming out like a flag, while it clears everything ahead. Its name is the joke: a killer whale, a killer wave.
 
 ## Sparkles are the bait
 

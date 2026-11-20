@@ -8,7 +8,7 @@ import { BubbleBurst } from '../src/game/actors/bubble';
 import { Urchin } from '../src/game/actors/urchin';
 import { Worm } from '../src/game/actors/worm';
 import { KNOT_HALF, RageKnot, UNTIE, rageWaves } from '../src/game/actors/rage';
-import { Orca, STALK_LEAD } from '../src/game/actors/orca';
+import { DIVE_BODY, DIVE_FIN, Orca, STALK_LEAD } from '../src/game/actors/orca';
 import { whiplash, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 import { sfx } from '../src/core/sfx';
@@ -1924,6 +1924,26 @@ describe('the Killerwave', () => {
     run(g, DIFF.orcaStalk + DIFF.orcaRise + 2);
     expect(g.wavell.size).toBe(0);
     expect(g.wavell.alive).toBe(true);
+  });
+
+  it('having hit him, throws him clear and dives straight back in: body, then fin', () => {
+    const g = called();
+    const W = g.wavell, o = g.orca!;
+    W.size = 2;
+    for (let i = 0; i < 10 * STEPS_PER_SECOND && !o.hit; i++) g.tick(IDLE);
+    expect(o.hit).toBe(true);
+    expect(o.state).toBe('dive');
+    const at = W.x, x = o.x;
+    run(g, DIVE_BODY);
+    // Its body is back under, he is off its fin, and it has not moved on.
+    expect(o.reaches(W.x)).toBe(false);
+    expect(W.x - o.finTip(g.line)[0]).toBeGreaterThan(9);
+    expect(o.x).toBe(x);
+    run(g, DIVE_FIN + 0.05);
+    expect(g.orca).toBeNull();
+    expect(W.x - at).toBeGreaterThan(30);
+    expect(W.size).toBe(1);
+    expect(W.alive).toBe(true);
   });
 
   it('goes by under his bubble, clearing what is ahead, and leaves the screen', () => {

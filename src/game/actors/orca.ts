@@ -1,7 +1,8 @@
 // The Killerwave: an orca made of the line. Its fin cuts up out of the line behind Wavell
 // and comes after him, a little faster than he walks; close behind him the rest of it comes
 // up and opens its jaws, and it charges off to the right, faster than he can go.
-// Caught on the line, he is hit. Up in his bubble, it goes by under him, clearing every
+// Caught on the line, he is hit and thrown clear, and it dives straight back in: body, then
+// fin, so it and he are never drawn over each other for long. Up in his bubble, it goes by under him, clearing every
 // creature in its way. Come down on the back of its fin, and he rides it.
 //
 // Its outline is ANIM.shapes.orca (the animation lab edits it): jaws open, facing right,
@@ -46,6 +47,8 @@ const BODY_OUT = 0.6;
 export const STALK_LEAD = 0.35, HEAD_GAP = 8;
 /** Jaws opening (s); slowing down after a ride (s); going back under (s). */
 const OPEN = 0.5, SLOW = 0.6, SINK = 1.1;
+/** Having hit him: its body goes back under (s), then its fin (s). */
+export const DIVE_BODY = 0.2, DIVE_FIN = 0.15;
 
 /** The fin's tip: the highest point of the outline (its index, flat, as u's). */
 function finTipIndex() {
@@ -68,7 +71,7 @@ function follow(u: number, v: number, a: number[], b: number[], a2: number[], b2
   return [a2[0] + f * eu - d * ev, a2[1] + f * ev + d * eu];
 }
 
-export type OrcaState = 'rise' | 'stalk' | 'emerge' | 'open' | 'charge' | 'ride' | 'slow' | 'sink' | 'done';
+export type OrcaState = 'rise' | 'stalk' | 'emerge' | 'open' | 'charge' | 'ride' | 'slow' | 'sink' | 'dive' | 'done';
 
 /** Its length, tail root to chin (u), as the outline is now. */
 export function orcaLength() { const s = ANIM.shapes.orca; return s[s.length - 2]; }
@@ -119,6 +122,14 @@ export class Orca {
     // Caught on the way up, it carries on coming up, with him on it, at its own pace.
     this.from = [this.fin, this.up, this.open, this.back, this.offW];
     this.surface = Math.max(finRise() * (1 - Math.min(1, this.fin)), DIFF.orcaRise * (1 - this.up), OPEN * (1 - this.open));
+  }
+  /** It has hit him: back under at once, where it is, body first and then the fin. */
+  dive() {
+    if (this.state === 'dive' || this.done || this.ridden) return;
+    this.state = 'dive';
+    this.t = 0;
+    this.speed = 0;
+    this.from = [this.fin, this.up, this.open, this.back, this.offW];
   }
   /** Gone off the screen at the right. */
   leave() { this.state = 'done'; }
@@ -204,6 +215,17 @@ export class Orca {
         this.x += chase * dt;
         if (t >= OPEN) { this.state = 'charge'; this.t = 0; }
         return;
+      case 'dive': {
+        // The body sinks back to the fin, then the fin into the flat line. It stays where it is.
+        const [f, u, o, , w] = this.from, body = u > 0 ? DIVE_BODY : 0;
+        const k = body > 0 ? smooth(clamp(t / body, 0, 1)) : 1;
+        this.up = u * (1 - k);
+        this.open = o * (1 - k);
+        this.offW = w * (1 - k);
+        this.fin = f * (1 - smooth(clamp((t - body) / DIVE_FIN, 0, 1)));
+        if (t >= body + DIVE_FIN) this.state = 'done';
+        return;
+      }
       case 'charge':
         this.speed = Math.max(chase, DIFF.orcaSpeed * smooth(clamp(t / 0.35, 0, 1)));
         break;

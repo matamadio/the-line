@@ -121,6 +121,7 @@ export const DIFF_KNOBS = {
   orcaRideSpeed: knob('Killerwave', 'Ridden at (u/s)', 340, 60, 800, 10),
   orcaRide: knob('Killerwave', 'A ride lasts (s)', 4, 1, 10, 0.5),
   orcaPoints: knob('Killerwave', 'Points for each creature it clears', 5, 0, 50, 1),
+  orcaBounce: knob('Killerwave', 'Hitting him: his knockback', 400, 0, 1000, 10),
   sparkleKill: knob('Sparkles', 'Left by each enemy killed (a Sinepede: by each segment flattened)', 2, 0, 10, 1),
   sparkleEvery: knob('Sparkles', 'One on its own every (s, roughly)', 3, 0.5, 20, 0.1),
   sparkleMax: knob('Sparkles', 'Most at once, of those on their own', 6, 0, 20, 1),
