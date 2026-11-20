@@ -96,6 +96,7 @@
   "orcaRideSpeed": 340,
   "orcaRide": 4,
   "orcaPoints": 5,
+  "orcaBounce": 400,
   "sparkleKill": 2,
   "sparkleEvery": 3,
   "sparkleMax": 6,

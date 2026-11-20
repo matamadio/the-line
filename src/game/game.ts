@@ -1750,10 +1750,13 @@ export class Game {
     // The end of the line waits while it comes.
     if (o.coming) this.endGrace = Math.max(this.endGrace, 0.3);
     if (o.state === 'charge' && was !== 'charge') sfx.orcaCall(1.35);
-    // Caught on the line, he is hit, once.
+    // Caught on the line, he is hit, once, and thrown clear of it, away from its fin; and it
+    // dives straight back in, so the two are never drawn over each other.
     if (!o.hit && W.alive && W.onLine && o.reaches(W.x)) {
       o.hit = true;
       W.hurt(W.side > 0 ? 'zap' : 'flatten');
+      W.bounce((Math.sign(W.x - o.finTip(L)[0]) || 1) * DIFF.orcaBounce);
+      o.dive();
       n.shake = Math.max(n.shake, 1);
     }
     // Come down on the back of its fin: he rides it.
