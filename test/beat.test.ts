@@ -353,10 +353,10 @@ describe('the music building up', () => {
     }
   });
 
-  it('adds one layer per level, up to a sixth at level 6', () => {
+  it('adds one layer per level, up to a seventh at level 7', () => {
     const g = headlessGame();
-    const layers = [1, 2, 3, 4, 5, 6, 10].map((level) => { g.level = level; return g.musicLayers; });
-    expect(layers).toEqual([1, 2, 3, 4, 5, 6, 6]);
+    const layers = [1, 2, 3, 4, 5, 6, 7, 10].map((level) => { g.level = level; return g.musicLayers; });
+    expect(layers).toEqual([1, 2, 3, 4, 5, 6, 7, 7]);
   });
 });
 

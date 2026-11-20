@@ -285,7 +285,7 @@ describe('the Silencer', () => {
     g.tidals.push({ x: B.front - 30, dir: 1, amp: 30, done: false, gone: false });
     run(g, 6);
     expect(g.loop).toBe(1);
-    expect(g.musicLayers).toBe(6);
+    expect(g.musicLayers).toBe(7);
     expect(g.lineWord).toBe(END_WORD);
     expect(g.endWord).toBeGreaterThan(0);
     run(g, 60);
