@@ -343,7 +343,7 @@ describe('the music building up', () => {
       for (const layer of style.layers) for (const meter of METERS.map(musicMeter)) {
         let notes = 0;
         const count = () => { notes++; };
-        const synth = { kick: count, snare: count, hat: count, block: count, tone: count, keys: count, pad: count, pluck: count, strum: count, flute: count, fiddle: count, bass: count, taiko: count, acid: count, theremin: count, timpani: count, timpaniRoll: count, brass: count, section: count, swell: count, crash: count, choir: count, glock: count, tuba: count, glide: count };
+        const synth = { kick: count, snare: count, snareRoll: count, hat: count, block: count, tone: count, keys: count, pad: count, pluck: count, strum: count, flute: count, fiddle: count, bass: count, taiko: count, acid: count, theremin: count, timpani: count, timpaniRoll: count, brass: count, section: count, swell: count, crash: count, choir: count, glock: count, tuba: count, glide: count };
         const starts = groupStarts(meter);
         for (let bar = 0; bar < 16; bar++) for (let beat = 0; beat < meter.beats; beat++) {
           layer.play(synth as never, { at: 0, len: 0.8, beat, bar, meter, layers: LAYERS, group: starts.includes(beat), groupEnd: starts.includes(beat + 1) || beat === meter.beats - 1, t: (k) => k * 0.2 });
