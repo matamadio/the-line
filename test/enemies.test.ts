@@ -12,8 +12,9 @@ import { Orca, STALK_LEAD } from '../src/game/actors/orca';
 import { whiplash, reflux } from '../src/game/game';
 import { IDLE, headlessGame, seeded } from './helpers';
 import { sfx } from '../src/core/sfx';
+import { WHIP_CRACK_AT } from '../src/core/cues';
 
-vi.mock('../src/core/sfx', () => ({ sfx: { inflate() {}, deflate() {}, blub() {}, static() { return () => {}; }, twinkle() {}, caught() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() { return () => {}; }, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
+vi.mock('../src/core/sfx', () => ({ sfx: { inflate() {}, deflate() {}, lash() {}, flip() {}, wipe() {}, blub() {}, crawl() {}, static() { return () => {}; }, twinkle() {}, caught() {}, unlock() {}, play() {}, toggleMute() {}, restartMusic() {}, setNostalgia() {}, preview() {}, endPreview() {}, ready: true, cycleStyle() {}, beat() {}, call() {}, cancelled() {}, fed() {}, grew() {}, shrank() {}, hum: vi.fn(), rumble() { return () => {}; }, tideRise() { return () => {}; }, tideCrash() {}, crunch() {}, slam() {}, sentBack() {}, bossHit() {}, meow() {}, whirr() {}, croak() {}, orcaCall() {}, has() { return false; }, muted: true } }));
 
 // These script each enemy to the second; test/beat.test.ts covers them on the beat.
 DIFF.beatOn = 0;
@@ -1281,6 +1282,19 @@ describe('the game', () => {
       expect(u.standing).toBe(false);
     });
 
+    it('sounds bigger once wiped: its crunch goes on at its new size', () => {
+      const g = ready();
+      const crunch = vi.spyOn(sfx, 'crunch');
+      const u = new Urchin(g.wavell.x + 60, 0.1, 2);
+      g.urchins.push(u);
+      run(g, 0.7);
+      expect(crunch).toHaveBeenCalledWith(expect.any(Number), 1, 0);
+      wipeLands(g, u);
+      expect(crunch).toHaveBeenCalledWith(expect.any(Number), 1, 1);
+      expect(crunch).toHaveBeenCalledWith(0.16, 1.5, 1);
+      vi.restoreAllMocks();
+    });
+
     it('stops getting longer once it can not grow, but still starts over', () => {
       const g = ready();
       const u = new Urchin(g.wavell.x + 60, 0.1, 2);
@@ -2015,6 +2029,83 @@ describe('sounds that decorate the music', () => {
     expect(deflate).toHaveBeenCalledTimes(1);
     expect(deflate).toHaveBeenCalledWith(TUNE.landTime);
     expect(inflate).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts the whip just before a Whiplash lashes out, so its crack lands as it sets off, and not with the reflux sound', () => {
+    const g = ready();
+    const lash = vi.spyOn(sfx, 'lash'), play = vi.spyOn(sfx, 'play');
+    g.quiet = false;
+    g.level = 3;
+    g.playTime = DIFF.backFrom + 1;
+    const clocks = g as unknown as { backClock: number; refluxClock: number; sineClock: number; urchinClock: number; wormClock: number; bubbleClock: number };
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && !g.whiplashes.length; i++) {
+      clocks.backClock = 99;
+      clocks.refluxClock = clocks.sineClock = clocks.urchinClock = clocks.wormClock = clocks.bubbleClock = -99;
+      g.tick(IDLE);
+    }
+    const b = g.whiplashes[0];
+    expect(b.warn).toBeGreaterThan(WHIP_CRACK_AT);
+    expect(lash).not.toHaveBeenCalled();
+    while (b.warn > WHIP_CRACK_AT) g.tick(IDLE);
+    expect(lash).toHaveBeenCalledTimes(1);
+    const until = lash.mock.calls[0][0]!;
+    expect(until).toBeGreaterThan(0);
+    expect(until).toBeLessThanOrEqual(WHIP_CRACK_AT);
+    expect(until).toBeCloseTo(b.warn, 5);
+    for (let i = 0; i < STEPS_PER_SECOND * 3 && b.warn > 0; i++) g.tick(IDLE);
+    expect(lash).toHaveBeenCalledTimes(1);
+    expect(play).not.toHaveBeenCalledWith('reflux');
+  });
+
+  it('wipes with its own swoosh, the way he faces, and pulls with the old sample', () => {
+    const g = ready();
+    const wipe = vi.spyOn(sfx, 'wipe'), play = vi.spyOn(sfx, 'play');
+    g.tick(WIPE);
+    expect(wipe).toHaveBeenCalledWith(g.wavell.facing, expect.any(Number));
+    expect(play).not.toHaveBeenCalledWith('drag', expect.anything());
+    run(g, 1.5);
+    g.tick(PULL);
+    expect(play).toHaveBeenCalledWith('drag', 0.7);
+    expect(wipe).toHaveBeenCalledTimes(1);
+  });
+
+  it('flips him with its sweep, down and up', () => {
+    const g = ready();
+    const flip = vi.spyOn(sfx, 'flip'), play = vi.spyOn(sfx, 'play');
+    g.tick({ ...IDLE, downPressed: true });
+    run(g, 1);
+    g.tick({ ...IDLE, upPressed: true });
+    run(g, 1);
+    expect(flip.mock.calls.map((c) => c[0])).toEqual([false, true]);
+    expect(play).not.toHaveBeenCalledWith('flipDown');
+    expect(play).not.toHaveBeenCalledWith('flipUp');
+  });
+
+  it('drones while a Worm crawls, from where it is, and stops when it is gone', () => {
+    const g = ready();
+    const crawl = vi.spyOn(sfx, 'crawl');
+    const listen = () => (g as unknown as { crawl(): void }).crawl();
+    g.quiet = false;
+    g.level = 5;
+    g.playTime = DIFF.wormFrom + 1;
+    const clocks = g as unknown as { backClock: number; refluxClock: number; sineClock: number; urchinClock: number; wormClock: number; bubbleClock: number };
+    for (let i = 0; i < STEPS_PER_SECOND * 2 && !g.worms.length; i++) {
+      clocks.wormClock = 99;
+      clocks.backClock = clocks.refluxClock = clocks.sineClock = clocks.urchinClock = clocks.bubbleClock = -99;
+      g.tick(IDLE);
+    }
+    expect(g.worms).toHaveLength(1);
+    listen();
+    const [near, pan] = crawl.mock.calls.at(-1)!;
+    expect(near).toBeGreaterThan(0);
+    expect(pan).toBeGreaterThan(0);
+    expect(crawl.mock.calls.at(-1)![2]).toBe(0);
+    g.worms[0].grow();
+    listen();
+    expect(crawl.mock.calls.at(-1)![2]).toBe(1);
+    g.worms[0].vanish();
+    listen();
+    expect(crawl).toHaveBeenLastCalledWith(0);
   });
 });
 
