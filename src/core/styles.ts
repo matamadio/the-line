@@ -505,10 +505,9 @@ const epic: Style = {
         s.snare(at, vol, { band: 2600, decay: 0.07, tone: 0.35 });
         snap(at, vol * 0.9);
       };
-      const roll = (from: number, to: number, vol0: number, vol1: number) => {
-        const n = Math.max(4, Math.round((to - from) / 0.032));
-        for (let i = 0; i < n; i++) tap(from + ((to - from) * i) / n, vol0 + ((vol1 - vol0) * i) / n);
-      };
+      // The buzz roll is one drum struck over and over, the taps' sound at the taps' pace.
+      const roll = (from: number, to: number, vol0: number, vol1: number) =>
+        s.snareRoll(from, to, vol0, vol1, { band: 2800, decay: 0.035, tone: 0.25 });
       if (endOfPhrase(b)) roll(b.t(0), b.at + b.len, 0.03, 0.12);
       else if (half === 0) { accent(b.t(0)); for (const [k, v] of [[2, 0.08], [3, 0.1]]) { tap(b.t(k), v); snap(b.t(k), v * 0.7); } }
       else { roll(b.t(0), b.t(2), 0.03, 0.08); accent(b.t(2)); }
