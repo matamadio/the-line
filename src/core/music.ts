@@ -8,8 +8,10 @@
 
 import { STYLES, type Style } from './styles';
 
-/** How many layers every style has: the music stops building up at this level. */
+/** How many layers every style has: the start screen plays them all. */
 export const LAYERS = 5;
+/** A style may have one more, joining at level 6: the music stops building up there. */
+export const MAX_LAYERS = 6;
 
 /**
  * A time signature: how many beats to a bar, how they group, which says where the strong
@@ -389,6 +391,209 @@ export class Synth {
     this.snare(at, vol * 0.35, { band: 320 / size, decay: 0.06, tone: 0 });
   }
 
+  /**
+   * A timpani: a tuned kettle drum. A round tone on the note with its partials a fifth and
+   * an octave over it, settling a touch flat after the strike, ringing on; a soft thump of
+   * the mallet under it.
+   */
+  timpani(at: number, freq: number, vol: number, ring = 1.2) {
+    const ctx = this.ctx, end = at + ring * 4;
+    for (const [mult, level, decay] of [[1, 1, ring], [1.5, 0.35, ring * 0.5], [2, 0.18, ring * 0.35]] as const) {
+      const osc = ctx.createOscillator();
+      osc.frequency.setValueAtTime(freq * mult * 1.03, at);
+      osc.frequency.exponentialRampToValueAtTime(freq * mult, at + 0.08);
+      osc.connect(this.hit(at, vol * level, 0.004, decay, end));
+      osc.start(at);
+      osc.stop(end);
+    }
+    const thump = ctx.createBiquadFilter();
+    thump.type = 'lowpass';
+    thump.frequency.value = 400;
+    thump.connect(this.hit(at, vol * 0.5, 0.002, 0.03, at + 0.3));
+    this.burst(at, 0.3, thump);
+  }
+
+  /** A timpani roll: quick soft strokes over `dur`, swelling to `vol` into the next downbeat. */
+  timpaniRoll(at: number, freq: number, dur: number, vol: number) {
+    const n = Math.max(4, Math.round(dur / 0.055));
+    for (let i = 0; i < n; i++) {
+      const k = i / (n - 1);
+      this.timpani(at + (i / n) * dur, freq, vol * (0.25 + 0.75 * k * k), 0.5);
+    }
+  }
+
+  /**
+   * Brass: a horn, or with `bright` a trumpet. Two saws a little apart, scooping up into the
+   * note, through a lowpass that blares open as the note speaks and then settles, the
+   * "bwah"; a slow vibrato on long notes.
+   */
+  brass(at: number, freq: number, dur: number, vol: number, bright = 0) {
+    const ctx = this.ctx, end = at + dur + 0.6;
+    const f = ctx.createBiquadFilter(), g = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+    const open = freq * (3 + 5 * bright), rest = freq * (2 + 3 * bright);
+    f.type = 'lowpass';
+    f.Q.value = 1.5;
+    f.frequency.setValueAtTime(freq, at);
+    f.frequency.exponentialRampToValueAtTime(Math.min(open, 9000), at + 0.07 + 0.05 * (1 - bright));
+    f.frequency.setTargetAtTime(Math.min(rest, 7000), at + 0.15, 0.2);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + 0.05);
+    g.gain.setTargetAtTime(vol * 0.75, at + 0.05, 0.25);
+    g.gain.setTargetAtTime(0, at + dur, 0.1);
+    lfo.frequency.value = 5;
+    depth.gain.setValueAtTime(0, at);
+    depth.gain.linearRampToValueAtTime(dur > 0.5 ? freq * 0.006 : 0, at + Math.min(dur, 0.6));
+    for (const cents of [-6, 6]) {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq * 0.97, at);
+      osc.frequency.exponentialRampToValueAtTime(freq, at + 0.05);
+      osc.detune.value = cents;
+      lfo.connect(depth).connect(osc.frequency);
+      osc.connect(f);
+      osc.start(at);
+      osc.stop(end);
+    }
+    f.connect(g).connect(this.out);
+    lfo.start(at);
+    lfo.stop(end);
+  }
+
+  /**
+   * A string section on one note: three bowed saws a little out of tune with each other,
+   * each with its own vibrato, so it sounds like many players rather than one. `cutoff`
+   * makes it a cello (dark) or a violin (bright); `bow` is how long the bow takes to speak;
+   * `tremolo` shakes the bow (Hz, 0 for none).
+   */
+  section(at: number, freq: number, dur: number, vol: number, o: { cutoff?: number; bow?: number; tremolo?: number } = {}) {
+    const { cutoff = 2500, bow = 0.12, tremolo = 0 } = o, ctx = this.ctx, end = at + dur + 0.8;
+    const f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'lowpass';
+    f.frequency.value = cutoff;
+    f.Q.value = 0.6;
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol / 3, at + bow);
+    g.gain.setTargetAtTime(0, at + dur, 0.15);
+    let into: AudioNode = f;
+    if (tremolo > 0) {
+      const shake = ctx.createGain(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+      shake.gain.value = 0.6;
+      lfo.frequency.value = tremolo;
+      depth.gain.value = 0.4;
+      lfo.connect(depth).connect(shake.gain);
+      shake.connect(f);
+      into = shake;
+      lfo.start(at);
+      lfo.stop(end);
+    }
+    f.connect(g).connect(this.out);
+    [[-9, 5.1], [0, 5.6], [11, 6.1]].forEach(([cents, rate]) => {
+      const osc = ctx.createOscillator(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      osc.detune.value = cents;
+      lfo.frequency.value = rate;
+      depth.gain.setValueAtTime(0, at);
+      depth.gain.linearRampToValueAtTime(freq * 0.007, at + Math.min(dur, 0.4));
+      lfo.connect(depth).connect(osc.frequency);
+      osc.connect(into);
+      for (const x of [osc, lfo]) { x.start(at); x.stop(end); }
+    });
+  }
+
+  /** A suspended cymbal swelling up under a soft roll, over `dur`, to burst on the next downbeat. */
+  swell(at: number, dur: number, vol: number) {
+    const f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+    f.type = 'highpass';
+    f.frequency.value = 3500;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(vol, at + dur);
+    g.gain.setTargetAtTime(0, at + dur, 0.05);
+    f.connect(g).connect(this.out);
+    this.burst(at, dur + 0.3, f);
+  }
+
+  /** A crash cymbal: a splash of bright noise ringing away. */
+  crash(at: number, vol: number) {
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'highpass';
+    f.frequency.value = 3000;
+    f.connect(this.hit(at, vol, 0.002, 0.7, at + 3));
+    this.burst(at, 3, f);
+  }
+
+  /**
+   * A choir singing "aah": for each note a few voices a little apart, buzzing through the
+   * two formants of an open "a" (about 700 Hz and 1.2 kHz), swelling in slowly with a
+   * gentle vibrato.
+   */
+  choir(at: number, freqs: readonly number[], dur: number, vol: number) {
+    const ctx = this.ctx, end = at + dur + 1.5, g = ctx.createGain(), swell = Math.min(dur * 0.4, 0.6);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol / freqs.length, at + swell);
+    g.gain.setTargetAtTime(0, at + dur, 0.3);
+    g.connect(this.out);
+    for (const [f0, q, level] of [[700, 6, 1], [1220, 7, 0.55], [2600, 8, 0.18]] as const) {
+      const f = ctx.createBiquadFilter(), lv = ctx.createGain();
+      f.type = 'bandpass';
+      f.frequency.value = f0;
+      f.Q.value = q;
+      lv.gain.value = level * 4;
+      f.connect(lv).connect(g);
+      for (const fr of freqs) [[-12, 4.8], [0, 5.3], [13, 5.9]].forEach(([cents, rate]) => {
+        const osc = ctx.createOscillator(), lfo = ctx.createOscillator(), depth = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = fr;
+        osc.detune.value = cents;
+        lfo.frequency.value = rate;
+        depth.gain.value = fr * 0.006;
+        lfo.connect(depth).connect(osc.frequency);
+        osc.connect(f);
+        for (const x of [osc, lfo]) { x.start(at); x.stop(end); }
+      });
+    }
+  }
+
+  /** A glockenspiel: a bright, struck bar, its high partial dying first. */
+  glock(at: number, freq: number, vol: number) {
+    for (const [mult, level, decay] of [[1, 1, 0.5], [2.76, 0.35, 0.12], [5.4, 0.15, 0.05]] as const) {
+      const osc = this.ctx.createOscillator();
+      osc.frequency.value = freq * mult;
+      osc.connect(this.hit(at, vol * level, 0.001, decay, at + decay * 6));
+      osc.start(at);
+      osc.stop(at + decay * 6);
+    }
+  }
+
+  /**
+   * A tuba, majestic: the brass blaring wide open so it carries even on small speakers, a
+   * horn an octave over it to crown it, and a sine under it for weight.
+   */
+  tuba(at: number, freq: number, dur: number, vol: number) {
+    this.brass(at, freq, dur, vol, 0.8);
+    this.brass(at, freq * 2, dur, vol * 0.3, 0.3);
+    this.tone(at, freq, dur, vol * 0.5, { attack: 0.04, release: 0.2 });
+  }
+
+  /**
+   * A tone gliding from one pitch to another over `dur` (exponentially, so evenly in pitch),
+   * its level going from `vol` to `volTo` as it goes; a short fade at each end so glides
+   * laid end to end join without a click.
+   */
+  glide(at: number, from: number, to: number, dur: number, vol: number, volTo = vol, wave: OscillatorType = 'sine') {
+    const ctx = this.ctx, osc = ctx.createOscillator(), g = ctx.createGain(), end = at + dur, edge = Math.min(0.03, dur / 4);
+    osc.type = wave;
+    osc.frequency.setValueAtTime(from, at);
+    osc.frequency.exponentialRampToValueAtTime(to, end);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(vol, at + edge);
+    g.gain.linearRampToValueAtTime(volTo, end - edge);
+    g.gain.linearRampToValueAtTime(0, end);
+    osc.connect(g).connect(this.out);
+    osc.start(at);
+    osc.stop(end + 0.01);
+  }
+
   /** A strummed chord: the strings one after another, a few milliseconds apart. */
   strum(at: number, freqs: readonly number[], vol: number, o: { bright?: number; seconds?: number; damp?: number; gap?: number } = {}) {
     const { gap = 0.012, ...rest } = o;
@@ -515,7 +720,7 @@ export class Music {
     }
     const fader = this.fader = ctx.createGain();
     fader.connect(input);
-    this.layerFaders = Array.from({ length: LAYERS }, () => {
+    this.layerFaders = Array.from({ length: MAX_LAYERS }, () => {
       const g = ctx.createGain();
       g.connect(fader);
       return g;
