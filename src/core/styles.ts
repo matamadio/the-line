@@ -5,7 +5,7 @@
 //
 // Each style is five layers, and the music builds up one instrument per level: level 1
 // plays the first layer, level 2 adds the second, and so on until all five play from
-// level 5 on.
+// level 5 on. A style may have a sixth, joining at level 6.
 //
 // To add a style, add an entry to STYLES: an id, a name for the menu, how it dresses
 // the game's own tones, and its five layers. It shows up in the audio menu by itself.
@@ -27,8 +27,8 @@ export interface Style {
    * tones are then moved to the nearest of them, so every note heard belongs to it.
    */
   scale?: readonly number[];
-  /** The first plays from level 1, and each of the others joins one level later. */
-  layers: readonly [Layer, Layer, Layer, Layer, Layer];
+  /** The first plays from level 1, and each of the others joins one level later. A sixth, if any, joins at level 6. */
+  layers: readonly [Layer, Layer, Layer, Layer, Layer] | readonly [Layer, Layer, Layer, Layer, Layer, Layer];
 }
 
 /** One instrument's part. The first layer may hold a few: the base the others build on. */
@@ -433,5 +433,216 @@ const trip: Style = {
   ],
 };
 
-export const STYLES: readonly Style[] = [vibe, chill, trip, lotus, tekno, chiptune, bluegrass];
+// ---------------------------------------------------------------- Epic: an orchestra, glorious and pompous
+
+/**
+ * The chords, two bars each, by name like TEK_CHORDS: the big minor of film music, A minor
+ * rising through F and C to G and back.
+ */
+const EPIC_CHORDS = 'Am F C G';
+const EPIC_PROG = chords(EPIC_CHORDS);
+/** The cellos' figure under each beat, two notes a beat: semitones above the chord's root. */
+const CELLO_FIGURE = [0, 0, 7, 0, 12, 7, 0, 7];
+/**
+ * The violins' figure, a beat of triplets at a time over two beats: 1 a short bow, 2 an
+ * accent held a little, 0 a rest. The accents fall off the beat.
+ */
+const VIOLIN_FIGURE: readonly (readonly (0 | 1 | 2)[])[] = [[1, 0, 2], [0, 2, 1]];
+/** The horns' tune, from the A natural minor scale over two octaves. */
+const hornTune = new Tune([0, 2, 3, 5, 7, 8, 10, 12, 14, 15], 0.2);
+/** How loud the tuba call is: the loudest thing in the orchestra while it plays. */
+const TUBA_VOLUME = 0.32;
+/** How many bars a phrase lasts: the timpani roll and the cymbal swell lead into the next. */
+const EPIC_PHRASE = 4;
+/** How many beats are left in the group this beat is in, counting it: to the next strong beat. */
+const groupLeft = (b: Beat) => {
+  let end = 0;
+  for (const g of b.meter.groups) { end += g; if (b.beat < end) return end - b.beat; }
+  return b.meter.beats - b.beat;
+};
+/** The last beat of a phrase. */
+const endOfPhrase = (b: Beat) => b.bar % EPIC_PHRASE === EPIC_PHRASE - 1 && b.beat === b.meter.beats - 1;
+
+const epic: Style = {
+  id: 'epic', name: 'EPIC', swing: 0,
+  tint: { wave: 'sawtooth', cutoff: 3200, echo: 0.28, echoBeats: 1 },
+  scale: A_MINOR,
+  layers: [
+    { name: 'timpani and cellos', play(s, b) {
+      const c = chordAt(EPIC_PROG, b, 2), low = lowRoot(c);
+      // Timpani on the root at the head of each bar and the fifth on the other strong beats,
+      // rolling into the next phrase.
+      if (b.beat === 0) s.timpani(b.t(0), hz(low), 0.42);
+      else if (b.group) s.timpani(b.t(0), hz(low + 7), 0.28);
+      if (endOfPhrase(b)) s.timpaniRoll(b.t(0), hz(low), b.len, 0.3);
+      // The cellos drive two notes a beat, short and dug in.
+      const step = (b.bar * b.meter.beats + b.beat) * 2;
+      for (const k of [0, 2]) {
+        const n = low + 12 + CELLO_FIGURE[(step + k / 2) % CELLO_FIGURE.length];
+        s.section(b.t(k), hz(n), b.len * 0.38, b.group && k === 0 ? 0.2 : 0.14, { cutoff: 1300, bow: 0.02 });
+      }
+    } },
+    { name: 'basses and violas', play(s, b) {
+      // The chord held through the bar by the violas, the basses an octave under the root.
+      if (b.beat !== 0) return;
+      const c = chordAt(EPIC_PROG, b, 2), dur = restOfBar(b);
+      s.section(b.t(0), hz(lowRoot(c)), dur, 0.16, { cutoff: 700, bow: 0.2 });
+      for (const n of c.notes) s.section(b.t(0), hz(n), dur, 0.07, { cutoff: 1800, bow: 0.3 });
+      // A choir sings the chord with them, from the second bar of each chord: "aah".
+      if (b.bar % 2 === 1) s.choir(b.t(0), c.notes.map(hz), dur, 0.14);
+    } },
+    { name: 'violins and glockenspiel', play(s, b) {
+      // Syncopated triplet hits on the chord's top notes: a figure over two beats that skips
+      // some of the triplets and leans on the off ones, a held accent tied over the gap.
+      const c = chordAt(EPIC_PROG, b, 2), third = b.len / 3;
+      const figure = VIOLIN_FIGURE[(b.bar * b.meter.beats + b.beat) % VIOLIN_FIGURE.length];
+      figure.forEach((hit, k) => {
+        if (!hit) return;
+        const accent = hit === 2, dur = third * (accent ? 1.4 : 0.55);
+        for (const n of c.notes.slice(-2)) s.section(b.at + k * third, hz(n + 24), dur, accent ? 0.16 : 0.09, { cutoff: 3600, bow: 0.02 });
+      });
+      // The glockenspiel sparkles down the chord at the end of each phrase.
+      if (endOfPhrase(b)) [...c.notes].reverse().forEach((n, i) => s.glock(b.at + i * third, hz(n + 36), 0.09));
+    } },
+    { name: 'horns and trombones', play(s, b) {
+      const c = chordAt(EPIC_PROG, b, 2);
+      // Trombones punch the chord on the off beats, short and heavy.
+      if (b.groupEnd && !b.group) for (const n of c.notes) s.brass(b.t(0), hz(n - 12), b.len * 0.3, 0.05, 0.2);
+      // The tune, in long, noble notes on the strong beats, held to the next one.
+      if (!b.group) return;
+      const n = hornTune.next(c, b.beat === 0);
+      if (n === null) return;
+      s.brass(b.t(0), hz(n - 12), groupLeft(b) * b.len * 0.92, 0.17);
+    } },
+    { name: 'percussion and fanfare', play(s, b) {
+      const c = chordAt(EPIC_PROG, b, 2);
+      // A bass drum on the head of each bar, and a military snare on the triplets, rolling into each phrase.
+      if (b.beat === 0) s.kick(b.t(0), 0.35, { from: 70, to: 38, decay: 0.3 });
+      const third = b.len / 3;
+      if (endOfPhrase(b)) for (let k = 0; k < 6; k++) s.snare(b.at + k * third / 2, 0.06 + 0.02 * k, { band: 2200, decay: 0.04, tone: 0.2 });
+      else if (b.groupEnd) for (const k of [0, 2]) s.snare(b.at + k * third, k ? 0.07 : 0.1, { band: 2200, decay: 0.04, tone: 0.2 });
+      // A crash opens each phrase, a cymbal swells into it.
+      if (b.beat === 0 && b.bar % EPIC_PHRASE === 0) s.crash(b.t(0), 0.16);
+      if (endOfPhrase(b)) s.swell(b.t(0), b.len, 0.14);
+      // Trumpets: a fanfare on the chord at the head of every other bar, short, short, long.
+      if (b.beat === 0 && b.bar % 2 === 0) {
+        const top = c.notes.map((n) => n + 12);
+        s.brass(b.t(0), hz(top[0]), b.len * 0.2, 0.1, 1);
+        s.brass(b.t(1), hz(top[1]), b.len * 0.2, 0.1, 1);
+        s.brass(b.t(2), hz(top[2]), Math.min(restOfBar(b) - b.len * 0.5, b.len * 2) * 0.9, 0.12, 1);
+      }
+    } },
+    { name: 'tuba call', play(s, b) {
+      // The glorious tuba call, from level 6, every two bars: a short root, then the fifth
+      // held long and proud to the end of the bar.
+      if (b.bar % 2 !== 0) return;
+      const root = lowRoot(chordAt(EPIC_PROG, b, 2)) + 12;
+      if (b.beat === 0) {
+        s.tuba(b.t(0), hz(root), b.len * 0.35, TUBA_VOLUME);
+        s.tuba(b.t(2), hz(root + 7), (restOfBar(b) - b.len / 2) * 0.95, TUBA_VOLUME);
+      }
+    } },
+  ],
+};
+
+// ---------------------------------------------------------------- Anxiety: a tempo that seems to run away
+
+/*
+ * The game plays on the beat, so the tempo never really changes. The rush is an illusion,
+ * made of two endless loops, each ANX_CYCLE bars long and joining up with no seam:
+ *
+ * - A Risset rhythm (the Shepard tone's rhythmic twin): ticks on five rungs, each twice as
+ *   fast as the one under it, every rung speeding up smoothly until it is twice as fast by
+ *   the end of the cycle, when it has become the rung above. The loudest rungs are in the
+ *   middle; the fastest fades out as it speeds up and the slowest fades in, so the ticking
+ *   seems to speed up for ever. It floats free of the beat in between, and lands on it
+ *   again at the head of every cycle.
+ * - A Shepard tone: octaves of a sine all gliding up an octave over the cycle, the top one
+ *   fading out as a new one fades in under, so it seems to rise for ever.
+ *
+ * Over them, an ostinato in groups of three sixteenths against the beat's four (a hemiola),
+ * and strings on a tense chord swelling and ebbing over the cycle. A heartbeat stays on the
+ * downbeat and a clock ticks each beat: the anchor, so the real beat can always be found.
+ */
+
+/** How many bars one turn of the illusion lasts. */
+const ANX_CYCLE = 8;
+/** How far into the cycle this beat is, from 0 to just under 1. */
+const anxPhase = (b: Beat) => ((b.bar % ANX_CYCLE) + b.beat / b.meter.beats) / ANX_CYCLE;
+/** The Risset rhythm's rungs, and about how many ticks a beat its slowest plays at the start. */
+const RISSET_RUNGS = 5;
+const RISSET_BASE = 0.5;
+/** How loud a rung is at x (its rung plus how far through the cycle): a bell, nothing at either end. */
+const rissetLevel = (x: number) => Math.sin((Math.PI * x) / RISSET_RUNGS) ** 2;
+/** The Shepard tone's octaves, from A 55 up, and the bell over them (loudest in the middle). */
+const SHEPARD_OCTAVES = 6;
+const shepardLevel = (x: number) => Math.sin((Math.PI * x) / SHEPARD_OCTAVES) ** 2;
+/** The ostinato, a group of three sixteenths at a time: semitones over A 220. */
+const ANX_OSTINATO = [0, 1, 0];
+/** The tense chord the strings hold: A, B flat a half step over it, and E. */
+const ANX_CLUSTER = [-12, -11, -5, 0];
+
+const anxiety: Style = {
+  id: 'anxiety', name: 'ANXIETY', swing: 0,
+  tint: { wave: 'triangle', cutoff: 4000, echo: 0.25, echoBeats: 0.75 },
+  layers: [
+    { name: 'heartbeat and clock', play(s, b) {
+      // The anchor: a heartbeat, lub-dub, on every downbeat, over a low A held through the
+      // bar, and a dry clock tick on every beat.
+      if (b.beat === 0) {
+        s.kick(b.at, 1, { from: 90, to: 40, decay: 0.12 });
+        s.kick(b.at + b.len * 0.28, 0.65, { from: 80, to: 38, decay: 0.1 });
+        s.tone(b.at, hz(-36), restOfBar(b), 0.22, { wave: 'triangle', attack: 0.3, release: 0.3, cutoff: 300 });
+      }
+      s.block(b.at, b.beat === 0 ? 0.25 : 0.16, 2400, 0.008);
+    } },
+    { name: 'risset rhythm', play(s, b) {
+      // Every tick of every rung that falls in this beat. A rung starting at k ticks a cycle
+      // speeds up as 2^(t/C), so its nth tick comes at t = C log2(1 + n/k); k is a whole
+      // number, so by the end of the cycle each rung has become the one above it.
+      const C = ANX_CYCLE * b.meter.beats, t0 = (b.bar % ANX_CYCLE) * b.meter.beats + b.beat;
+      const m = Math.max(1, Math.round((RISSET_BASE * C) / Math.LN2));
+      for (let i = 0; i < RISSET_RUNGS; i++) {
+        const k = m * 2 ** i;
+        for (let n = Math.ceil(k * (2 ** (t0 / C) - 1) - 1e-9); ; n++) {
+          const t = C * Math.log2(1 + n / k);
+          if (t >= t0 + 1 - 1e-9) break;
+          const x = i + t / C, level = rissetLevel(x) * 0.5;
+          if (level > 0.003) s.hat(b.at + (t - t0) * b.len, level, 0.016, 3000 + 1100 * x);
+        }
+      }
+    } },
+    { name: 'shepard tone', play(s, b) {
+      // Octaves of a sine, each gliding up across this beat as far as the cycle goes in a
+      // beat, louder the nearer the middle of the bell; the top fades out, a new one in under.
+      const p0 = anxPhase(b), p1 = p0 + 1 / (ANX_CYCLE * b.meter.beats);
+      for (let k = 0; k < SHEPARD_OCTAVES; k++) {
+        const v0 = shepardLevel(k + p0) * 0.065, v1 = shepardLevel(k + p1) * 0.065;
+        if (Math.max(v0, v1) < 0.002) continue;
+        s.glide(b.at, 55 * 2 ** (k + p0), 55 * 2 ** (k + p1), b.len + 0.02, v0, v1);
+      }
+    } },
+    { name: 'hemiola ostinato', play(s, b) {
+      // A pluck on every sixteenth, in groups of three (A, B flat, A) with the first of each
+      // leaning in, so its accents fall every three sixteenths against the beat's four; a bass
+      // note every three eighths, the same hemiola an octave of time lower. Counted on across
+      // the bars, so the accents meet the beat only every third beat.
+      const first = (b.bar * b.meter.beats + b.beat) * 4;
+      for (let k = 0; k < 4; k++) {
+        const n = first + k, at = b.at + (k / 4) * b.len, accent = n % 3 === 0;
+        s.pluck(at, hz(-12 + ANX_OSTINATO[n % 3]), accent ? 0.22 : 0.08, { bright: 0.55, seconds: 0.25 });
+        if (n % 6 === 0) s.bass(at, hz(-36 + (n % 12 === 0 ? 0 : 1)), b.len * 1.2, 0.3);
+      }
+    } },
+    { name: 'swelling strings', play(s, b) {
+      // The tense chord held by strings each bar, swelling and ebbing over the cycle, their
+      // bow shaking faster and their tone opening as they swell: no edge, so no seam.
+      if (b.beat !== 0) return;
+      const w = Math.sin(Math.PI * anxPhase(b)) ** 2;
+      for (const n of ANX_CLUSTER) s.section(b.at, hz(n), restOfBar(b), 0.04 + 0.14 * w, { cutoff: 1200 + 3000 * w, bow: 0.3, tremolo: 6 + 8 * w });
+    } },
+  ],
+};
+
+export const STYLES: readonly Style[] = [vibe, chill, trip, lotus, epic, anxiety, tekno, chiptune, bluegrass];
 export const styleById = (id: string) => STYLES.find((s) => s.id === id) ?? STYLES[0];

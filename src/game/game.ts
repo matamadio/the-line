@@ -32,7 +32,7 @@ import { Input, usesTouch, type Controls } from '../core/input';
 import { SpringLine } from './line';
 import { COLORS, Neon, clamp, rand, smooth } from '../core/neon';
 import { audioPrefs } from '../core/audioPrefs';
-import { LAYERS, METERS, meterById } from '../core/music';
+import { LAYERS, MAX_LAYERS, METERS, meterById } from '../core/music';
 import { sfx } from '../core/sfx';
 import { WHIP_CRACK_AT } from '../core/cues';
 import { DIFF, at, levelStart } from '../data/difficulty';
@@ -473,7 +473,7 @@ export class Game {
   }
 
   /** How many layers of the music play: one instrument more for each level, up to level 5, and all of them once the boss has been beaten. */
-  get musicLayers() { return this.loop > 0 ? LAYERS : clamp(this.level, 1, LAYERS); }
+  get musicLayers() { return this.loop > 0 ? MAX_LAYERS : clamp(this.level, 1, MAX_LAYERS); }
 
   /** The level the difficulty ramps read: each loop after beating the boss counts some levels harder. */
   get ramp() { return this.level + this.loop * DIFF.loopBoost; }
