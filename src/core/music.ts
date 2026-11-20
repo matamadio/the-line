@@ -10,8 +10,8 @@ import { STYLES, type Style } from './styles';
 
 /** How many layers every style has: the start screen plays them all. */
 export const LAYERS = 5;
-/** A style may have one more, joining at level 6: the music stops building up there. */
-export const MAX_LAYERS = 6;
+/** A style may have more, one more joining at each level after 5: the music stops building up at the last. */
+export const MAX_LAYERS = 7;
 
 /**
  * A time signature: how many beats to a bar, how they group, which says where the strong
